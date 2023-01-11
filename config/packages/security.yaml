@@ -1,0 +1,36 @@
+# config/packages/security.yaml
+security:
+    password_hashers:
+        App\Entity\User:
+            algorithm: auto
+
+    providers:
+        # used to reload user from session & other features (e.g. switch_user)
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+    enable_authenticator_manager: true
+    # ...
+
+    firewalls:
+        register:
+            pattern: ^/api/register
+        login:
+            pattern: ^/api/login
+            stateless: true
+            json_login:
+                username_path: email
+                check_path: /api/login
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+        api:
+            pattern:   ^/api
+            stateless: true
+            jwt: ~
+
+    access_control:
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/register, roles: PUBLIC_ACCESS  }
+        - { path: ^/api/profile,  roles: IS_AUTHENTICATED_FULLY }
