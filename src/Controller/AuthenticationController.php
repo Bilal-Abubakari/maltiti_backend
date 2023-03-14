@@ -45,8 +45,8 @@ class AuthenticationController extends AbstractController
     #[Route('/profile', name: 'profile')]
     public function profile(): JsonResponse
     {
-            $currentUser = $this->security->getUser();
-            $user = $this->serializer->serialize($currentUser, 'json');
+        $currentUser = $this->security->getUser();
+        $user = $this->serializer->serialize($currentUser, 'json');
 
         return new JsonResponse([
             'user' => $user,

@@ -24,13 +24,21 @@ security:
                 check_path: /api/login
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
-
         api:
             pattern:   ^/api
             stateless: true
             jwt: ~
+        products:
+            pattern: ^/products/addProduct
+            stateless: true
+            jwt: ~
+
+    role_hierarchy:
+        ROLE_ADMIN: ROLE_USER
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
 
     access_control:
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS  }
         - { path: ^/api/profile,  roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/products/addProduct, roles: ROLE_ADMIN }
