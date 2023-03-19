@@ -69,16 +69,6 @@ class ProductsController extends AbstractController
         ]);
     }
 
-    #[Route('/getProducts', name: 'app_getProducts', methods: 'GET')]
-    public function getProducts(): JsonResponse
-    {
-        $products = $this->productsRepository->getProducts();
-
-        return new JsonResponse([
-            'data' => $this->serializer->serialize($products, 'json'),
-            'message' => 'Products loaded successfully'
-        ]);
-    }
 
     #[Route('/getProduct/{id}', name: 'app_getProducts', methods: 'GET')]
     public function getByID(int $id): JsonResponse
@@ -88,6 +78,28 @@ class ProductsController extends AbstractController
         return new JsonResponse([
             'data' => $this->serializer->serialize($product, 'json'),
             'message' => 'Product loaded successfully'
+        ]);
+    }
+
+    #[Route('/count', name: 'app_countProducts', methods: 'GET')]
+    public function countProducts(): JsonResponse
+    {
+        $products = $this->productsRepository->getProducts();
+
+        return new JsonResponse([
+            'data' => count($products),
+            'message' => 'Products total counted successfully'
+        ]);
+    }
+
+    #[Route('/getProducts', name: 'app_getProducts', methods: 'GET')]
+    public function getProducts(): JsonResponse
+    {
+        $products = $this->productsRepository->getProducts();
+
+        return new JsonResponse([
+            'data' => $this->serializer->serialize($products, 'json'),
+            'message' => 'Products loaded successfully'
         ]);
     }
 }

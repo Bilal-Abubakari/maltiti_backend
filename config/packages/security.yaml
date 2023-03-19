@@ -13,6 +13,10 @@ security:
     enable_authenticator_manager: true
     # ...
 
+    role_hierarchy:
+        ROLE_SUPER_ADMIN: ROLE_ADMIN
+        ROLE_ADMIN: ROLE_USER
+
     firewalls:
         register:
             pattern: ^/api/register
@@ -22,23 +26,33 @@ security:
             json_login:
                 username_path: email
                 check_path: /api/login
-                success_handler: lexik_jwt_authentication.handler.authentication_success
+                success_handler: App\Security\JwtAuthenticationSuccessHandler
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            refresh_jwt:
+                check_path: /api/refresh # or, you may use the `api_refresh_token` route name
+
         api:
             pattern:   ^/api
             stateless: true
+            entry_point: jwt
             jwt: ~
+            refresh_jwt:
+                check_path: /api/refresh # or, you may use the `api_refresh_token` route name
+            logout:
+                path: api_token_invalidate
+
+        api_token_refresh:
+            pattern: ^/api/refresh
+            stateless: true
+            refresh_jwt: ~
+
         products:
             pattern: ^/products/addProduct
             stateless: true
             jwt: ~
 
-    role_hierarchy:
-        ROLE_ADMIN: ROLE_USER
-        ROLE_SUPER_ADMIN: ROLE_ADMIN
-
     access_control:
-        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/(login|token/refresh), roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS  }
         - { path: ^/api/profile,  roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/products/addProduct, roles: ROLE_ADMIN }
