@@ -9,3 +9,7 @@ login:
     methods: ['POST']
     defaults:
         _format: json
+
+api_refresh_token:
+    path: /api/login/refresh
+    controller: gesdinet.jwtrefreshtoken::refresh
