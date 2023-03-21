@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,22 +33,20 @@ class JwtAuthenticationSuccessHandler implements AuthenticationSuccessHandlerInt
         // Get the user roles
         $roles = $user->getRoles();
 
-        // Create the token payload
-        $payload = [
-            'username' => $user->getUserIdentifier(),
-            'roles' => $roles,
-            // Add any other data you want to include in the JWT payload
-        ];
 
         // Generate the JWT token
         $jwtManager = $this->jwtManager;
-        $jwtToken = $jwtManager->create($user, $payload);
+        $jwtToken = $jwtManager->create($user);
 
         $refreshTokenTtl = strtotime('+1 month') - time();
         // Generate a refresh token
         $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl($user, $refreshTokenTtl);
         $refreshTokenExpiration = new \DateTime('+1 month');
 
+        $response = new Response();
+        $response->headers->setCookie(new Cookie('refreshToken', $refreshToken, $refreshTokenExpiration, '/', null, true, true));
+
+        $response->send();
         // Create the response
         $data = [
             'token' => $jwtToken,

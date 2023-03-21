@@ -11,5 +11,5 @@ login:
         _format: json
 
 api_refresh_token:
-    path: /api/login/refresh
+    path: /api/refresh
     controller: gesdinet.jwtrefreshtoken::refresh
