@@ -95,7 +95,7 @@ class ProductsController extends AbstractController
     #[Route('/getProducts', name: 'app_getProducts', methods: 'GET')]
     public function getProducts(): JsonResponse
     {
-        $products = $this->productsRepository->getProducts();
+        $products = $this->productsRepository->findAll();
 
         return new JsonResponse([
             'data' => $this->serializer->serialize($products, 'json'),

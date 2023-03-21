@@ -47,7 +47,7 @@ security:
             refresh_jwt: ~
 
         products:
-            pattern: ^/products/addProduct
+            pattern: ^/products
             stateless: true
             jwt: ~
 
@@ -55,4 +55,4 @@ security:
         - { path: ^/api/(login|token/refresh), roles: PUBLIC_ACCESS }
         - { path: ^/api/register, roles: PUBLIC_ACCESS  }
         - { path: ^/api/profile,  roles: IS_AUTHENTICATED_FULLY }
-        - { path: ^/products/addProduct, roles: ROLE_ADMIN }
+        - { path: ^/products, roles: ROLE_ADMIN }
