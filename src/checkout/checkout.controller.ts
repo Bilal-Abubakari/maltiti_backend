@@ -16,18 +16,21 @@ import {
   ordersPagination,
 } from '../interfaces/general';
 import { CheckoutService } from './checkout.service';
-// import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
-// import { RolesGuard } from '../authentication/guards/roles/roles.guard';
+import { JwtAuthGuard } from '../authentication/guards/jwt-auth.guard';
+import { RolesGuard } from '../authentication/guards/roles/roles.guard';
 import {
   InitializeTransaction,
   OrderStatus,
   PaymentStatus,
 } from '../dto/checkout.dto';
 import { Checkout } from '../entities/Checkout.entity';
-import { paymentStatus, status } from '../interfaces/checkout.interface';
+import {
+  paymentStatus as paymentsStatus,
+  status,
+} from '../interfaces/checkout.interface';
 
 @Controller('checkout')
-// @UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class CheckoutController {
   constructor(private readonly checkoutService: CheckoutService) {}
 
@@ -91,7 +94,7 @@ export class CheckoutController {
     @Query('orderStatus') orderStatus: status,
     @Query('searchTerm') searchTerm: string,
     @Query('page') page: number,
-    @Query('paymentStatus') paymentStatus: paymentStatus,
+    @Query('paymentStatus') paymentStatus: paymentsStatus,
   ): Promise<IResponse<ordersPagination>> {
     const response = await this.checkoutService.getAllOrders(
       page,
