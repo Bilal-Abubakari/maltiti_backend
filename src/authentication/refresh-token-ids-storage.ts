@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
-import * as process from "process";
+import * as process from 'process';
 
 export class InvalidatedRefreshTokenError extends Error {}
 
@@ -15,15 +15,19 @@ export class RefreshTokenIdsStorage
 {
   private redisClient: Redis;
   constructor(private configService: ConfigService) {}
-  onApplicationBootstrap() {
+  onApplicationBootstrap(): void {
     this.redisClient = new Redis({
       password: process.env.REDIS_PASSWORD,
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
+      username: process.env.REDIS_USERNAME,
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
   }
 
-  onApplicationShutdown(signal?: string) {
+  onApplicationShutdown(): Promise<'OK'> {
     return this.redisClient.quit();
   }
 
