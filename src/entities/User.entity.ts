@@ -1,55 +1,60 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
-import { Exclude } from 'class-transformer';
-import { v4 as uuidv4 } from 'uuid';
-import { IsEmail } from 'class-validator';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Exclude } from "class-transformer";
+import { v4 as uuidv4 } from "uuid";
+import { IsEmail } from "class-validator";
+import { Role } from "../enum/role.enum";
+import { Status } from "../enum/status.enum";
 
-@Entity({ name: 'users' })
+@Entity({ name: "users" })
 export class User {
   constructor() {
     // Generate a UUID for the new user instance
     this.id = uuidv4();
   }
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
   @Column()
   @IsEmail()
-  @Unique(['email'])
-  email: string;
+  @Unique(["email"])
+  public email: string;
 
   @Column()
-  name: string;
+  public name: string;
 
   @Column({ select: false })
   @Exclude()
-  password: string;
+  public password: string;
 
-  @Column({ enum: ['user', 'admin'] })
-  userType: string;
-
-  @Column({ nullable: true })
-  @Unique(['phoneNumber'])
-  phoneNumber: string;
+  @Column({ enum: Role })
+  public userType: Role;
 
   @Column({ nullable: true })
-  permissions: string;
+  @Unique(["phoneNumber"])
+  public phoneNumber: string;
 
   @Column({ nullable: true })
-  rememberToken: string;
+  public permissions: string;
 
-  @Column({ default: 'active' })
-  status: string;
+  @Column({ default: false })
+  public mustChangePassword: boolean;
 
   @Column({ nullable: true })
-  dob: Date;
+  public rememberToken: string;
+
+  @Column({ default: Status.Active })
+  public status: Status;
+
+  @Column({ nullable: true })
+  public dob: Date;
 
   @Column({ default: new Date() })
-  createdAt: Date;
+  public createdAt: Date;
 
   @Column({ nullable: true })
-  emailVerifiedAt: Date;
+  public emailVerifiedAt: Date;
 
   @Column({ default: new Date() })
-  updatedAt: Date;
+  public updatedAt: Date;
 }

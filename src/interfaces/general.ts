@@ -1,7 +1,7 @@
-import { Cooperative } from '../entities/Cooperative.entity';
-import { CooperativeMember } from '../entities/CooperativeMember.entity';
-import { User } from '../entities/User.entity';
-import { Checkout } from '../entities/Checkout.entity';
+import { Cooperative } from "../entities/Cooperative.entity";
+import { CooperativeMember } from "../entities/CooperativeMember.entity";
+import { User } from "../entities/User.entity";
+import { Checkout } from "../entities/Checkout.entity";
 
 export interface IResponse<T> {
   message: string;

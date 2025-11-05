@@ -1,16 +1,17 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { PassportStrategy } from '@nestjs/passport';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../../users/users.service';
-import { Logger } from '@nestjs/common';
-import { IJwtPayload } from '../../interfaces/jwt.interface';
-import { User } from '../../entities/User.entity';
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { PassportStrategy } from "@nestjs/passport";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { UsersService } from "../../users/users.service";
+import { Logger } from "@nestjs/common";
+import { IJwtPayload } from "../../interfaces/jwt.interface";
+import { User } from "../../entities/User.entity";
+import { Request } from "express";
 
 @Injectable()
 export class JwtRefreshTokenStrategy extends PassportStrategy(
   Strategy,
-  'jwt-refresh-token',
+  "jwt-refresh-token",
 ) {
   private readonly logger = new Logger(JwtRefreshTokenStrategy.name);
 
@@ -19,18 +20,25 @@ export class JwtRefreshTokenStrategy extends PassportStrategy(
     private readonly usersService: UsersService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        // Try to extract from cookie first
+        (request: Request): string | undefined => {
+          return request?.cookies?.refreshToken;
+        },
+        // Fallback to Authorization header for backward compatibility
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'secret',
+      secretOrKey: process.env.JWT_SECRET || "secret",
     });
-    this.logger.warn('JwtRefreshTokenStrategy initialized');
+    this.logger.warn("JwtRefreshTokenStrategy initialized");
   }
 
-  async validate(payload: IJwtPayload): Promise<User> {
+  public async validate(payload: IJwtPayload): Promise<User> {
     this.logger.warn(`Payload: ${JSON.stringify(payload)}`);
     const user = await this.usersService.findOne(payload.sub);
     if (!user) {
-      this.logger.error('User not found');
+      this.logger.error("User not found");
       throw new UnauthorizedException();
     }
     return user;

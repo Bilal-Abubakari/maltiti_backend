@@ -1,40 +1,43 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import axios from 'axios';
-import * as process from 'process';
-import { MailerService } from '@nestjs-modules/mailer';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import axios from "axios";
+import { ConfigService } from "@nestjs/config";
+import { MailerService } from "@nestjs-modules/mailer";
 
 @Injectable()
 export class NotificationService {
-  constructor(private mailerService: MailerService) {}
+  constructor(
+    private mailerService: MailerService,
+    private configService: ConfigService,
+  ) {}
 
-  async sendSms(to: string, message: string): Promise<unknown> {
+  public async sendSms(to: string, message: string): Promise<unknown> {
     try {
       return await axios.post(
-        `${process.env.ARKESEL_BASE_URL}/api/v2/sms/send`,
+        `${this.configService.get<string>("ARKESEL_BASE_URL")}/api/v2/sms/send`,
         {
           recipients: [to],
-          sender: 'Maltiti',
+          sender: "Maltiti",
           message,
         },
         {
           headers: {
-            'api-key': process.env.ARKESEL_SMS_API_KEY,
+            "api-key": this.configService.get<string>("ARKESEL_SMS_API_KEY"),
           },
         },
       );
     } catch (error) {
-      console.log(error, 'error');
+      console.log(error, "error");
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.response?.data?.message || 'Internal Server Error',
+          error: error.response?.data?.message || "Internal Server Error",
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  async sendEmail(
+  public async sendEmail(
     body: string,
     to: string,
     subject: string,
@@ -45,9 +48,9 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: 'info@maltitiaenterprise.com',
+      from: "info@maltitiaenterprise.com",
       subject,
-      template: './welcome',
+      template: "./welcome",
       context: {
         name,
         url,
