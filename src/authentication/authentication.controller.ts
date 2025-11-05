@@ -5,27 +5,29 @@ import {
   Param,
   Post,
   Req,
+  Res,
   UseGuards,
   UsePipes,
   ValidationPipe,
-} from '@nestjs/common';
-import { IResponse, IUserToken } from '../interfaces/general';
-import { UsersService } from '../users/users.service';
-import { RegisterUserDto } from '../dto/registerUser.dto';
-import { SignInDto } from '../dto/signIn.dto';
-import { AuthenticationService } from './authentication.service';
+  UnauthorizedException,
+} from "@nestjs/common";
+import { IResponse } from "../interfaces/general";
+import { UsersService } from "../users/users.service";
+import { RegisterUserDto } from "../dto/registerUser.dto";
+import { SignInDto } from "../dto/signIn.dto";
+import { AuthenticationService } from "./authentication.service";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { Request, Response } from "express";
+import { User } from "../entities/User.entity";
+import { VerifyPhoneDto } from "../dto/UserInfo.dto";
+import { Roles } from "./guards/roles/roles.decorator";
+import { RolesGuard } from "./guards/roles/roles.guard";
+import { ForgotPasswordDto, ResetPasswordDto } from "../dto/forgotPassword.dto";
+import { CreateAdminDto } from "../dto/createAdmin.dto";
+import { ChangePasswordDto } from "../dto/changePassword.dto";
+import { Role } from "../enum/role.enum";
 
-import { RefreshTokenDto } from '../dto/refreshToken.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { JwtRefreshTokenGuard } from './guards/jwt-refresh-token.guard';
-import { Request } from 'express';
-import { User } from '../entities/User.entity';
-import { VerifyPhoneDto } from '../dto/UserInfo.dto';
-import { Roles } from './guards/roles/roles.decorator';
-import { RolesGuard } from './guards/roles/roles.guard';
-import { ForgotPasswordDto, ResetPasswordDto } from '../dto/forgotPassword.dto';
-
-@Controller('authentication')
+@Controller("authentication")
 export class AuthenticationController {
   constructor(
     private usersService: UsersService,
@@ -33,35 +35,37 @@ export class AuthenticationController {
   ) {}
 
   @UsePipes(new ValidationPipe())
-  @Post('sign-up')
-  async register(@Body() userInfo: RegisterUserDto): Promise<IResponse<User>> {
+  @Post("sign-up")
+  public async register(
+    @Body() userInfo: RegisterUserDto,
+  ): Promise<IResponse<User>> {
     const user = await this.usersService.create(userInfo);
     delete user.password;
     return {
-      message: 'User registration successful',
+      message: "User registration successful",
       data: user,
     };
   }
 
   @UsePipes(new ValidationPipe())
-  @Post('verify-phone/:id')
+  @Post("verify-phone/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(['user'])
-  async verifyPhone(
-    @Param('id') id: string,
+  @Roles([Role.User])
+  public async verifyPhone(
+    @Param("id") id: string,
     @Body() phoneInfo: VerifyPhoneDto,
   ): Promise<IResponse<User>> {
     const user = await this.usersService.phoneVerification(id, phoneInfo);
     delete user.password;
     return {
-      message: 'Phone verification successful',
+      message: "Phone verification successful",
       data: user,
     };
   }
 
   @UsePipes(new ValidationPipe())
-  @Post('customer-signup')
-  async customerSignup(
+  @Post("customer-signup")
+  public async customerSignup(
     @Body() userInfo: RegisterUserDto,
   ): Promise<IResponse<User>> {
     const user = await this.usersService.create(userInfo);
@@ -72,14 +76,39 @@ export class AuthenticationController {
     };
   }
 
-  @Post('login')
-  async signIn(@Body() signInDto: SignInDto): Promise<IResponse<IUserToken>> {
-    return this.authService.signIn(signInDto);
+  @Post("login")
+  public async signIn(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<IResponse<User>> {
+    const { user, accessToken, refreshToken } =
+      await this.authService.signIn(signInDto);
+
+    // Set access token in HTTP-only cookie (15 minutes expiry)
+    response.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Set refresh token in HTTP-only cookie (1 day expiry)
+    response.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    return {
+      message: "You have successfully logged in",
+      data: user,
+    };
   }
 
   @UsePipes(new ValidationPipe())
-  @Post('forgot-password')
-  async forgotPassword(
+  @Post("forgot-password")
+  public async forgotPassword(
     @Body() forgotPasswordDto: ForgotPasswordDto,
   ): Promise<IResponse<User>> {
     const user = await this.usersService.forgotPassword(forgotPasswordDto);
@@ -90,8 +119,8 @@ export class AuthenticationController {
   }
 
   @UsePipes(new ValidationPipe())
-  @Post('reset-password')
-  async resetPassword(
+  @Post("reset-password")
+  public async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
   ): Promise<IResponse<User>> {
     const user = await this.usersService.resetPassword(resetPasswordDto);
@@ -101,33 +130,105 @@ export class AuthenticationController {
     };
   }
 
-  @Get('send-email')
-  async sendEmail(): Promise<void> {
-    await this.authService.sendWelcomeMail();
-  }
-
-  @Get('verify/:id/:token')
-  async emailVerification(
-    @Param('id') id: string,
-    @Param('token') token: string,
+  @Get("verify/:id/:token")
+  public async emailVerification(
+    @Param("id") id: string,
+    @Param("token") token: string,
   ): Promise<void> {
     await this.authService.emailVerification(id, token);
   }
 
-  @UseGuards(JwtRefreshTokenGuard)
-  @Post('refresh-token')
-  async refreshToken(
-    @Body() refreshTokenDto: RefreshTokenDto,
-  ): Promise<{ accessToken: string }> {
-    return this.authService.refreshAccessToken(refreshTokenDto.refreshToken);
+  @Post("refresh-token")
+  public async refreshToken(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ message: string }> {
+    const refreshToken = request.cookies?.refreshToken;
+
+    if (!refreshToken) {
+      throw new UnauthorizedException("Refresh token not found");
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } =
+      await this.authService.refreshAccessToken(refreshToken);
+
+    // Set new access token in HTTP-only cookie
+    response.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    // Set new refresh token in HTTP-only cookie (token rotation)
+    response.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    return { message: "Tokens refreshed successfully" };
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('invalidate-token')
-  async invalidateToken(@Req() request: Request): Promise<{ message: string }> {
-    const authorizationHeader = request.headers.authorization;
-    const token = authorizationHeader.split(' ')[1];
-    await this.authService.invalidateToken(token);
-    return { message: 'Token invalidated successfully' };
+  @Post("logout")
+  public async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ message: string }> {
+    // Get token from cookie or authorization header (backward compatibility)
+    const token =
+      request.cookies?.accessToken ||
+      request.headers.authorization?.split(" ")[1];
+
+    if (token) {
+      await this.authService.invalidateToken(token);
+    }
+
+    // Clear cookies
+    response.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    response.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return { message: "Logged out successfully" };
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post("create-admin")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles([Role.Admin])
+  public async createAdmin(
+    @Body() createAdminDto: CreateAdminDto,
+  ): Promise<IResponse<User>> {
+    const { user } = await this.usersService.createAdminUser(createAdminDto);
+    delete user.password;
+    return {
+      message: `Admin account created successfully. Credentials have been sent to ${user.email}`,
+      data: user,
+    };
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post("change-password/:id")
+  @UseGuards(JwtAuthGuard)
+  public async changePassword(
+    @Param("id") id: string,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<IResponse<User>> {
+    const user = await this.usersService.changePassword(id, changePasswordDto);
+    delete user.password;
+    return {
+      message: "Password changed successfully",
+      data: user,
+    };
   }
 }

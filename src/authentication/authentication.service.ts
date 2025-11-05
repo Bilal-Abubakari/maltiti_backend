@@ -3,20 +3,18 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SignInDto } from '../dto/signIn.dto';
-import { UsersService } from '../users/users.service';
-import { JwtService } from '@nestjs/jwt';
-import { MailerService } from '@nestjs-modules/mailer';
-import { RefreshTokenIdsStorage } from './refresh-token-ids-storage';
-import { Repository } from 'typeorm';
-import { JwtRefreshTokenStrategy } from './strategy/jwt-refresh-token.strategy';
-import { IResponse, IUserToken } from '../interfaces/general';
-import { Verification } from '../entities/Verification.entity';
-import { User } from '../entities/User.entity';
-import { ForgotPasswordDto } from '../dto/forgotPassword.dto';
-import { generateRandomToken } from '../utils/randomTokenGenerator';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { SignInDto } from "../dto/signIn.dto";
+import { UsersService } from "../users/users.service";
+import { JwtService } from "@nestjs/jwt";
+import { MailerService } from "@nestjs-modules/mailer";
+import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
+import { Repository } from "typeorm";
+import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
+import { IResponse } from "../interfaces/general";
+import { Verification } from "../entities/Verification.entity";
+import { User } from "../entities/User.entity";
 
 @Injectable()
 export class AuthenticationService {
@@ -30,14 +28,18 @@ export class AuthenticationService {
     private refreshTokenIdsStorage: RefreshTokenIdsStorage,
   ) {}
 
-  async signIn(signInfo: SignInDto): Promise<IResponse<IUserToken>> {
+  public async signIn(signInfo: SignInDto): Promise<{
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const { email, password } = signInfo;
 
     const user =
       await this.usersService.findUserIncludingPasswordByEmail(email);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException("Invalid username or password");
     }
 
     const passwordIsValid = await this.usersService.validatePassword(
@@ -46,29 +48,27 @@ export class AuthenticationService {
     );
 
     if (!passwordIsValid) {
-      throw new UnauthorizedException('Invalid username or password');
+      throw new UnauthorizedException("Invalid username or password");
     }
 
     const payload = { sub: user.id, email: user.email };
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '1d',
+      expiresIn: "1d",
     });
 
     // Store the refresh token in redis
     await this.refreshTokenIdsStorage.insert(user.id, refreshToken);
     delete user.password;
+
     return {
-      message: 'You have successfully logged in',
-      data: {
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        user: user,
-      },
+      user,
+      accessToken,
+      refreshToken,
     };
   }
 
-  async validateUser(email: string, password: string): Promise<unknown> {
+  public async validateUser(email: string, password: string): Promise<unknown> {
     const user = await this.usersService.findByEmail(email);
     if (
       user &&
@@ -80,51 +80,65 @@ export class AuthenticationService {
     return null;
   }
 
-  async sendWelcomeMail(): Promise<unknown> {
+  private async sendWelcomeMail(): Promise<unknown> {
     return await this.mailService.sendMail({
-      to: 'abubakaribilal99@gmail.com',
-      from: 'abubakaribilal99@gmail.com',
-      subject: 'Welcome on board',
-      template: './welcome',
+      to: "abubakaribilal99@gmail.com",
+      from: "abubakaribilal99@gmail.com",
+      subject: "Welcome on board",
+      template: "./welcome",
       context: {
-        name: 'Bilal',
-        url: 'http://',
-        subject: 'Welcome on board',
-        body: 'Welcome to Maltiti A. Enterprise Ltd. We are pleased to have you here. Click the link below to to log in and access our wonderful resources. Welcome once again',
-        link: 'Login',
-        action: 'Login',
+        name: "Bilal",
+        url: "http://",
+        subject: "Welcome on board",
+        body: "Welcome to Maltiti A. Enterprise Ltd. We are pleased to have you here. Click the link below to to log in and access our wonderful resources. Welcome once again",
+        link: "Login",
+        action: "Login",
       },
     });
   }
 
-  async refreshAccessToken(
+  public async refreshAccessToken(
     refreshToken: string,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const decoded = await this.jwtService.verifyAsync(refreshToken);
       await this.refreshTokenIdsStorage.validate(decoded.sub, refreshToken);
-      const payload = { sub: decoded.sub, username: decoded.username };
+
+      const payload = { sub: decoded.sub, email: decoded.email };
       const accessToken = await this.jwtService.signAsync(payload);
-      return { accessToken };
+
+      // Generate new refresh token for rotation
+      const newRefreshToken = await this.jwtService.signAsync(payload, {
+        expiresIn: "1d",
+      });
+
+      // Invalidate old refresh token and store new one
+      await this.refreshTokenIdsStorage.invalidate(decoded.sub);
+      await this.refreshTokenIdsStorage.insert(decoded.sub, newRefreshToken);
+
+      return { accessToken, refreshToken: newRefreshToken };
     } catch (error) {
       this.logger.error(`Error: ${error.message}`);
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token");
     }
   }
 
-  async invalidateToken(accessToken: string): Promise<void> {
+  public async invalidateToken(accessToken: string): Promise<void> {
     try {
       const decoded = await this.jwtService.verifyAsync(accessToken);
       await this.refreshTokenIdsStorage.invalidate(decoded.sub);
     } catch (error) {
-      throw new UnauthorizedException('Invalid access token');
+      throw new UnauthorizedException("Invalid access token");
     }
   }
 
-  async emailVerification(id: string, token: string): Promise<IResponse<User>> {
+  public async emailVerification(
+    id: string,
+    token: string,
+  ): Promise<IResponse<User>> {
     const user = await this.usersService.findOne(id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
     const userVerification = await this.verificationRepository.findOneBy({
       token,
@@ -135,19 +149,19 @@ export class AuthenticationService {
       user.id !== userVerification.user.id ||
       this.isVerificationExpired(userVerification.createdAt)
     ) {
-      throw new UnauthorizedException('Token does not exist or has expired');
+      throw new UnauthorizedException("Token does not exist or has expired");
     }
 
     await this.verificationRepository.delete({ id: userVerification.id });
     await this.usersService.verifyUserEmail(user.id);
 
     return {
-      message: 'Verification has been successful',
+      message: "Verification has been successful",
       data: user,
     };
   }
 
-  isVerificationExpired(date: Date): boolean {
+  private isVerificationExpired(date: Date): boolean {
     const dateNow = new Date().getTime();
     const difference = dateNow - date.getTime();
     const differenceInSeconds = difference / 1000;

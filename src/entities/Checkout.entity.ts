@@ -5,53 +5,53 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { User } from './User.entity';
-import { Cart } from './Cart.entity';
-import { orderStatuses } from '../interfaces/checkout.interface';
+} from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { User } from "./User.entity";
+import { Cart } from "./Cart.entity";
+import { orderStatuses } from "../interfaces/checkout.interface";
 
-@Entity({ name: 'Checkouts' })
+@Entity({ name: "Checkouts" })
 export class Checkout {
   constructor() {
     // Generate a UUID for the new user instance
     this.id = uuidv4();
   }
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
-  @ManyToOne(() => User, { lazy: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @ManyToOne(() => User, { lazy: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
+  public user: User;
 
   @OneToMany(() => Cart, cart => cart.checkout, { lazy: true })
   @JoinColumn()
-  carts: Cart[];
+  public carts: Cart[];
 
   @Column({
     enum: orderStatuses,
   })
-  orderStatus: string;
+  public orderStatus: string;
 
   @Column()
-  amount: string;
+  public amount: string;
 
-  @Column({ enum: ['paid', 'unpaid', 'refunded'] })
-  paymentStatus: string;
+  @Column({ enum: ["paid", "unpaid", "refunded"] })
+  public paymentStatus: string;
 
   @Column({ default: new Date() })
-  createdAt: Date;
+  public createdAt: Date;
 
   @Column({ default: new Date() })
-  updatedAt: Date;
+  public updatedAt: Date;
 
   @Column()
-  location: string;
+  public location: string;
 
   @Column()
-  name: string;
+  public name: string;
 
   @Column()
-  extraInfo: string;
+  public extraInfo: string;
 }

@@ -5,21 +5,25 @@ import {
   HttpStatus,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { RegisterUserDto } from '../dto/registerUser.dto';
-import * as bcrypt from 'bcrypt';
-import { User } from '../entities/User.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { validate } from 'class-validator';
-import { MailerService } from '@nestjs-modules/mailer';
-import * as process from 'process';
-import { Verification } from '../entities/Verification.entity';
-import { generateRandomToken } from '../utils/randomTokenGenerator';
-import { VerifyPhoneDto } from '../dto/UserInfo.dto';
-import axios from 'axios';
-import { ForgotPasswordDto, ResetPasswordDto } from '../dto/forgotPassword.dto';
-import { NotificationService } from '../notification/notification.service';
+} from "@nestjs/common";
+import { RegisterUserDto } from "../dto/registerUser.dto";
+import * as bcrypt from "bcrypt";
+import { User } from "../entities/User.entity";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { validate } from "class-validator";
+import { MailerService } from "@nestjs-modules/mailer";
+import { ConfigService } from "@nestjs/config";
+import { Verification } from "../entities/Verification.entity";
+import { generateRandomToken } from "../utils/randomTokenGenerator";
+import { VerifyPhoneDto } from "../dto/UserInfo.dto";
+import axios from "axios";
+import { ForgotPasswordDto, ResetPasswordDto } from "../dto/forgotPassword.dto";
+import { NotificationService } from "../notification/notification.service";
+import { Role } from "../enum/role.enum";
+import { CreateAdminDto } from "../dto/createAdmin.dto";
+import { generateRandomPassword } from "../utils/passwordGenerator";
+import { ChangePasswordDto } from "../dto/changePassword.dto";
 
 @Injectable()
 export class UsersService {
@@ -30,14 +34,15 @@ export class UsersService {
     private readonly verificationRepository: Repository<Verification>,
     private mailService: MailerService,
     private notificationService: NotificationService,
+    private configService: ConfigService,
   ) {}
 
-  async create(userInfo: RegisterUserDto): Promise<User> {
+  public async create(userInfo: RegisterUserDto): Promise<User> {
     if (userInfo.password !== userInfo.confirmPassword)
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: 'Password and confirm password do not match',
+          error: "Password and confirm password do not match",
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -46,7 +51,7 @@ export class UsersService {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error: 'User with email already exists',
+          error: "User with email already exists",
         },
         HttpStatus.CONFLICT,
       );
@@ -65,7 +70,7 @@ export class UsersService {
     } else {
       const verification = new Verification();
       verification.user = user;
-      verification.type = 'email';
+      verification.type = "email";
       const token = generateRandomToken();
       verification.token = token;
       const userResponse = await this.userRepository.save(user);
@@ -76,7 +81,7 @@ export class UsersService {
     }
   }
 
-  async setUser(user: User, userInfo: RegisterUserDto): Promise<void> {
+  private async setUser(user: User, userInfo: RegisterUserDto): Promise<void> {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(userInfo.password, salt);
     user.name = userInfo.name;
@@ -87,78 +92,78 @@ export class UsersService {
     user.email = userInfo.email;
   }
 
-  async sendVerificationEmail(
+  private async sendVerificationEmail(
     email: string,
     name: string,
     idToken: string,
   ): Promise<void> {
     await this.mailService.sendMail({
       to: email,
-      from: 'no-reply@maltitiaenterprise.com',
-      subject: 'Verify your email',
-      template: './welcome',
+      from: "no-reply@maltitiaenterprise.com",
+      subject: "Verify your email",
+      template: "./welcome",
       context: {
         name: name,
-        url: `${process.env.FRONTEND_URL}/${idToken}`,
-        subject: 'Verify your email',
+        url: `${this.configService.get<string>("FRONTEND_URL")}/${idToken}`,
+        subject: "Verify your email",
         body: `You have successfully created an account. Please verify your email by clicking the button below. Welcome onboard`,
-        link: `${process.env.APP_URL}/${idToken}`,
-        action: 'Verify',
+        link: `${this.configService.get<string>("APP_URL")}/${idToken}`,
+        action: "Verify",
       },
     });
   }
 
-  async sendWelcomeMail(
+  public async sendWelcomeMail(
     email: string,
     name: string,
     password: string,
   ): Promise<void> {
     await this.mailService.sendMail({
       to: email,
-      from: 'noreply@maltitiaenterprise.com',
-      subject: 'Welcome on board',
-      template: './welcome',
+      from: "noreply@maltitiaenterprise.com",
+      subject: "Welcome on board",
+      template: "./welcome",
       context: {
         name: name,
-        url: process.env.APP_URL,
-        subject: 'Welcome on board',
+        url: this.configService.get<string>("APP_URL"),
+        subject: "Welcome on board",
         body: `Your admin has successfully created an account for you on Maltiti A. Enterprise Ltd Backoffice. Please login using the credentials; email: ${email} and password: ${password}`,
-        link: 'Login',
-        action: 'Login',
+        link: "Login",
+        action: "Login",
       },
     });
   }
 
-  async findByEmail(email: string): Promise<User> {
+  public async findByEmail(email: string): Promise<User> {
     return this.userRepository.findOneBy({ email: email });
   }
 
-  async findUserIncludingPasswordByEmail(email: string): Promise<User> {
+  public async findUserIncludingPasswordByEmail(email: string): Promise<User> {
     return this.userRepository
-      .createQueryBuilder('user')
-      .addSelect('user.password')
-      .where('user.email = :email', { email })
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.email = :email", { email })
       .getOne();
   }
 
-  async findOne(id: string): Promise<User> {
+  public async findOne(id: string): Promise<User> {
     return this.userRepository.findOne({ where: { id } });
   }
 
-  async verifyUserEmail(id: string): Promise<void> {
+  public async verifyUserEmail(id: string): Promise<void> {
     const user = await this.userRepository.findOneBy({ id });
     user.emailVerifiedAt = new Date();
     await this.userRepository.save(user);
   }
 
-  async validatePassword(
+  public async validatePassword(
     password: string,
     userPassword: string,
   ): Promise<boolean> {
     return bcrypt.compare(password, userPassword);
   }
 
-  async phoneVerification(
+  public async phoneVerification(
     id: string,
     phoneInfo: VerifyPhoneDto,
   ): Promise<User> {
@@ -171,22 +176,26 @@ export class UsersService {
       throw new HttpException(
         {
           code: HttpStatus.CONFLICT,
-          message: 'User with phone number already exists',
+          message: "User with phone number already exists",
         },
         HttpStatus.CONFLICT,
       );
     }
     try {
       const response = await axios.post(
-        `${process.env.ARKESEL_BASE_URL}/api/otp/verify`,
+        `${this.configService.get<string>("ARKESEL_BASE_URL")}/api/otp/verify`,
         {
           number: phoneInfo.phoneNumber,
           code: phoneInfo.code,
-          'api-key': `${process.env.ARKESEL_SMS_API_KEY}`,
+          "api-key": `${this.configService.get<string>("ARKESEL_SMS_API_KEY")}`,
         },
-        { headers: { 'api-key': `${process.env.ARKESEL_SMS_API_KEY}` } },
+        {
+          headers: {
+            "api-key": `${this.configService.get<string>("ARKESEL_SMS_API_KEY")}`,
+          },
+        },
       );
-      if (response.data.code === '1100') {
+      if (response.data.code === "1100") {
         const user = await this.userRepository.findOneBy({ id });
         user.phoneNumber = phoneInfo.phoneNumber;
         return this.userRepository.save(user);
@@ -202,39 +211,41 @@ export class UsersService {
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.response?.data?.message || 'Internal Server Error',
+          error: error.response?.data?.message || "Internal Server Error",
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
-  async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<User> {
+  public async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<User> {
     const user = await this.findByEmail(forgotPasswordDto.email);
     if (!user) {
-      throw new NotFoundException('User with email does not exists');
+      throw new NotFoundException("User with email does not exists");
     }
 
     const verification = new Verification();
     const token = generateRandomToken();
     verification.token = token;
     verification.user = user;
-    verification.type = 'email';
+    verification.type = "email";
     await this.verificationRepository.save(verification);
     const resetLink = `reset-password/${token}`;
     await this.notificationService.sendEmail(
-      'You have requested a password reset. Please click the link below to reset your password. If you did not authorize this please ignore. Someone might have entered your email mistakenly',
+      "You have requested a password reset. Please click the link below to reset your password. If you did not authorize this please ignore. Someone might have entered your email mistakenly",
       user.email,
-      'Forgot Password',
+      "Forgot Password",
       user.name,
-      `${process.env.FRONTEND_URL}/${resetLink}`,
-      `${process.env.APP_URL}/${resetLink}`,
-      'Reset Password',
+      `${this.configService.get<string>("FRONTEND_URL")}/${resetLink}`,
+      `${this.configService.get<string>("APP_URL")}/${resetLink}`,
+      "Reset Password",
     );
     return user;
   }
 
-  async resetPassword({
+  public async resetPassword({
     token,
     confirmPassword,
     password,
@@ -249,14 +260,14 @@ export class UsersService {
 
     if (differenceInMinutes > 10) {
       throw new GoneException({
-        message: 'The request for reset has expired. Please try again',
+        message: "The request for reset has expired. Please try again",
         status: 410,
       });
     }
 
     if (password !== confirmPassword) {
       throw new BadRequestException({
-        message: 'Confirm password and password do not match',
+        message: "Confirm password and password do not match",
         status: 400,
       });
     }
@@ -269,6 +280,137 @@ export class UsersService {
 
     const salt = await bcrypt.genSalt();
     user.password = await bcrypt.hash(password, salt);
+
+    return await this.userRepository.save(user);
+  }
+
+  public async createAdminUser(
+    createAdminDto: CreateAdminDto,
+  ): Promise<{ user: User; password: string }> {
+    // Validate email domain
+    if (!createAdminDto.email.endsWith("@maltitiaenterprise.com")) {
+      throw new BadRequestException({
+        message:
+          "Admin users must have an email address with @maltitiaenterprise.com domain",
+        status: 400,
+      });
+    }
+
+    // Check if user already exists
+    if (await this.findByEmail(createAdminDto.email)) {
+      throw new HttpException(
+        {
+          status: HttpStatus.CONFLICT,
+          error: "User with email already exists",
+        },
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    // Generate random password
+    const generatedPassword = generateRandomPassword(12);
+
+    // Create user
+    const user = new User();
+    user.name = createAdminDto.name;
+    user.email = createAdminDto.email;
+    user.userType = Role.Admin;
+    user.emailVerifiedAt = new Date(); // Auto-verify admin accounts
+    user.mustChangePassword = true;
+    user.createdAt = new Date();
+
+    // Hash password
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(generatedPassword, salt);
+
+    // Validate and save user
+    const validationErrors = await validate(user);
+    if (validationErrors.length > 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: validationErrors,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const savedUser = await this.userRepository.save(user);
+
+    // Send email with credentials
+    await this.sendAdminAccountEmail(
+      savedUser.email,
+      savedUser.name,
+      generatedPassword,
+    );
+
+    return { user: savedUser, password: generatedPassword };
+  }
+
+  public async sendAdminAccountEmail(
+    email: string,
+    name: string,
+    password: string,
+  ): Promise<void> {
+    await this.mailService.sendMail({
+      to: email,
+      from: "no-reply@maltitiaenterprise.com",
+      subject: "Your Maltiti Admin Portal Account",
+      template: "./admin-account",
+      context: {
+        name: name,
+        email: email,
+        password: password,
+        url: this.configService.get<string>("FRONTEND_URL"),
+        subject: "Your Admin Account Has Been Created",
+        body: `An administrator has created an account for you on the Maltiti Admin Portal. Below are your login credentials:`,
+        action: "Login to Portal",
+      },
+    });
+  }
+
+  public async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<User> {
+    const { currentPassword, newPassword, confirmPassword } = changePasswordDto;
+
+    // Validate new password and confirm password match
+    if (newPassword !== confirmPassword) {
+      throw new BadRequestException({
+        message: "New password and confirm password do not match",
+        status: 400,
+      });
+    }
+
+    // Get user with password
+    const user = await this.userRepository
+      .createQueryBuilder("user")
+      .addSelect("user.password")
+      .where("user.id = :userId", { userId })
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Validate current password
+    const isPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new BadRequestException({
+        message: "Current password is incorrect",
+        status: 400,
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.mustChangePassword = false;
+    user.updatedAt = new Date();
 
     return await this.userRepository.save(user);
   }
