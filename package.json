@@ -27,7 +27,7 @@
     "@nestjs/jwt": "^10.1.1",
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/swagger": "^11.2.1",
+    "@nestjs/swagger": "^8.1.1",
     "@nestjs/typeorm": "^10.0.0",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
