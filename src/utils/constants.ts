@@ -1,6 +1,6 @@
 export enum userTypes {
-  customer = 'customer',
-  admin = 'admin',
+  customer = "customer",
+  admin = "admin",
 }
 
 export enum boxesCharge {
