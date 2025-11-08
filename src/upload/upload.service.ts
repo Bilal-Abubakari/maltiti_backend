@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import * as process from 'process';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { PutObjectCommandInput } from '@aws-sdk/client-s3/dist-types/commands';
+import { Injectable } from "@nestjs/common";
+import * as process from "process";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommandInput } from "@aws-sdk/client-s3/dist-types/commands";
 
 @Injectable()
 export class UploadService {
-  s3 = new S3Client({
+  private s3 = new S3Client({
     region: process.env.MALTITI_AWS_REGION,
     credentials: {
       accessKeyId: process.env.MALTITI_AWS_ACCESS_KEY_ID,
@@ -13,11 +13,11 @@ export class UploadService {
     },
   });
 
-  async uploadImage(image: Express.Multer.File): Promise<string> {
+  public async uploadImage(image: Express.Multer.File): Promise<string> {
     const file = image; // Assuming you've set up the appropriate multer middleware
 
     if (!file) {
-      throw new Error('No file uploaded');
+      throw new Error("No file uploaded");
     }
 
     const key = `${new Date().getTime()}-${file.originalname}`;

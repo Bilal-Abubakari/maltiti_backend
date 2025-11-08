@@ -27,6 +27,7 @@
     "@nestjs/jwt": "^10.1.1",
     "@nestjs/passport": "^10.0.2",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^11.2.1",
     "@nestjs/typeorm": "^10.0.0",
     "axios": "^1.6.8",
     "bcrypt": "^5.1.1",
@@ -43,6 +44,7 @@
     "postgres": "^3.3.5",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.17"
   },
   "devDependencies": {
