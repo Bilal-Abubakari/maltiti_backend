@@ -1,17 +1,17 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Cooperative } from '../entities/Cooperative.entity';
-import { DeleteResult, Repository } from 'typeorm';
-import { CooperativeMember } from '../entities/CooperativeMember.entity';
-import { AddCooperativeDto } from '../dto/addCooperative.dto';
-import { EditCooperativeDto } from '../dto/editCooperative.dto';
-import { AddCooperativeMemberDto } from '../dto/addCooperativeMember.dto';
-import { UploadService } from '../upload/upload.service';
-import { EditCooperativeMemberDto } from '../dto/editCooperativeMember.dto';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Cooperative } from "../entities/Cooperative.entity";
+import { DeleteResult, Repository } from "typeorm";
+import { CooperativeMember } from "../entities/CooperativeMember.entity";
+import { AddCooperativeDto } from "../dto/addCooperative.dto";
+import { EditCooperativeDto } from "../dto/editCooperative.dto";
+import { AddCooperativeMemberDto } from "../dto/addCooperativeMember.dto";
+import { UploadService } from "../upload/upload.service";
+import { EditCooperativeMemberDto } from "../dto/editCooperativeMember.dto";
 import {
   cooperativeMembersPagination,
   cooperativesPagination,
-} from '../interfaces/general';
+} from "../interfaces/general";
 
 @Injectable()
 export class CooperativeService {
@@ -23,7 +23,7 @@ export class CooperativeService {
     private uploadService: UploadService,
   ) {}
 
-  async createCooperative(
+  public async createCooperative(
     cooperativeInfo: AddCooperativeDto,
   ): Promise<Cooperative> {
     const cooperative = new Cooperative();
@@ -32,7 +32,7 @@ export class CooperativeService {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error: 'Cooperative with name already exists',
+          error: "Cooperative with name already exists",
         },
         HttpStatus.CONFLICT,
       );
@@ -53,7 +53,7 @@ export class CooperativeService {
     cooperative.monthlyFee = cooperativeInfo.monthlyFee;
   }
 
-  async editCooperative(
+  public async editCooperative(
     cooperativeInfo: EditCooperativeDto,
   ): Promise<Cooperative> {
     const cooperative = await this.findOneCooperative(cooperativeInfo.id);
@@ -61,24 +61,24 @@ export class CooperativeService {
     return this.cooperativeRepository.save(cooperative);
   }
 
-  async deleteCooperative(id: string): Promise<DeleteResult> {
+  public async deleteCooperative(id: string): Promise<DeleteResult> {
     return this.cooperativeRepository.delete({ id: id });
   }
 
-  async getAllCooperatives(
+  public async getAllCooperatives(
     page: number = 1,
     limit: number = 10,
-    searchTerm: string = '',
+    searchTerm: string = "",
   ): Promise<cooperativesPagination> {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.cooperativeRepository
-      .createQueryBuilder('cooperative')
+      .createQueryBuilder("cooperative")
       .skip(skip)
       .take(limit);
 
     if (searchTerm) {
-      queryBuilder.where('cooperative.name LIKE :searchTerm', {
+      queryBuilder.where("cooperative.name LIKE :searchTerm", {
         searchTerm: `%${searchTerm}%`,
       });
     }
@@ -93,11 +93,11 @@ export class CooperativeService {
     };
   }
 
-  async findOneCooperative(id: string): Promise<Cooperative> {
+  public async findOneCooperative(id: string): Promise<Cooperative> {
     return this.cooperativeRepository.findOneBy({ id: id });
   }
 
-  async createCooperativeMember(
+  public async createCooperativeMember(
     memberInfo: AddCooperativeMemberDto,
     image: Express.Multer.File,
   ): Promise<CooperativeMember> {
@@ -106,7 +106,7 @@ export class CooperativeService {
     return this.cooperativeMemberRepository.save(member);
   }
 
-  async setMember(
+  public async setMember(
     member: CooperativeMember,
     memberInfo: AddCooperativeMemberDto,
     image: Express.Multer.File,
@@ -145,25 +145,25 @@ export class CooperativeService {
     return urlPattern.test(data);
   }
 
-  async deleteMember(id: string): Promise<DeleteResult> {
+  public async deleteMember(id: string): Promise<DeleteResult> {
     return this.cooperativeMemberRepository.delete({ id: id });
   }
 
-  async getAllMembers(
+  public async getAllMembers(
     page: number = 1,
     limit: number = 10,
-    searchTerm: string = '',
+    searchTerm: string = "",
   ): Promise<cooperativeMembersPagination> {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.cooperativeMemberRepository
-      .createQueryBuilder('cooperativeMember')
-      .leftJoinAndSelect('cooperativeMember.cooperative', 'cooperative') // Perform a left join with Cooperative entity
+      .createQueryBuilder("cooperativeMember")
+      .leftJoinAndSelect("cooperativeMember.cooperative", "cooperative") // Perform a left join with Cooperative entity
       .skip(skip)
       .take(limit);
 
     if (searchTerm) {
-      queryBuilder.where('cooperativeMember.name LIKE :searchTerm', {
+      queryBuilder.where("cooperativeMember.name LIKE :searchTerm", {
         searchTerm: `%${searchTerm}%`,
       });
     }
@@ -178,29 +178,29 @@ export class CooperativeService {
     };
   }
 
-  async findOneMember(id: string): Promise<CooperativeMember> {
+  public async findOneMember(id: string): Promise<CooperativeMember> {
     return await this.cooperativeMemberRepository
-      .createQueryBuilder('cooperativeMember')
-      .where('cooperativeMember.id = :id', { id })
-      .leftJoinAndSelect('cooperativeMember.cooperative', 'cooperative') // Load the cooperative relation
+      .createQueryBuilder("cooperativeMember")
+      .where("cooperativeMember.id = :id", { id })
+      .leftJoinAndSelect("cooperativeMember.cooperative", "cooperative") // Load the cooperative relation
       .getOne();
   }
 
-  async findCooperativeByName(name: string): Promise<Cooperative> {
+  public async findCooperativeByName(name: string): Promise<Cooperative> {
     return this.cooperativeRepository.findOneBy({ name });
   }
 
-  async findAllMembersByCooperativeId(
+  public async findAllMembersByCooperativeId(
     cooperativeId: string,
   ): Promise<CooperativeMember[]> {
     return await this.cooperativeMemberRepository
-      .createQueryBuilder('cooperativeMember')
-      .leftJoinAndSelect('cooperativeMember.cooperative', 'cooperative')
-      .where('cooperative.id = :cooperativeId', { cooperativeId })
+      .createQueryBuilder("cooperativeMember")
+      .leftJoinAndSelect("cooperativeMember.cooperative", "cooperative")
+      .where("cooperative.id = :cooperativeId", { cooperativeId })
       .getMany();
   }
 
-  async editMember(
+  public async editMember(
     memberInfo: EditCooperativeMemberDto,
     image: Express.Multer.File,
   ): Promise<CooperativeMember> {

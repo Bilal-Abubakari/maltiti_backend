@@ -1,12 +1,12 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, IsNull, Repository } from 'typeorm';
-import { Cart } from '../entities/Cart.entity';
-import { UsersService } from '../users/users.service';
-import { ProductsService } from '../products/products.service';
-import { AddCartDto, AddQuantityDto } from '../dto/addCart.dto';
-import { User } from '../entities/User.entity';
-import { Product } from '../entities/Product.entity';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { DeleteResult, IsNull, Repository } from "typeorm";
+import { Cart } from "../entities/Cart.entity";
+import { UsersService } from "../users/users.service";
+import { ProductsService } from "../products/products.service";
+import { AddCartDto, AddQuantityDto } from "../dto/addCart.dto";
+import { User } from "../entities/User.entity";
+import { Product } from "../entities/Product.entity";
 
 @Injectable()
 export class CartService {
@@ -17,7 +17,7 @@ export class CartService {
     private readonly productsService: ProductsService,
   ) {}
 
-  async getCustomerCart(id: string): Promise<[Cart[], number, number]> {
+  public async getCustomerCart(id: string): Promise<[Cart[], number, number]> {
     const user = await this.userService.findOne(id);
     const cartAndCount = await this.cartRepository.findAndCountBy({
       user: user,
@@ -25,29 +25,29 @@ export class CartService {
     });
     let total = 0;
     cartAndCount[0].forEach(
-      cart => (total += cart.quantity * parseInt(cart.product.retail)),
+      cart => (total += cart.quantity * cart.product.retail),
     );
 
     return [...cartAndCount, total];
   }
 
-  async removeFromCart(id: string): Promise<DeleteResult> {
+  public async removeFromCart(id: string): Promise<DeleteResult> {
     return await this.cartRepository.delete(id);
   }
 
-  async removeAllFromCart(id: string): Promise<DeleteResult> {
+  public async removeAllFromCart(id: string): Promise<DeleteResult> {
     const user = await this.userService.findOne(id);
     return await this.cartRepository.delete({ user });
   }
 
-  async addToCart(id: string, addCart: AddCartDto): Promise<Cart> {
+  public async addToCart(id: string, addCart: AddCartDto): Promise<Cart> {
     const { user, product, existingCart } = await this.findCart(id, addCart.id);
 
     if (existingCart) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error: 'Product already exists in cart',
+          error: "Product already exists in cart",
         },
         HttpStatus.CONFLICT,
       );
@@ -61,13 +61,13 @@ export class CartService {
     return this.cartRepository.save(cart);
   }
 
-  async addQuantity(
+  public async addQuantity(
     id: string,
     addQuantity: AddQuantityDto,
   ): Promise<[Cart[], number, number]> {
     const cart = await this.cartRepository.findOne({
       where: { id },
-      relations: ['user'],
+      relations: ["user"],
     });
     const user = await cart.user;
     cart.quantity = addQuantity.quantity;
@@ -75,7 +75,7 @@ export class CartService {
     return await this.getCustomerCart(user.id);
   }
 
-  async findCart(
+  public async findCart(
     id: string,
     productId: string,
   ): Promise<{ user: User; product: Product; existingCart: Cart }> {
