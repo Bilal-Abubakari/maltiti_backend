@@ -18,12 +18,14 @@ export interface IInitalizeTransactionData {
   reference: string;
 }
 
-export interface productsPagination {
+export interface IPagination<T> {
   totalItems: number;
   currentPage: number;
   totalPages: number;
-  products: product[];
+  products: T[];
 }
+
+export type IPaginatedResponse<T> = IResponse<IPagination<T>>;
 
 export interface ordersPagination {
   totalItems: number;
