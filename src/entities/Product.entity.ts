@@ -1,69 +1,141 @@
-import { v4 as uuid } from 'uuid';
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { v4 as uuid } from "uuid";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { ProductCategory } from "../enum/product-category.enum";
+import { ProductGrade } from "../enum/product-grade.enum";
+import { PackagingSize } from "../enum/packaging-size.enum";
+import { ProductStatus } from "../enum/product-status.enum";
+import { Batch } from "./Batch.entity";
 
-@Entity({ name: 'Products' })
+@Entity({ name: "Products" })
+@Index(["category", "status"])
+@Index(["sku"], { unique: true })
 export class Product {
   constructor() {
-    // Generate a UUID for the new user instance
     this.id = uuid();
   }
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
+
+  @Column({ unique: true, nullable: true })
+  public sku: string;
 
   @Column()
-  name: string;
+  @Index()
+  public name: string;
 
-  @Column()
-  ingredients: string;
+  @Column({ type: "simple-array" })
+  public ingredients: string[];
 
-  @Column()
-  weight: string;
-
-  @Column()
-  category: string;
-
-  @Column()
-  description: string;
-
-  @Column()
-  status: string;
-
-  @Column()
-  size: string;
-
-  @Column()
-  image: string;
-
-  @Column()
-  wholesale: string;
-
-  @Column()
-  retail: string;
-
-  @Column()
-  stockQuantity: string;
-
-  @Column()
-  inBoxPrice: string;
-
-  @Column()
-  quantityInBox: string;
+  @Column({ nullable: true })
+  public weight: string;
 
   @Column({
-    default: false,
+    type: "enum",
+    enum: ProductCategory,
+    default: ProductCategory.OTHER,
   })
-  favorite: boolean;
+  @Index()
+  public category: ProductCategory;
 
-  @Column()
-  rating: string;
+  @Column({ type: "text" })
+  public description: string;
 
-  @Column()
-  reviews: string;
+  @Column({
+    type: "enum",
+    enum: ProductStatus,
+    default: ProductStatus.ACTIVE,
+  })
+  @Index()
+  public status: ProductStatus;
 
-  @Column({ default: new Date() })
-  createdAt: Date;
+  @Column({
+    type: "enum",
+    enum: PackagingSize,
+    nullable: true,
+  })
+  public size: PackagingSize;
 
-  @Column({ default: new Date() })
-  updatedAt: Date;
+  @Column({ type: "simple-array", nullable: true })
+  public images: string[];
+
+  @Column({ nullable: true })
+  public image: string;
+
+  @Column({ type: "decimal", precision: 10, scale: 2 })
+  public wholesale: number;
+
+  @Column({ type: "decimal", precision: 10, scale: 2 })
+  public retail: number;
+
+  @Column({ type: "int", default: 0 })
+  public stockQuantity: number;
+
+  @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
+  public inBoxPrice: number;
+
+  @Column({ type: "int", nullable: true })
+  public quantityInBox: number;
+
+  @Column({ default: false })
+  @Index()
+  public favorite: boolean;
+
+  @Column({ type: "decimal", precision: 2, scale: 1, default: 0 })
+  public rating: number;
+
+  @Column({ type: "int", default: 0 })
+  public reviews: number;
+
+  @Column({
+    type: "enum",
+    enum: ProductGrade,
+    nullable: true,
+  })
+  public grade: ProductGrade;
+
+  @Column({ default: false })
+  @Index()
+  public isFeatured: boolean;
+
+  @Column({ default: false })
+  public isOrganic: boolean;
+
+  @Column({ type: "simple-array", nullable: true })
+  public certifications: string[];
+
+  @Column({ nullable: true })
+  public supplierReference: string;
+
+  @Column({ type: "date", nullable: true })
+  public producedAt: Date;
+
+  @Column({ type: "date", nullable: true })
+  public expiryDate: Date;
+
+  @Column({ type: "int", default: 0 })
+  public minOrderQuantity: number;
+
+  @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
+  public costPrice: number;
+
+  @OneToMany(() => Batch, batch => batch.product)
+  public batches: Batch[];
+
+  @CreateDateColumn()
+  public createdAt: Date;
+
+  @UpdateDateColumn()
+  public updatedAt: Date;
+
+  @Column({ nullable: true, type: "timestamp" })
+  public deletedAt: Date;
 }
