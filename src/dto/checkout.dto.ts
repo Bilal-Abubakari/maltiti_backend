@@ -1,28 +1,28 @@
-import { IsNotEmpty } from 'class-validator';
-import { Optional } from '@nestjs/common';
-import { paymentStatus, status } from '../interfaces/checkout.interface';
+import { IsNotEmpty } from "class-validator";
+import { Optional } from "@nestjs/common";
+import { paymentStatus, status } from "../interfaces/checkout.interface";
 
 export class InitializeTransaction {
   @IsNotEmpty()
-  amount: string;
+  public amount: string;
 
   @IsNotEmpty()
-  email: string;
+  public email: string;
 
   @Optional()
-  extraInfo: string;
+  public extraInfo: string;
 
   @IsNotEmpty()
-  name: string;
+  public name: string;
 
   @IsNotEmpty()
-  location: string;
+  public location: string;
 }
 
 export class OrderStatus {
-  status: status;
+  public status: status;
 }
 
 export class PaymentStatus {
-  status: paymentStatus;
+  public status: paymentStatus;
 }
