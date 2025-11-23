@@ -37,7 +37,7 @@ import { Ingredient } from "../entities/Ingredient.entity";
           Checkout,
           Ingredient,
         ],
-        synchronize: true,
+        synchronize: false,
         autoLoadEntities: false,
         migrations: ["src/migrations/*.sql"],
       }),
