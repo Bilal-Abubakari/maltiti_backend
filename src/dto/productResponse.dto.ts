@@ -3,6 +3,7 @@ import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
 import { PackagingSize } from "../enum/packaging-size.enum";
+import { Ingredient } from "../entities/Ingredient.entity";
 
 /**
  * Product response DTO for API responses
@@ -18,7 +19,7 @@ export class ProductResponseDto {
   public name: string;
 
   @ApiProperty({ example: ["100% Pure Shea Butter", "No additives"] })
-  public ingredients: string[];
+  public ingredients: Ingredient[];
 
   @ApiProperty({ example: "1kg" })
   public weight: string;

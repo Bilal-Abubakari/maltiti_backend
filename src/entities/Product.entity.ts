@@ -13,6 +13,7 @@ import { ProductGrade } from "../enum/product-grade.enum";
 import { PackagingSize } from "../enum/packaging-size.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { Batch } from "./Batch.entity";
+import { Ingredient } from "./Ingredient.entity";
 
 @Entity({ name: "Products" })
 @Index(["category", "status"])
@@ -32,8 +33,8 @@ export class Product {
   @Index()
   public name: string;
 
-  @Column({ type: "simple-array" })
-  public ingredients: string[];
+  @OneToMany(() => Ingredient, ingredient => ingredient.product)
+  public ingredients: Ingredient[];
 
   @Column({ nullable: true })
   public weight: string;
@@ -46,7 +47,7 @@ export class Product {
   @Index()
   public category: ProductCategory;
 
-  @Column({ type: "text" })
+  @Column({ type: "text", nullable: true })
   public description: string;
 
   @Column({

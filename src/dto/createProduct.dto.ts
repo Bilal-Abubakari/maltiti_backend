@@ -27,7 +27,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  sku?: string;
+  public sku?: string;
 
   @ApiProperty({
     description: "Product name",
@@ -35,7 +35,7 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsString()
-  name: string;
+  public name: string;
 
   @ApiProperty({
     description: "Product ingredients (comma-separated or array)",
@@ -45,7 +45,7 @@ export class CreateProductDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  ingredients: string[];
+  public ingredients: string[];
 
   @ApiPropertyOptional({
     description: "Product weight description",
@@ -53,7 +53,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  weight?: string;
+  public weight?: string;
 
   @ApiProperty({
     description: "Product category",
@@ -62,7 +62,7 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsEnum(ProductCategory)
-  category: ProductCategory;
+  public category: ProductCategory;
 
   @ApiProperty({
     description: "Detailed product description",
@@ -71,7 +71,7 @@ export class CreateProductDto {
   })
   @IsNotEmpty()
   @IsString()
-  description: string;
+  public description: string;
 
   @ApiPropertyOptional({
     description: "Product status",
@@ -81,7 +81,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsEnum(ProductStatus)
-  status?: ProductStatus = ProductStatus.ACTIVE;
+  public status?: ProductStatus = ProductStatus.ACTIVE;
 
   @ApiPropertyOptional({
     description: "Packaging size",
@@ -90,7 +90,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsEnum(PackagingSize)
-  size?: PackagingSize;
+  public size?: PackagingSize;
 
   @ApiPropertyOptional({
     description: "Product images URLs",
@@ -102,7 +102,7 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  images?: string[];
+  public images?: string[];
 
   @ApiPropertyOptional({
     description: "Primary product image URL (for backward compatibility)",
@@ -110,7 +110,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  image?: string;
+  public image?: string;
 
   @ApiProperty({
     description: "Wholesale price in currency",
@@ -120,7 +120,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  wholesale: number;
+  public wholesale: number;
 
   @ApiProperty({
     description: "Retail price in currency",
@@ -130,7 +130,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  retail: number;
+  public retail: number;
 
   @ApiProperty({
     description: "Available stock quantity",
@@ -140,7 +140,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  stockQuantity: number;
+  public stockQuantity: number;
 
   @ApiPropertyOptional({
     description: "Price for a full box",
@@ -150,7 +150,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  inBoxPrice?: number;
+  public inBoxPrice?: number;
 
   @ApiPropertyOptional({
     description: "Quantity of items in one box",
@@ -160,7 +160,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  quantityInBox?: number;
+  public quantityInBox?: number;
 
   @ApiPropertyOptional({
     description: "Product grade/quality",
@@ -169,7 +169,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsEnum(ProductGrade)
-  grade?: ProductGrade;
+  public grade?: ProductGrade;
 
   @ApiPropertyOptional({
     description: "Whether product is featured",
@@ -178,7 +178,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsBoolean()
-  isFeatured?: boolean = false;
+  public isFeatured?: boolean = false;
 
   @ApiPropertyOptional({
     description: "Whether product is organic certified",
@@ -187,7 +187,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsBoolean()
-  isOrganic?: boolean = false;
+  public isOrganic?: boolean = false;
 
   @ApiPropertyOptional({
     description: "Product certifications",
@@ -196,7 +196,7 @@ export class CreateProductDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  certifications?: string[];
+  public certifications?: string[];
 
   @ApiPropertyOptional({
     description: "Supplier reference ID",
@@ -204,7 +204,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  supplierReference?: string;
+  public supplierReference?: string;
 
   @ApiPropertyOptional({
     description: "Production date",
@@ -212,7 +212,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsDateString()
-  producedAt?: string;
+  public producedAt?: string;
 
   @ApiPropertyOptional({
     description: "Expiry date",
@@ -220,7 +220,7 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsDateString()
-  expiryDate?: string;
+  public expiryDate?: string;
 
   @ApiPropertyOptional({
     description: "Minimum order quantity",
@@ -231,7 +231,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  minOrderQuantity?: number = 0;
+  public minOrderQuantity?: number = 0;
 
   @ApiPropertyOptional({
     description: "Cost price for internal tracking",
@@ -241,7 +241,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  costPrice?: number;
+  public costPrice?: number;
 
   @ApiPropertyOptional({
     description: "Batch ID for batch tracking",
@@ -249,5 +249,5 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  batchId?: string;
+  public batchId?: string;
 }

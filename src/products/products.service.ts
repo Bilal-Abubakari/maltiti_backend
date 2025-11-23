@@ -14,6 +14,7 @@ import { CreateBatchDto } from "../dto/createBatch.dto";
 import { ProductStatus } from "../enum/product-status.enum";
 import { IPagination } from "../interfaces/general";
 import { BestProductsResponseDto } from "../dto/productResponse.dto";
+import { IngredientsService } from "./ingredients/ingredients.service";
 
 @Injectable()
 export class ProductsService {
@@ -22,6 +23,7 @@ export class ProductsService {
     private readonly productsRepository: Repository<Product>,
     @InjectRepository(Batch)
     private readonly batchRepository: Repository<Batch>,
+    private readonly ingredientsService: IngredientsService,
   ) {}
 
   /**
@@ -396,14 +398,16 @@ export class ProductsService {
   /**
    * Set product fields from DTO
    */
-  private setProductFields(
+  private async setProductFields(
     product: Product,
     productInfo: CreateProductDto | UpdateProductDto,
-  ): void {
+  ): Promise<void> {
     if (productInfo.sku !== undefined) product.sku = productInfo.sku;
     if (productInfo.name !== undefined) product.name = productInfo.name;
     if (productInfo.ingredients !== undefined)
-      product.ingredients = productInfo.ingredients;
+      product.ingredients = await this.ingredientsService.findByIds(
+        productInfo.ingredients,
+      );
     if (productInfo.weight !== undefined) product.weight = productInfo.weight;
     if (productInfo.category !== undefined)
       product.category = productInfo.category;

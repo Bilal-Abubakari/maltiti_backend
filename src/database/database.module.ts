@@ -9,6 +9,8 @@ import { Product } from "../entities/Product.entity";
 import { Verification } from "../entities/Verification.entity";
 import { Cart } from "../entities/Cart.entity";
 import { Checkout } from "../entities/Checkout.entity";
+import { Batch } from "../entities/Batch.entity";
+import { Ingredient } from "../entities/Ingredient.entity";
 
 @Module({
   imports: [
@@ -29,12 +31,15 @@ import { Checkout } from "../entities/Checkout.entity";
           Cooperative,
           CooperativeMember,
           Product,
+          Batch,
           Verification,
           Cart,
           Checkout,
+          Ingredient,
         ],
         synchronize: true,
         autoLoadEntities: false,
+        migrations: ["src/migrations/*.sql"],
       }),
       inject: [ConfigService],
     }),
