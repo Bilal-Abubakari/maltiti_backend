@@ -1,23 +1,23 @@
-import { IsEmail, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsNotEmpty } from "class-validator";
 
 export class UserInfoDto {
   @IsNotEmpty()
-  name: string;
+  public name: string;
 
   @IsEmail()
-  email: string;
+  public email: string;
 
   @IsNotEmpty()
-  password: string;
+  public password: string;
 
   @IsNotEmpty()
-  userType: string;
+  public userType: string;
 }
 
 export class VerifyPhoneDto {
   @IsNotEmpty()
-  phoneNumber: string;
+  public phoneNumber: string;
 
   @IsNotEmpty()
-  code: string;
+  public code: string;
 }

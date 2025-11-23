@@ -1,0 +1,15 @@
+export enum PackagingSize {
+  SIZE_100G = "100g",
+  SIZE_250G = "250g",
+  SIZE_500G = "500g",
+  SIZE_1KG = "1kg",
+  SIZE_5KG = "5kg",
+  SIZE_12KG = "12kg",
+  SIZE_25KG = "25kg",
+  SIZE_50KG = "50kg",
+  SIZE_100ML = "100ml",
+  SIZE_250ML = "250ml",
+  SIZE_500ML = "500ml",
+  SIZE_1L = "1L",
+  CUSTOM = "custom",
+}

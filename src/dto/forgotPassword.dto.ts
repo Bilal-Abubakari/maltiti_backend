@@ -1,14 +1,14 @@
-import { IsEmail, IsNotEmpty, IsStrongPassword } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsStrongPassword } from "class-validator";
 
 export class ForgotPasswordDto {
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  public email: string;
 }
 
 export class ResetPasswordDto {
   @IsNotEmpty()
-  token: string;
+  public token: string;
 
   @IsNotEmpty()
   @IsStrongPassword({
@@ -18,8 +18,8 @@ export class ResetPasswordDto {
     minSymbols: 1,
     minUppercase: 1,
   })
-  password: string;
+  public password: string;
 
   @IsNotEmpty()
-  confirmPassword: string;
+  public confirmPassword: string;
 }
