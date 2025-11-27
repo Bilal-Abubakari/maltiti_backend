@@ -12,6 +12,7 @@ import { LocalStrategy } from "./strategy/local.strategy";
 import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
 import { JwtStrategy } from "./strategy/jwt.strategy";
 import { NotificationService } from "../notification/notification.service";
+import { CookieAuthGuard } from "./guards/cookie-auth.guard";
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { NotificationService } from "../notification/notification.service";
     LocalStrategy,
     JwtRefreshTokenStrategy,
     NotificationService,
+    CookieAuthGuard,
   ],
+  exports: [JwtModule, AuthenticationService, UsersService],
 })
 export class AuthenticationModule {}

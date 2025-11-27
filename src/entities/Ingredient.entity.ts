@@ -1,13 +1,12 @@
-import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
+import { Column, Entity, ManyToMany } from "typeorm";
 import { Audit } from "./Audit.entity";
 import { Product } from "./Product.entity";
 
 @Entity({ name: "Ingredients" })
 export class Ingredient extends Audit {
-  @Column()
+  @Column({ unique: true })
   public name: string;
 
-  @ManyToOne(() => Product, product => product.ingredients, { nullable: false })
-  @JoinColumn({ name: "productId" })
-  public product: Product;
+  @ManyToMany(() => Product, product => product.ingredients)
+  public products: Product[];
 }

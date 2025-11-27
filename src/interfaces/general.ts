@@ -22,7 +22,7 @@ export interface IPagination<T> {
   totalItems: number;
   currentPage: number;
   totalPages: number;
-  products: T[];
+  items: T[];
 }
 
 export type IPaginatedResponse<T> = IResponse<IPagination<T>>;

@@ -6,11 +6,9 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { Product } from "../entities/Product.entity";
-import { Batch } from "../entities/Batch.entity";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
 import { ProductQueryDto } from "../dto/productQuery.dto";
-import { CreateBatchDto } from "../dto/createBatch.dto";
 import { ProductStatus } from "../enum/product-status.enum";
 import { IPagination } from "../interfaces/general";
 import { BestProductsResponseDto } from "../dto/productResponse.dto";
@@ -21,8 +19,6 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
-    @InjectRepository(Batch)
-    private readonly batchRepository: Repository<Batch>,
     private readonly ingredientsService: IngredientsService,
   ) {}
 
@@ -53,7 +49,7 @@ export class ProductsService {
 
     const queryBuilder = this.productsRepository
       .createQueryBuilder("product")
-      .leftJoinAndSelect("product.batch", "batch")
+      .leftJoinAndSelect("product.batches", "batch")
       .where("product.deletedAt IS NULL");
 
     // Search functionality
@@ -129,7 +125,7 @@ export class ProductsService {
       totalItems,
       currentPage: page,
       totalPages: Math.ceil(totalItems / limit),
-      products,
+      items: products,
     };
   }
 
@@ -185,18 +181,6 @@ export class ProductsService {
       }
     }
 
-    // Validate batch if provided
-    if (productInfo.batchId) {
-      const batch = await this.batchRepository.findOne({
-        where: { id: productInfo.batchId },
-      });
-      if (!batch) {
-        throw new NotFoundException(
-          `Batch with ID "${productInfo.batchId}" not found`,
-        );
-      }
-    }
-
     const product = new Product();
     this.setProductFields(product, productInfo);
 
@@ -237,16 +221,6 @@ export class ProductsService {
     }
 
     // Validate batch if provided
-    if (productInfo.batchId) {
-      const batch = await this.batchRepository.findOne({
-        where: { id: productInfo.batchId },
-      });
-      if (!batch) {
-        throw new NotFoundException(
-          `Batch with ID "${productInfo.batchId}" not found`,
-        );
-      }
-    }
 
     this.setProductFields(product, productInfo);
 
@@ -336,57 +310,7 @@ export class ProductsService {
     return { deleted: true, id };
   }
 
-  /**
-   * Create a new batch
-   */
-  public async createBatch(batchInfo: CreateBatchDto): Promise<Batch> {
-    const existingBatch = await this.batchRepository.findOne({
-      where: { batchNumber: batchInfo.batchNumber },
-    });
-
-    if (existingBatch) {
-      throw new ConflictException(
-        `Batch with number "${batchInfo.batchNumber}" already exists`,
-      );
-    }
-
-    const batch = this.batchRepository.create({
-      ...batchInfo,
-      productionDate: batchInfo.productionDate
-        ? new Date(batchInfo.productionDate)
-        : null,
-      expiryDate: batchInfo.expiryDate ? new Date(batchInfo.expiryDate) : null,
-    });
-
-    return this.batchRepository.save(batch);
-  }
-
-  /**
-   * Get all batches
-   */
-  public async getAllBatches(): Promise<Batch[]> {
-    return this.batchRepository.find({
-      where: { deletedAt: IsNull() },
-      relations: ["products"],
-      order: { createdAt: "DESC" },
-    });
-  }
-
-  /**
-   * Get single batch by ID
-   */
-  public async getBatch(id: string): Promise<Batch> {
-    const batch = await this.batchRepository.findOne({
-      where: { id, deletedAt: IsNull() },
-      relations: ["products"],
-    });
-
-    if (!batch) {
-      throw new NotFoundException(`Batch with ID "${id}" not found`);
-    }
-
-    return batch;
-  }
+  // Batch operations moved to BatchesService
 
   /**
    * Find a product by ID

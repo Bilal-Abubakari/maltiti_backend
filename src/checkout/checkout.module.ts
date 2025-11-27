@@ -7,9 +7,15 @@ import { UsersService } from "../users/users.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Checkout } from "../entities/Checkout.entity";
 import { NotificationService } from "../notification/notification.service";
+import { AuthenticationModule } from "../authentication/authentication.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Checkout]), UsersModule, CartModule],
+  imports: [
+    TypeOrmModule.forFeature([Checkout]),
+    UsersModule,
+    CartModule,
+    AuthenticationModule,
+  ],
   controllers: [CheckoutController],
   providers: [CheckoutService, UsersService, NotificationService],
 })

@@ -8,7 +8,7 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { JwtAuthGuard } from "../authentication/guards/jwt-auth.guard";
+import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { CartService } from "./cart.service";
 import { IResponse } from "../interfaces/general";
 import { Cart } from "../entities/Cart.entity";
@@ -19,7 +19,7 @@ import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import { Role } from "../enum/role.enum";
 
 @Controller("cart")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(CookieAuthGuard, RolesGuard)
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 

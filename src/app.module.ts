@@ -13,6 +13,7 @@ import { CartModule } from "./cart/cart.module";
 import { CheckoutModule } from "./checkout/checkout.module";
 import { NotificationService } from "./notification/notification.service";
 import { DatabaseModule } from "./database/database.module";
+import { UploadModule } from "./upload/upload.module";
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { DatabaseModule } from "./database/database.module";
     ProductsModule,
     CartModule,
     CheckoutModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService, NotificationService],

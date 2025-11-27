@@ -16,7 +16,7 @@ import { UsersService } from "../users/users.service";
 import { RegisterUserDto } from "../dto/registerUser.dto";
 import { SignInDto } from "../dto/signIn.dto";
 import { AuthenticationService } from "./authentication.service";
-import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { CookieAuthGuard } from "./guards/cookie-auth.guard";
 import { Request, Response } from "express";
 import { User } from "../entities/User.entity";
 import { VerifyPhoneDto } from "../dto/UserInfo.dto";
@@ -49,7 +49,7 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post("verify-phone/:id")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CookieAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async verifyPhone(
     @Param("id") id: string,
@@ -171,7 +171,7 @@ export class AuthenticationController {
     return { message: "Tokens refreshed successfully" };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   @Post("logout")
   public async logout(
     @Req() request: Request,
@@ -204,7 +204,7 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post("create-admin")
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(CookieAuthGuard, RolesGuard)
   @Roles([Role.Admin])
   public async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
@@ -219,7 +219,7 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post("change-password/:id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   public async changePassword(
     @Param("id") id: string,
     @Body() changePasswordDto: ChangePasswordDto,

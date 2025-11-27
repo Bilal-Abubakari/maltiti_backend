@@ -25,15 +25,15 @@ async function bootstrap(): Promise<void> {
 
   // Enable CORS with credentials support for cookies
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:4200",
     credentials: true,
   });
 
   // Swagger/OpenAPI Configuration
   const config = new DocumentBuilder()
-    .setTitle("Maltiti A. Enterprise Ltd - Admin Portal API")
+    .setTitle("Maltiti A. Enterprise Ltd - API")
     .setDescription(
-      "API documentation for Maltiti A. Enterprise Ltd Admin Portal Backend. " +
+      "API documentation for Maltiti A. Enterprise Ltd API Service. " +
         "Manufacturer of premium shea-based products, cosmetics, and essential oils.",
     )
     .setVersion("1.0")
@@ -61,6 +61,7 @@ async function bootstrap(): Promise<void> {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api-docs", app, document, {
+    jsonDocumentUrl: "swagger/json",
     customSiteTitle: "Maltiti API Documentation",
     customCss: ".swagger-ui .topbar { display: none }",
     swaggerOptions: {

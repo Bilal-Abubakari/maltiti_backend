@@ -16,7 +16,7 @@ import {
   ordersPagination,
 } from "../interfaces/general";
 import { CheckoutService } from "./checkout.service";
-import { JwtAuthGuard } from "../authentication/guards/jwt-auth.guard";
+import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import {
   InitializeTransaction,
@@ -31,7 +31,7 @@ import {
 import { Role } from "../enum/role.enum";
 
 @Controller("checkout")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(CookieAuthGuard, RolesGuard)
 export class CheckoutController {
   constructor(private readonly checkoutService: CheckoutService) {}
 
