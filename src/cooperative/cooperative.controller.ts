@@ -21,13 +21,13 @@ import { AddCooperativeDto } from "../dto/addCooperative.dto";
 import { EditCooperativeDto } from "../dto/editCooperative.dto";
 import { AddCooperativeMemberDto } from "../dto/addCooperativeMember.dto";
 import { EditCooperativeMemberDto } from "../dto/editCooperativeMember.dto";
-import { JwtAuthGuard } from "../authentication/guards/jwt-auth.guard";
+import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import { Cooperative } from "../entities/Cooperative.entity";
 import { DeleteResult } from "typeorm";
 import { CooperativeMember } from "../entities/CooperativeMember.entity";
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(CookieAuthGuard)
 @Controller("cooperative")
 export class CooperativeController {
   constructor(private cooperativeService: CooperativeService) {}

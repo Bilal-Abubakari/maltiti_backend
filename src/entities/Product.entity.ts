@@ -4,6 +4,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinTable,
+  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -33,7 +35,10 @@ export class Product {
   @Index()
   public name: string;
 
-  @OneToMany(() => Ingredient, ingredient => ingredient.product)
+  @ManyToMany(() => Ingredient, ingredient => ingredient.products, {
+    cascade: true,
+  })
+  @JoinTable()
   public ingredients: Ingredient[];
 
   @Column({ nullable: true })

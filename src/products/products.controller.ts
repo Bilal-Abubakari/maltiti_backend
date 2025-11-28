@@ -19,20 +19,18 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../authentication/guards/jwt-auth.guard";
+import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { ProductsService } from "./products.service";
 import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
 import { ProductQueryDto } from "../dto/productQuery.dto";
-import { CreateBatchDto } from "../dto/createBatch.dto";
 import {
   ProductResponseDto,
   ProductsPaginationResponseDto,
   BestProductsResponseDto,
 } from "../dto/productResponse.dto";
 import { Product } from "../entities/Product.entity";
-import { Batch } from "../entities/Batch.entity";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 
@@ -110,10 +108,8 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Roles([Role.Admin])
+  @UseGuards(CookieAuthGuard)
   @Post("add-product")
-  @ApiBearerAuth()
   @ApiOperation({
     summary: "Create new product",
     description: "Create a new product (Admin only)",
@@ -138,7 +134,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   @Roles([Role.Admin])
   @Put("edit-product/:id")
   @ApiBearerAuth()
@@ -172,7 +168,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   @Roles([Role.Admin])
   @Delete("delete-product/:id")
   @ApiBearerAuth()
@@ -202,7 +198,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   @Roles([Role.Admin])
   @Patch("change-status/:id")
   @ApiBearerAuth()
@@ -234,7 +230,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(CookieAuthGuard)
   @Roles([Role.Admin, Role.User])
   @Patch("favorite/:id")
   @ApiBearerAuth()
@@ -264,77 +260,6 @@ export class ProductsController {
         ? "Product marked as favorite successfully"
         : "Product unmarked from favorites successfully",
       data: product,
-    };
-  }
-
-  // Batch Management Endpoints
-
-  @UseGuards(JwtAuthGuard)
-  @Roles([Role.Admin])
-  @Post("batches")
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: "Create new batch",
-    description: "Create a new product batch (Admin only)",
-  })
-  @ApiResponse({
-    status: 201,
-    description: "Batch created successfully",
-  })
-  @ApiResponse({ status: 400, description: "Invalid input data" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
-  @ApiResponse({ status: 409, description: "Batch number already exists" })
-  @HttpCode(HttpStatus.CREATED)
-  public async createBatch(
-    @Body() batchInfo: CreateBatchDto,
-  ): Promise<IResponse<Batch>> {
-    const batch = await this.productsService.createBatch(batchInfo);
-
-    return {
-      message: "Batch created successfully",
-      data: batch,
-    };
-  }
-
-  @Get("batches")
-  @ApiOperation({
-    summary: "Get all batches",
-    description: "Retrieve all product batches",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Batches retrieved successfully",
-  })
-  public async getAllBatches(): Promise<IResponse<Batch[]>> {
-    const batches = await this.productsService.getAllBatches();
-
-    return {
-      message: "Batches loaded successfully",
-      data: batches,
-    };
-  }
-
-  @Get("batches/:id")
-  @ApiOperation({
-    summary: "Get single batch",
-    description: "Retrieve a single batch by ID with all associated products",
-  })
-  @ApiParam({
-    name: "id",
-    description: "Batch UUID",
-    example: "123e4567-e89b-12d3-a456-426614174000",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Batch retrieved successfully",
-  })
-  @ApiResponse({ status: 404, description: "Batch not found" })
-  public async getBatch(@Param("id") id: string): Promise<IResponse<Batch>> {
-    const batch = await this.productsService.getBatch(id);
-
-    return {
-      message: "Batch loaded successfully",
-      data: batch,
     };
   }
 }

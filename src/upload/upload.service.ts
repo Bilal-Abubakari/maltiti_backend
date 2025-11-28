@@ -1,17 +1,25 @@
 import { Injectable } from "@nestjs/common";
-import * as process from "process";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PutObjectCommandInput } from "@aws-sdk/client-s3/dist-types/commands";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class UploadService {
-  private s3 = new S3Client({
-    region: process.env.MALTITI_AWS_REGION,
-    credentials: {
-      accessKeyId: process.env.MALTITI_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.MALTITI_AWS_SECRET_ACCESS_KEY,
-    },
-  });
+  private s3: S3Client;
+
+  constructor(private configService: ConfigService) {
+    this.s3 = new S3Client({
+      region: this.configService.get<string>("MALTITI_AWS_REGION"),
+      credentials: {
+        accessKeyId: this.configService.get<string>(
+          "MALTITI_AWS_ACCESS_KEY_ID",
+        ),
+        secretAccessKey: this.configService.get<string>(
+          "MALTITI_AWS_SECRET_ACCESS_KEY",
+        ),
+      },
+    });
+  }
 
   public async uploadImage(image: Express.Multer.File): Promise<string> {
     const file = image; // Assuming you've set up the appropriate multer middleware
@@ -22,7 +30,7 @@ export class UploadService {
 
     const key = `${new Date().getTime()}-${file.originalname}`;
     const params: PutObjectCommandInput = {
-      Bucket: process.env.AWS_BUCKET_NAME,
+      Bucket: this.configService.get<string>("AWS_BUCKET_NAME"),
       Key: key,
       Body: file.buffer,
     };
@@ -30,6 +38,6 @@ export class UploadService {
 
     await this.s3.send(putCommand);
 
-    return `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/${key}`;
+    return `https://${this.configService.get<string>("AWS_BUCKET_NAME")}.s3.amazonaws.com/${key}`;
   }
 }

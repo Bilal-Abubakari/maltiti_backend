@@ -242,12 +242,4 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   public costPrice?: number;
-
-  @ApiPropertyOptional({
-    description: "Batch ID for batch tracking",
-    example: "123e4567-e89b-12d3-a456-426614174000",
-  })
-  @IsOptional()
-  @IsString()
-  public batchId?: string;
 }
