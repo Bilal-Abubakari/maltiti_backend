@@ -49,7 +49,7 @@ export class ProductsService {
 
     const queryBuilder = this.productsRepository
       .createQueryBuilder("product")
-      .leftJoinAndSelect("product.batches", "batch")
+      .leftJoinAndSelect("product.ingredients", "ingredient")
       .where("product.deletedAt IS NULL");
 
     // Search functionality
@@ -222,7 +222,7 @@ export class ProductsService {
 
     // Validate batch if provided
 
-    this.setProductFields(product, productInfo);
+    await this.setProductFields(product, productInfo);
 
     // Recalculate inBoxPrice if relevant fields changed
     if (
