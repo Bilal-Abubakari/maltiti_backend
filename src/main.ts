@@ -25,7 +25,10 @@ async function bootstrap(): Promise<void> {
 
   // Enable CORS with credentials support for cookies
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:4200",
+    origin: [
+      process.env.FRONTEND_URL_ADMIN || "http://localhost:4200",
+      process.env.FRONTEND_URL,
+    ],
     credentials: true,
   });
 
