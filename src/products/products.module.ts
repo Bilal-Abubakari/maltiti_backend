@@ -9,11 +9,13 @@ import { Ingredient } from "../entities/Ingredient.entity";
 import { BatchesService } from "./batches/batches.service";
 import { BatchesController } from "./batches/batches.controller";
 import { AuthenticationModule } from "../authentication/authentication.module";
+import { IngredientsModule } from "./ingredients/ingredients.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Product, Batch, Ingredient]),
     AuthenticationModule,
+    IngredientsModule,
   ],
   exports: [TypeOrmModule, ProductsService],
   providers: [ProductsService, IngredientsService, BatchesService],
