@@ -8,6 +8,7 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -24,7 +25,10 @@ import { ProductsService } from "./products.service";
 import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
-import { ProductQueryDto } from "../dto/productQuery.dto";
+import {
+  ProductQueryDto,
+  ExportProductQueryDto,
+} from "../dto/productQuery.dto";
 import {
   ProductResponseDto,
   ProductsPaginationResponseDto,
@@ -33,6 +37,8 @@ import {
 import { Product } from "../entities/Product.entity";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
+import { Response } from "express";
+import { NotFoundException } from "@nestjs/common/exceptions";
 
 @ApiTags("Products")
 @Controller("products")
@@ -261,5 +267,60 @@ export class ProductsController {
         : "Product unmarked from favorites successfully",
       data: product,
     };
+  }
+
+  @UseGuards(CookieAuthGuard)
+  @Roles([Role.Admin])
+  @Get("export/excel")
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Export all products to Excel",
+    description:
+      "Export all products to a well-structured Excel file with optional filtering. Supports category, status, grade, and other filters.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Excel file downloaded successfully",
+    content: {
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+        schema: { type: "string", format: "binary" },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({
+    status: 404,
+    description: "No products found matching filters",
+  })
+  public async exportProductsToExcel(
+    @Query() queryDto: ExportProductQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      // Generate Excel buffer
+      const excelBuffer =
+        await this.productsService.exportProductsToExcel(queryDto);
+
+      // Set response headers for file download
+      const filename = `products-export-${new Date().toISOString().split("T")[0]}.xlsx`;
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+
+      // Send the Excel file
+      res.send(excelBuffer);
+    } catch (error) {
+      // Handle errors gracefully
+      if (error instanceof NotFoundException) {
+        res.status(404).json({ message: error.message });
+      } else {
+        console.error("Export error:", error);
+        res
+          .status(500)
+          .json({ message: "Internal server error during export" });
+      }
+    }
   }
 }
