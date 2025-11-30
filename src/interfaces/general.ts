@@ -61,7 +61,6 @@ export interface product {
   rating: string;
   weight: string;
   description: string;
-  stockQuantity: string;
   inBoxPrice: string;
   retail: string;
   createdAt: Date;

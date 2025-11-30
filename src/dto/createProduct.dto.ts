@@ -113,43 +113,27 @@ export class CreateProductDto {
   public image?: string;
 
   @ApiProperty({
-    description: "Wholesale price in currency",
-    example: 45.0,
+    description: "Wholesale price per unit",
+    example: 15.0,
   })
   @IsNotEmpty()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
+  @IsNumber({ maxDecimalPlaces: 2 })
   public wholesale: number;
 
   @ApiProperty({
-    description: "Retail price in currency",
-    example: 60.0,
+    description: "Retail price per unit",
+    example: 20.0,
   })
   @IsNotEmpty()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
+  @IsNumber({ maxDecimalPlaces: 2 })
   public retail: number;
-
-  @ApiProperty({
-    description: "Available stock quantity",
-    example: 150,
-  })
-  @IsNotEmpty()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  public stockQuantity: number;
 
   @ApiPropertyOptional({
     description: "Price for a full box",
-    example: 540.0,
+    example: 180.0,
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
+  @IsNumber({ maxDecimalPlaces: 2 })
   public inBoxPrice?: number;
 
   @ApiPropertyOptional({

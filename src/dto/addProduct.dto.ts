@@ -106,56 +106,28 @@ export class AddProductDto {
   public image: string;
 
   @ApiProperty({
-    description: "Wholesale price in local currency",
-    example: 45.0,
-    type: Number,
-    required: true,
-    minimum: 0,
+    description: "Wholesale price per unit",
+    example: 15.0,
   })
-  @IsNotEmpty({ message: "Wholesale price is required" })
-  @Type(() => Number)
-  @IsNumber({}, { message: "Wholesale price must be a number" })
-  @Min(0, { message: "Wholesale price must be at least 0" })
+  @IsNotEmpty()
+  @IsNumber({ maxDecimalPlaces: 2 })
   public wholesale: number;
 
   @ApiProperty({
-    description: "Retail price in local currency",
-    example: 60.0,
-    type: Number,
-    required: true,
-    minimum: 0,
+    description: "Retail price per unit",
+    example: 20.0,
   })
-  @IsNotEmpty({ message: "Retail price is required" })
-  @Type(() => Number)
-  @IsNumber({}, { message: "Retail price must be a number" })
-  @Min(0, { message: "Retail price must be at least 0" })
+  @IsNotEmpty()
+  @IsNumber({ maxDecimalPlaces: 2 })
   public retail: number;
 
-  @ApiProperty({
-    description: "Available stock quantity",
-    example: 150,
-    type: Number,
-    required: true,
-    minimum: 0,
+  @ApiPropertyOptional({
+    description: "Price for a full box",
+    example: 180.0,
   })
-  @IsNotEmpty({ message: "Stock quantity is required" })
-  @Type(() => Number)
-  @IsNumber({}, { message: "Stock quantity must be a number" })
-  @Min(0, { message: "Stock quantity must be at least 0" })
-  public stockQuantity: number;
-
-  @ApiProperty({
-    description: "Price for a full box/carton",
-    example: 540.0,
-    type: Number,
-    required: true,
-    minimum: 0,
-  })
-  @IsNotEmpty({ message: "In-box price is required" })
-  @Type(() => Number)
-  @IsNumber({}, { message: "In-box price must be a number" })
-  @Min(0, { message: "In-box price must be at least 0" })
-  public inBoxPrice: number;
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  public inBoxPrice?: number;
 
   @ApiProperty({
     description: "Number of items in one box/carton",

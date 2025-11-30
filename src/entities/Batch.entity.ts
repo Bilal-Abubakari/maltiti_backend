@@ -41,6 +41,9 @@ export class Batch {
   @Column({ nullable: true })
   public notes: string;
 
+  @Column({ type: "int", default: 0 })
+  public quantity: number;
+
   @Column({ default: true })
   public isActive: boolean;
 

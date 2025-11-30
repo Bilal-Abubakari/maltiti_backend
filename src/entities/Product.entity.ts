@@ -82,9 +82,6 @@ export class Product {
   @Column({ type: "decimal", precision: 10, scale: 2 })
   public retail: number;
 
-  @Column({ type: "int", default: 0 })
-  public stockQuantity: number;
-
   @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
   public inBoxPrice: number;
 
