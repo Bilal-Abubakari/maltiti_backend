@@ -2,8 +2,11 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
 import {
   IsDateString,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
+  Min,
 } from "class-validator";
 import { CreateProductDto } from "./createProduct.dto";
 
@@ -18,6 +21,23 @@ export class CreateBatchDto {
   @IsNotEmpty()
   @IsString()
   public batchNumber: string;
+
+  @ApiProperty({
+    description: "ID of the product this batch belongs to",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @IsNotEmpty()
+  @IsUUID()
+  public productId: string;
+
+  @ApiProperty({
+    description: "Quantity of items in this batch",
+    example: 100,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(0)
+  public quantity: number;
 
   @ApiPropertyOptional({
     description: "Production/manufacturing date",

@@ -1,29 +1,23 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { Product } from "../entities/Product.entity";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
-import {
-  ProductQueryDto,
-  ExportProductQueryDto,
-} from "../dto/productQuery.dto";
+import { ExportProductQueryDto, ProductQueryDto, } from "../dto/productQuery.dto";
 import { ProductStatus } from "../enum/product-status.enum";
 import { IPagination } from "../interfaces/general";
 import { BestProductsResponseDto } from "../dto/productResponse.dto";
-import { IngredientsService } from "./ingredients/ingredients.service";
 import * as ExcelJS from "exceljs";
+import { Batch } from "../entities/Batch.entity";
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
-    private readonly ingredientsService: IngredientsService,
+    @InjectRepository(Batch)
+    private readonly batchRepository: Repository<Batch>,
   ) {}
 
   /**
@@ -109,13 +103,7 @@ export class ProductsService {
     }
 
     // Sorting
-    const allowedSortFields = [
-      "name",
-      "retail",
-      "createdAt",
-      "rating",
-      "stockQuantity",
-    ];
+    const allowedSortFields = ["name", "retail", "createdAt", "rating"];
     const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
     queryBuilder.orderBy(`product.${sortField}`, sortOrder);
 
@@ -232,13 +220,7 @@ export class ProductsService {
     }
 
     // Sorting
-    const allowedSortFields = [
-      "name",
-      "retail",
-      "createdAt",
-      "rating",
-      "stockQuantity",
-    ];
+    const allowedSortFields = ["name", "retail", "createdAt", "rating"];
     const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
     queryBuilder.orderBy(`product.${sortField}`, sortOrder);
 
@@ -267,7 +249,6 @@ export class ProductsService {
       { header: "Status", key: "status", width: 10 },
       { header: "Wholesale Price", key: "wholesale", width: 15 },
       { header: "Retail Price", key: "retail", width: 15 },
-      { header: "Stock Quantity", key: "stockQuantity", width: 15 },
       { header: "Weight", key: "weight", width: 10 },
       { header: "Packaging Size", key: "size", width: 15 },
       { header: "Is Featured", key: "isFeatured", width: 12 },
@@ -291,7 +272,6 @@ export class ProductsService {
         status: product.status,
         wholesale: product.wholesale,
         retail: product.retail,
-        stockQuantity: product.stockQuantity,
         weight: product.weight || "N/A",
         size: product.size || "N/A",
         isFeatured: product.isFeatured ? "Yes" : "No",
@@ -515,7 +495,30 @@ export class ProductsService {
     return { deleted: true, id };
   }
 
-  // Batch operations moved to BatchesService
+  /**
+   * Get total stock for a product across all batches
+   */
+  public async getTotalStock(productId: string): Promise<number> {
+    const result = await this.batchRepository
+      .createQueryBuilder("batch")
+      .select("SUM(batch.quantity)", "total")
+      .where("batch.productId = :productId", { productId })
+      .andWhere("batch.isActive = true")
+      .andWhere("batch.deletedAt IS NULL")
+      .getRawOne();
+
+    return result.total || 0;
+  }
+
+  /**
+   * Get all products with only id and name fields
+   */
+  public async getAllProductsBasic(): Promise<{ id: string; name: string }[]> {
+    return await this.productsRepository.find({
+      where: { deletedAt: IsNull() },
+      select: ["id", "name"],
+    });
+  }
 
   /**
    * Find a product by ID
@@ -531,46 +534,16 @@ export class ProductsService {
     product: Product,
     productInfo: CreateProductDto | UpdateProductDto,
   ): Promise<void> {
-    if (productInfo.sku !== undefined) product.sku = productInfo.sku;
-    if (productInfo.name !== undefined) product.name = productInfo.name;
-    if (productInfo.ingredients !== undefined)
-      product.ingredients = await this.ingredientsService.findByIds(
-        productInfo.ingredients,
-      );
-    if (productInfo.weight !== undefined) product.weight = productInfo.weight;
-    if (productInfo.category !== undefined)
-      product.category = productInfo.category;
-    if (productInfo.description !== undefined)
-      product.description = productInfo.description;
-    if (productInfo.status !== undefined) product.status = productInfo.status;
-    if (productInfo.size !== undefined) product.size = productInfo.size;
-    if (productInfo.images !== undefined) product.images = productInfo.images;
-    if (productInfo.image !== undefined) product.image = productInfo.image;
-    if (productInfo.wholesale !== undefined)
-      product.wholesale = productInfo.wholesale;
-    if (productInfo.retail !== undefined) product.retail = productInfo.retail;
-    if (productInfo.stockQuantity !== undefined)
-      product.stockQuantity = productInfo.stockQuantity;
-    if (productInfo.inBoxPrice !== undefined)
-      product.inBoxPrice = productInfo.inBoxPrice;
-    if (productInfo.quantityInBox !== undefined)
-      product.quantityInBox = productInfo.quantityInBox;
-    if (productInfo.grade !== undefined) product.grade = productInfo.grade;
-    if (productInfo.isFeatured !== undefined)
-      product.isFeatured = productInfo.isFeatured;
-    if (productInfo.isOrganic !== undefined)
-      product.isOrganic = productInfo.isOrganic;
-    if (productInfo.certifications !== undefined)
-      product.certifications = productInfo.certifications;
-    if (productInfo.supplierReference !== undefined)
-      product.supplierReference = productInfo.supplierReference;
-    if (productInfo.producedAt !== undefined)
-      product.producedAt = new Date(productInfo.producedAt);
-    if (productInfo.expiryDate !== undefined)
-      product.expiryDate = new Date(productInfo.expiryDate);
-    if (productInfo.minOrderQuantity !== undefined)
-      product.minOrderQuantity = productInfo.minOrderQuantity;
-    if (productInfo.costPrice !== undefined)
-      product.costPrice = productInfo.costPrice;
+    product.name = productInfo.name;
+    product.sku = productInfo.sku;
+    product.category = productInfo.category;
+    product.grade = productInfo.grade;
+    product.status = productInfo.status;
+    product.wholesale = productInfo.wholesale;
+    product.retail = productInfo.retail;
+    product.weight = productInfo.weight;
+    product.size = productInfo.size;
+    product.isFeatured = productInfo.isFeatured;
+    product.isOrganic = productInfo.isOrganic;
   }
 }

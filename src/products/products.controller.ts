@@ -87,6 +87,26 @@ export class ProductsController {
     };
   }
 
+  @Get("list")
+  @ApiOperation({
+    summary: "Get all products basic",
+    description: "Retrieve all products with only id and name fields",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Products retrieved successfully",
+  })
+  public async getAllProductsBasic(): Promise<
+    IResponse<Pick<Product, "id" | "name">[]>
+  > {
+    const products = await this.productsService.getAllProductsBasic();
+
+    return {
+      message: "Products loaded successfully",
+      data: products,
+    };
+  }
+
   @Get("product/:id")
   @ApiOperation({
     summary: "Get single product",
