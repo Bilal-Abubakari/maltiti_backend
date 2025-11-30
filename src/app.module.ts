@@ -28,7 +28,7 @@ import { UploadModule } from "./upload/upload.module";
           host: configService.get<string>("TRANSPORT_HOST"),
           port: configService.get<number>("TRANSPORT_PORT"),
           auth: {
-            user: configService.get<string>("TRANSPORT_USERNAME"),
+            user: configService.get<string>("TRANSPORT_USER"),
             pass: configService.get<string>("TRANSPORT_PASSWORD"),
           },
         },
@@ -36,7 +36,9 @@ import { UploadModule } from "./upload/upload.module";
           from: '"No Reply" <info@maltitiaenterprise.com',
         },
         template: {
-          dir: join(__dirname, "templates"),
+          dir: __dirname.includes("dist")
+            ? join(__dirname, "..", "templates")
+            : join(__dirname, "templates"),
           adapter: new HandlebarsAdapter(),
           options: {
             strict: true,

@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -10,15 +12,13 @@ import {
   Query,
   Res,
   UseGuards,
-  HttpCode,
-  HttpStatus,
 } from "@nestjs/common";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { ProductsService } from "./products.service";
@@ -26,13 +26,13 @@ import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
 import {
-  ProductQueryDto,
   ExportProductQueryDto,
+  ProductQueryDto,
 } from "../dto/productQuery.dto";
 import {
+  BestProductsResponseDto,
   ProductResponseDto,
   ProductsPaginationResponseDto,
-  BestProductsResponseDto,
 } from "../dto/productResponse.dto";
 import { Product } from "../entities/Product.entity";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
@@ -141,7 +141,7 @@ export class ProductsController {
   }
 
   @UseGuards(CookieAuthGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Put("edit-product/:id")
   @ApiBearerAuth()
   @ApiOperation({

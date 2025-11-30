@@ -87,7 +87,7 @@ export class AuthenticationController {
     // Set access token in HTTP-only cookie (15 minutes expiry)
     response.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none",
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
@@ -95,7 +95,7 @@ export class AuthenticationController {
     // Set refresh token in HTTP-only cookie (1 day expiry)
     response.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
@@ -204,8 +204,8 @@ export class AuthenticationController {
 
   @UsePipes(new ValidationPipe())
   @Post("create-admin")
-  @UseGuards(CookieAuthGuard, RolesGuard)
-  @Roles([Role.Admin])
+  @UseGuards(CookieAuthGuard)
+  @Roles([Role.SuperAdmin])
   public async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
   ): Promise<IResponse<User>> {

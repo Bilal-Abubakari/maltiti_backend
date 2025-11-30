@@ -24,6 +24,8 @@ import { Role } from "../enum/role.enum";
 import { CreateAdminDto } from "../dto/createAdmin.dto";
 import { generateRandomPassword } from "../utils/passwordGenerator";
 import { ChangePasswordDto } from "../dto/changePassword.dto";
+import { UpdateUserDto } from "../dto/updateUser.dto";
+import { Status } from "../enum/status.enum";
 
 @Injectable()
 export class UsersService {
@@ -347,7 +349,7 @@ export class UsersService {
     return { user: savedUser, password: generatedPassword };
   }
 
-  public async sendAdminAccountEmail(
+  private async sendAdminAccountEmail(
     email: string,
     name: string,
     password: string,
@@ -361,9 +363,9 @@ export class UsersService {
         name: name,
         email: email,
         password: password,
-        url: this.configService.get<string>("FRONTEND_URL"),
+        url: this.configService.get<string>("FRONTEND_URL_ADMIN"),
         subject: "Your Admin Account Has Been Created",
-        body: `An administrator has created an account for you on the Maltiti Admin Portal. Below are your login credentials:`,
+        body: `Your administrator has created an account for you on the Maltiti Admin Portal. Below are your login credentials:`,
         action: "Login to Portal",
       },
     });
@@ -413,5 +415,47 @@ export class UsersService {
     user.updatedAt = new Date();
 
     return await this.userRepository.save(user);
+  }
+
+  public async findAll(): Promise<User[]> {
+    return this.userRepository.find();
+  }
+
+  public async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    Object.assign(user, updateUserDto);
+    user.updatedAt = new Date();
+    return this.userRepository.save(user);
+  }
+
+  public async remove(id: string): Promise<void> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    await this.userRepository.remove(user);
+  }
+
+  public async changeStatus(id: string, status: Status): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    user.status = status;
+    user.updatedAt = new Date();
+    return this.userRepository.save(user);
+  }
+
+  public async changeRole(id: string, userType: Role): Promise<User> {
+    const user = await this.findOne(id);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    user.userType = userType;
+    user.updatedAt = new Date();
+    return this.userRepository.save(user);
   }
 }

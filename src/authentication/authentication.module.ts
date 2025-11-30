@@ -3,7 +3,6 @@ import { AuthenticationController } from "./authentication.controller";
 import { AuthenticationService } from "./authentication.service";
 import { PassportModule } from "@nestjs/passport";
 import { JwtModule } from "@nestjs/jwt";
-import { UsersModule } from "../users/users.module";
 import { UsersService } from "../users/users.service";
 import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
 import * as process from "process";
@@ -13,14 +12,17 @@ import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
 import { JwtStrategy } from "./strategy/jwt.strategy";
 import { NotificationService } from "../notification/notification.service";
 import { CookieAuthGuard } from "./guards/cookie-auth.guard";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { User } from "../entities/User.entity";
+import { Verification } from "../entities/Verification.entity";
 
 @Module({
   imports: [
-    UsersModule,
+    TypeOrmModule.forFeature([User, Verification]),
     ConfigModule.forRoot(),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
-      secret: String(process.env.JWT_SECRET),
+      secret: process.env.JWT_SECRET || "secret",
       signOptions: { expiresIn: "1h" },
     }),
   ],
