@@ -51,7 +51,7 @@ export class SeederService implements OnModuleInit {
       const superAdmin = new User();
       superAdmin.email = superAdminEmail;
       superAdmin.name = superAdminName;
-      superAdmin.userType = Role.Admin;
+      superAdmin.userType = Role.SuperAdmin;
       superAdmin.emailVerifiedAt = new Date();
       superAdmin.mustChangePassword = false;
       superAdmin.createdAt = new Date();

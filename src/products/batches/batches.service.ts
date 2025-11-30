@@ -40,7 +40,6 @@ export class BatchesService {
   public async getAllBatches(): Promise<Batch[]> {
     return this.batchRepository.find({
       where: { deletedAt: IsNull() },
-      relations: ["products"],
       order: { createdAt: "DESC" },
     });
   }
