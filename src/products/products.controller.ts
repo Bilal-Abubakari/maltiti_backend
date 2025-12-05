@@ -39,6 +39,7 @@ import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { Response } from "express";
 import { NotFoundException } from "@nestjs/common/exceptions";
+import { LightProduct } from "../interfaces/product-light.model";
 
 @ApiTags("Products")
 @Controller("products")
@@ -96,9 +97,7 @@ export class ProductsController {
     status: 200,
     description: "Products retrieved successfully",
   })
-  public async getAllProductsBasic(): Promise<
-    IResponse<Pick<Product, "id" | "name">[]>
-  > {
+  public async getAllProductsBasic(): Promise<IResponse<LightProduct[]>> {
     const products = await this.productsService.getAllProductsBasic();
 
     return {
