@@ -7,6 +7,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Query,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -14,13 +15,15 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from "@nestjs/swagger";
 import { CookieAuthGuard } from "../../authentication/guards/cookie-auth.guard";
 import { Roles } from "../../authentication/guards/roles/roles.decorator";
 import { Role } from "../../enum/role.enum";
 import { BatchesService } from "./batches.service";
-import { IResponse } from "../../interfaces/general";
+import { IPaginatedResponse, IResponse } from "../../interfaces/general";
 import { CreateBatchDto } from "../../dto/createBatch.dto";
+import { BatchQueryDto } from "../../dto/batchQuery.dto";
 import { Batch } from "../../entities/Batch.entity";
 
 @ApiTags("Batches")
@@ -58,18 +61,39 @@ export class BatchesController {
   @Get("")
   @ApiOperation({
     summary: "Get all batches",
-    description: "Retrieve all product batches",
+    description: "Retrieve all product batches with pagination and filters",
   })
+  @ApiQuery({ type: BatchQueryDto })
   @ApiResponse({
     status: 200,
     description: "Batches retrieved successfully",
+    schema: {
+      type: "object",
+      properties: {
+        message: { type: "string" },
+        data: {
+          type: "object",
+          properties: {
+            batches: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Batch" },
+            },
+            total: { type: "number" },
+            page: { type: "number" },
+            limit: { type: "number" },
+          },
+        },
+      },
+    },
   })
-  public async getAllBatches(): Promise<IResponse<Batch[]>> {
-    const batches = await this.batchesService.getAllBatches();
+  public async getAllBatches(
+    @Query() query: BatchQueryDto,
+  ): Promise<IPaginatedResponse<Batch>> {
+    const result = await this.batchesService.getAllBatches(query);
 
     return {
       message: "Batches loaded successfully",
-      data: batches,
+      data: result,
     };
   }
 
@@ -94,6 +118,32 @@ export class BatchesController {
     return {
       message: "Batch loaded successfully",
       data: batch,
+    };
+  }
+
+  @Get("product/:productId")
+  @ApiOperation({
+    summary: "Get batches for a product",
+    description: "Retrieve all batches associated with a specific product",
+  })
+  @ApiParam({
+    name: "productId",
+    description: "Product UUID",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Batches retrieved successfully",
+  })
+  @ApiResponse({ status: 404, description: "Product not found" })
+  public async getBatchesByProduct(
+    @Param("productId") productId: string,
+  ): Promise<IResponse<Batch[]>> {
+    const batches = await this.batchesService.getBatchesByProduct(productId);
+
+    return {
+      message: "Batches for product loaded successfully",
+      data: batches,
     };
   }
 }

@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
@@ -50,17 +50,23 @@ export class ProductResponseDto {
   @ApiProperty({ example: "https://example.com/primary-image.jpg" })
   public image: string;
 
-  @ApiProperty({ example: 45.0 })
+  @ApiProperty({
+    description: "Wholesale price per unit",
+    example: 15.0,
+  })
   public wholesale: number;
 
-  @ApiProperty({ example: 60.0 })
+  @ApiProperty({
+    description: "Retail price per unit",
+    example: 20.0,
+  })
   public retail: number;
 
-  @ApiProperty({ example: 150 })
-  public stockQuantity: number;
-
-  @ApiProperty({ example: 540.0 })
-  public inBoxPrice: number;
+  @ApiPropertyOptional({
+    description: "Price for a full box",
+    example: 180.0,
+  })
+  public inBoxPrice?: number;
 
   @ApiProperty({ example: 12 })
   public quantityInBox: number;
