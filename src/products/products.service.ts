@@ -1,15 +1,23 @@
-import { ConflictException, Injectable, NotFoundException, } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { Product } from "../entities/Product.entity";
 import { CreateProductDto } from "../dto/createProduct.dto";
 import { UpdateProductDto } from "../dto/updateProduct.dto";
-import { ExportProductQueryDto, ProductQueryDto, } from "../dto/productQuery.dto";
+import {
+  ExportProductQueryDto,
+  ProductQueryDto,
+} from "../dto/productQuery.dto";
 import { ProductStatus } from "../enum/product-status.enum";
 import { IPagination } from "../interfaces/general";
 import { BestProductsResponseDto } from "../dto/productResponse.dto";
 import * as ExcelJS from "exceljs";
 import { Batch } from "../entities/Batch.entity";
+import { LightProduct } from "../interfaces/product-light.model";
 
 @Injectable()
 export class ProductsService {
@@ -513,10 +521,10 @@ export class ProductsService {
   /**
    * Get all products with only id and name fields
    */
-  public async getAllProductsBasic(): Promise<{ id: string; name: string }[]> {
+  public async getAllProductsBasic(): Promise<LightProduct[]> {
     return await this.productsRepository.find({
       where: { deletedAt: IsNull() },
-      select: ["id", "name"],
+      select: ["id", "name", "retail", "wholesale"],
     });
   }
 
