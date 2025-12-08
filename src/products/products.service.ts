@@ -41,7 +41,7 @@ export class ProductsService {
       category,
       status,
       grade,
-      packagingSize,
+      unitOfMeasurement,
       isFeatured,
       isOrganic,
       minPrice,
@@ -81,9 +81,11 @@ export class ProductsService {
       queryBuilder.andWhere("product.grade = :grade", { grade });
     }
 
-    // Filter by packaging size
-    if (packagingSize) {
-      queryBuilder.andWhere("product.size = :packagingSize", { packagingSize });
+    // Filter by unit of measurement
+    if (unitOfMeasurement) {
+      queryBuilder.andWhere("product.unitOfMeasurement = :unitOfMeasurement", {
+        unitOfMeasurement,
+      });
     }
 
     // Filter by featured
@@ -160,7 +162,7 @@ export class ProductsService {
       category,
       status,
       grade,
-      packagingSize,
+      unitOfMeasurement,
       isFeatured,
       isOrganic,
       minPrice,
@@ -198,9 +200,11 @@ export class ProductsService {
       queryBuilder.andWhere("product.grade = :grade", { grade });
     }
 
-    // Filter by packaging size
-    if (packagingSize) {
-      queryBuilder.andWhere("product.size = :packagingSize", { packagingSize });
+    // Filter by unit of measurement
+    if (unitOfMeasurement) {
+      queryBuilder.andWhere("product.unitOfMeasurement = :unitOfMeasurement", {
+        unitOfMeasurement,
+      });
     }
 
     // Filter by featured
@@ -258,7 +262,7 @@ export class ProductsService {
       { header: "Wholesale Price", key: "wholesale", width: 15 },
       { header: "Retail Price", key: "retail", width: 15 },
       { header: "Weight", key: "weight", width: 10 },
-      { header: "Packaging Size", key: "size", width: 15 },
+      { header: "Unit of Measurement", key: "unitOfMeasurement", width: 20 },
       { header: "Is Featured", key: "isFeatured", width: 12 },
       { header: "Is Organic", key: "isOrganic", width: 12 },
       { header: "Rating", key: "rating", width: 10 },
@@ -281,7 +285,7 @@ export class ProductsService {
         wholesale: product.wholesale,
         retail: product.retail,
         weight: product.weight || "N/A",
-        size: product.size || "N/A",
+        unitOfMeasurement: product.unitOfMeasurement || "N/A",
         isFeatured: product.isFeatured ? "Yes" : "No",
         isOrganic: product.isOrganic ? "Yes" : "No",
         rating: product.rating,
@@ -550,7 +554,7 @@ export class ProductsService {
     product.wholesale = productInfo.wholesale;
     product.retail = productInfo.retail;
     product.weight = productInfo.weight;
-    product.size = productInfo.size;
+    product.unitOfMeasurement = productInfo.unitOfMeasurement;
     product.isFeatured = productInfo.isFeatured;
     product.isOrganic = productInfo.isOrganic;
   }

@@ -15,9 +15,11 @@ import { UpdateSaleStatusDto } from "../dto/updateSaleStatus.dto";
 import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
+import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { SaleStatus } from "../enum/sale-status.enum";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { BatchesService } from "../products/batches/batches.service";
+import { InvoiceService } from "./invoice.service";
 import { IPagination } from "../interfaces/general";
 
 @Injectable()
@@ -32,6 +34,7 @@ export class SalesService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     private readonly batchesService: BatchesService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   public async createSale(createSaleDto: CreateSaleDto): Promise<Sale> {
@@ -383,6 +386,13 @@ export class SalesService {
 
     sale.deletedAt = new Date();
     return this.saleRepository.save(sale);
+  }
+
+  public async generateInvoice(
+    saleId: string,
+    invoiceDto: GenerateInvoiceDto,
+  ): Promise<Buffer> {
+    return this.invoiceService.generateInvoice(saleId, invoiceDto);
   }
 
   private async validateAndDeductStock(

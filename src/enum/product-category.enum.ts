@@ -4,10 +4,10 @@ export enum ProductCategory {
   COSMETICS = "Cosmetics",
   SHEA_SOAP = "Shea Soap",
   POWDERED_SOAP = "Powdered Soap",
-  DAWADAWA_TEA = "Dawadawa Tea",
+  DAWADAWA = "Dawadawa",
   ESSENTIAL_OILS = "Essential Oils",
   HAIR_OIL = "Hair Oil",
   GRAINS = "Grains",
   LEGUMES = "Legumes",
-  OTHER = "other",
+  OTHER = "Other",
 }

@@ -8,8 +8,10 @@ import {
   Body,
   Param,
   Query,
+  Res,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { Response } from "express";
 import { SalesService } from "./sales.service";
 import { CreateSaleDto } from "../dto/createSale.dto";
 import { UpdateSaleDto } from "../dto/updateSale.dto";
@@ -17,6 +19,7 @@ import { UpdateSaleStatusDto } from "../dto/updateSaleStatus.dto";
 import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
+import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { Sale } from "../entities/Sale.entity";
 import { IPaginatedResponse } from "../interfaces/general";
 
@@ -91,6 +94,30 @@ export class SalesController {
   @ApiResponse({ status: 200, type: Sale })
   public async getSaleDetails(@Param("id") saleId: string): Promise<Sale> {
     return this.salesService.getSaleDetails(saleId);
+  }
+
+  @Post(":id/invoice")
+  @ApiOperation({ summary: "Generate invoice PDF for a sale" })
+  @ApiResponse({
+    status: 200,
+    description: "Invoice PDF generated successfully",
+  })
+  public async generateInvoice(
+    @Param("id") saleId: string,
+    @Body() invoiceDto: GenerateInvoiceDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdfBuffer = await this.salesService.generateInvoice(
+      saleId,
+      invoiceDto,
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=invoice-${saleId}.pdf`,
+    );
+    res.send(pdfBuffer);
   }
 
   @Delete(":id")

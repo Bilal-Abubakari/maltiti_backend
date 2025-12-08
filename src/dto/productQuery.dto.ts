@@ -12,7 +12,7 @@ import {
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
-import { PackagingSize } from "../enum/packaging-size.enum";
+import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
 
 /**
  * DTO for querying/filtering products with pagination
@@ -79,13 +79,13 @@ export class ProductQueryDto {
   public grade?: ProductGrade;
 
   @ApiPropertyOptional({
-    description: "Filter by packaging size",
-    enum: PackagingSize,
-    example: PackagingSize.SIZE_1KG,
+    description: "Filter by unit of measurement",
+    enum: UnitOfMeasurement,
+    example: UnitOfMeasurement.KILOGRAM,
   })
   @IsOptional()
-  @IsEnum(PackagingSize)
-  public packagingSize?: PackagingSize;
+  @IsEnum(UnitOfMeasurement)
+  public unitOfMeasurement?: UnitOfMeasurement;
 
   @ApiPropertyOptional({
     description: "Filter by featured products",
@@ -191,13 +191,13 @@ export class ExportProductQueryDto {
   public grade?: ProductGrade;
 
   @ApiPropertyOptional({
-    description: "Filter by packaging size",
-    enum: PackagingSize,
-    example: PackagingSize.SIZE_1KG,
+    description: "Filter by unit of measurement",
+    enum: UnitOfMeasurement,
+    example: UnitOfMeasurement.KILOGRAM,
   })
   @IsOptional()
-  @IsEnum(PackagingSize)
-  public packagingSize?: PackagingSize;
+  @IsEnum(UnitOfMeasurement)
+  public unitOfMeasurement?: UnitOfMeasurement;
 
   @ApiPropertyOptional({
     description: "Filter by featured products",
