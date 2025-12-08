@@ -17,7 +17,7 @@ export function generateSKU(
     [ProductCategory.COSMETICS]: "CS",
     [ProductCategory.SHEA_SOAP]: "SS",
     [ProductCategory.POWDERED_SOAP]: "PS",
-    [ProductCategory.DAWADAWA_TEA]: "DT",
+    [ProductCategory.DAWADAWA]: "DT",
     [ProductCategory.ESSENTIAL_OILS]: "EO",
     [ProductCategory.HAIR_OIL]: "HO",
     [ProductCategory.GRAINS]: "GR",

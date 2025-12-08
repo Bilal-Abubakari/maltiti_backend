@@ -11,6 +11,8 @@ import { Cart } from "../entities/Cart.entity";
 import { Checkout } from "../entities/Checkout.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Ingredient } from "../entities/Ingredient.entity";
+import { Sale } from "../entities/Sale.entity";
+import { Customer } from "../entities/Customer.entity";
 
 @Module({
   imports: [
@@ -36,10 +38,11 @@ import { Ingredient } from "../entities/Ingredient.entity";
           Cart,
           Checkout,
           Ingredient,
+          Sale,
+          Customer,
         ],
         synchronize: false,
         autoLoadEntities: false,
-        migrations: ["src/migrations/*.sql"],
       }),
       inject: [ConfigService],
     }),

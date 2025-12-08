@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
-import { PackagingSize } from "../enum/packaging-size.enum";
+import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
 import { Ingredient } from "../entities/Ingredient.entity";
 
 /**
@@ -24,6 +24,12 @@ export class ProductResponseDto {
   @ApiProperty({ example: "1kg" })
   public weight: string;
 
+  @ApiProperty({
+    enum: UnitOfMeasurement,
+    example: UnitOfMeasurement.KILOGRAM,
+  })
+  public unitOfMeasurement: UnitOfMeasurement;
+
   @ApiProperty({ enum: ProductCategory, example: ProductCategory.SHEA_BUTTER })
   public category: ProductCategory;
 
@@ -35,9 +41,6 @@ export class ProductResponseDto {
 
   @ApiProperty({ enum: ProductStatus, example: ProductStatus.ACTIVE })
   public status: ProductStatus;
-
-  @ApiProperty({ enum: PackagingSize, example: PackagingSize.SIZE_1KG })
-  public size: PackagingSize;
 
   @ApiProperty({
     example: [

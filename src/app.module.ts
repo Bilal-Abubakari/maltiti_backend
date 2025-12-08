@@ -14,6 +14,8 @@ import { CheckoutModule } from "./checkout/checkout.module";
 import { NotificationService } from "./notification/notification.service";
 import { DatabaseModule } from "./database/database.module";
 import { UploadModule } from "./upload/upload.module";
+import { SalesModule } from "./sales/sales.module";
+import { CustomerModule } from "./customer/customer.module";
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { UploadModule } from "./upload/upload.module";
     CartModule,
     CheckoutModule,
     UploadModule,
+    SalesModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [AppService, NotificationService],

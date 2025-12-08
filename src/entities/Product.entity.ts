@@ -12,7 +12,7 @@ import {
 } from "typeorm";
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
-import { PackagingSize } from "../enum/packaging-size.enum";
+import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { Batch } from "./Batch.entity";
 import { Ingredient } from "./Ingredient.entity";
@@ -46,6 +46,13 @@ export class Product {
 
   @Column({
     type: "enum",
+    enum: UnitOfMeasurement,
+    nullable: true,
+  })
+  public unitOfMeasurement: UnitOfMeasurement;
+
+  @Column({
+    type: "enum",
     enum: ProductCategory,
     default: ProductCategory.OTHER,
   })
@@ -62,13 +69,6 @@ export class Product {
   })
   @Index()
   public status: ProductStatus;
-
-  @Column({
-    type: "enum",
-    enum: PackagingSize,
-    nullable: true,
-  })
-  public size: PackagingSize;
 
   @Column({ type: "simple-array", nullable: true })
   public images: string[];

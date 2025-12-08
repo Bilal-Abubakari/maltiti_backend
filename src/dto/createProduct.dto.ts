@@ -15,7 +15,7 @@ import { Type } from "class-transformer";
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
-import { PackagingSize } from "../enum/packaging-size.enum";
+import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
 
 /**
  * DTO for creating a new product
@@ -49,11 +49,20 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({
     description: "Product weight description",
-    example: "1kg",
+    example: "1",
   })
   @IsOptional()
   @IsString()
   public weight?: string;
+
+  @ApiPropertyOptional({
+    description: "Unit of measurement for the product weight",
+    enum: UnitOfMeasurement,
+    example: UnitOfMeasurement.KILOGRAM,
+  })
+  @IsOptional()
+  @IsEnum(UnitOfMeasurement)
+  public unitOfMeasurement?: UnitOfMeasurement;
 
   @ApiProperty({
     description: "Product category",
@@ -82,15 +91,6 @@ export class CreateProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   public status?: ProductStatus = ProductStatus.ACTIVE;
-
-  @ApiPropertyOptional({
-    description: "Packaging size",
-    enum: PackagingSize,
-    example: PackagingSize.SIZE_1KG,
-  })
-  @IsOptional()
-  @IsEnum(PackagingSize)
-  public size?: PackagingSize;
 
   @ApiPropertyOptional({
     description: "Product images URLs",
