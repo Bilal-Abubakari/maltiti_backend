@@ -14,13 +14,13 @@ import { CreateProductDto } from "./createProduct.dto";
  * DTO for creating a new batch
  */
 export class CreateBatchDto {
-  @ApiProperty({
-    description: "Unique batch number",
-    example: "BATCH-2024-001",
+  @ApiPropertyOptional({
+    description: "Unique batch number (auto-generated if not provided)",
+    example: "SHKR-251209-001",
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  public batchNumber: string;
+  public batchNumber?: string;
 
   @ApiProperty({
     description: "ID of the product this batch belongs to",

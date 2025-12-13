@@ -21,17 +21,48 @@ export class BatchesService {
     private readonly productRepository: Repository<Product>,
   ) {}
 
-  public async createBatch(batchInfo: CreateBatchDto): Promise<Batch> {
-    const existingBatch = await this.batchRepository.findOne({
-      where: { batchNumber: batchInfo.batchNumber },
-    });
+  /**
+   * Generates a unique batch number based on product SKU and production date
+   * Format: {PRODUCT_SKU}-{YYMMDD}-{SEQUENCE}
+   * Example: SHKR-251209-001
+   */
+  private async generateBatchNumber(
+    product: Product,
+    productionDate?: Date,
+  ): Promise<string> {
+    // Use product SKU or fallback to first 4 letters of product name
+    const productPrefix = product.sku
+      ? product.sku.substring(0, 8).toUpperCase()
+      : product.name.substring(0, 4).toUpperCase().replace(/\s/g, "");
 
-    if (existingBatch) {
-      throw new ConflictException(
-        `Batch with number "${batchInfo.batchNumber}" already exists`,
-      );
+    // Use production date or current date
+    const dateToUse = productionDate || new Date();
+    const dateStr = dateToUse.toISOString().slice(2, 10).replace(/-/g, ""); // Format: YYMMDD
+
+    // Find the highest sequence number for this product and date combination
+    const prefix = `${productPrefix}-${dateStr}`;
+    const existingBatches = await this.batchRepository
+      .createQueryBuilder("batch")
+      .where("batch.batchNumber LIKE :prefix", { prefix: `${prefix}-%` })
+      .orderBy("batch.batchNumber", "DESC")
+      .getMany();
+
+    let sequence = 1;
+    if (existingBatches.length > 0) {
+      // Extract the sequence number from the last batch
+      const lastBatch = existingBatches[0];
+      const lastSequence = lastBatch.batchNumber.split("-").pop();
+      sequence = parseInt(lastSequence || "0", 10) + 1;
     }
 
+    // Format sequence with leading zeros (001, 002, etc.)
+    const sequenceStr = sequence.toString().padStart(3, "0");
+
+    return `${prefix}-${sequenceStr}`;
+  }
+
+  public async createBatch(batchInfo: CreateBatchDto): Promise<Batch> {
+    // Fetch the product first
     const product = await this.productRepository.findOne({
       where: { id: batchInfo.productId },
     });
@@ -42,8 +73,29 @@ export class BatchesService {
       );
     }
 
+    // Generate batch number if not provided
+    let batchNumber = batchInfo.batchNumber;
+    if (!batchNumber) {
+      const productionDate = batchInfo.productionDate
+        ? new Date(batchInfo.productionDate)
+        : undefined;
+      batchNumber = await this.generateBatchNumber(product, productionDate);
+    } else {
+      // If batch number is provided manually, check for duplicates
+      const existingBatch = await this.batchRepository.findOne({
+        where: { batchNumber },
+      });
+
+      if (existingBatch) {
+        throw new ConflictException(
+          `Batch with number "${batchNumber}" already exists`,
+        );
+      }
+    }
+
     const batch = this.batchRepository.create({
       ...batchInfo,
+      batchNumber,
       product,
       productionDate: batchInfo.productionDate
         ? new Date(batchInfo.productionDate)
@@ -90,7 +142,15 @@ export class BatchesService {
 
     const [items, totalItems] = await this.batchRepository.findAndCount({
       where,
-      relations: productId ? ["product"] : [],
+      relations: ["product"],
+      select: {
+        product: {
+          id: true,
+          name: true,
+          weight: true,
+          unitOfMeasurement: true,
+        },
+      },
       order: { [sortBy]: sortOrder },
       take: limit,
       skip: (page - 1) * limit,
@@ -108,20 +168,18 @@ export class BatchesService {
     const batch = await this.batchRepository.findOne({
       where: { id, deletedAt: IsNull() },
       relations: ["product"],
+      select: {
+        product: {
+          id: true,
+          name: true,
+        },
+      },
     });
 
     if (!batch) {
       throw new NotFoundException(`Batch with ID "${id}" not found`);
     }
 
-    return batch;
-  }
-
-  public async ensureBatchExists(id: string): Promise<Batch> {
-    const batch = await this.batchRepository.findOne({ where: { id } });
-    if (!batch) {
-      throw new NotFoundException(`Batch with ID "${id}" not found`);
-    }
     return batch;
   }
 
@@ -136,6 +194,13 @@ export class BatchesService {
 
     return this.batchRepository.find({
       where: { product: { id: productId }, deletedAt: IsNull() },
+      relations: ["product"],
+      select: {
+        product: {
+          id: true,
+          name: true,
+        },
+      },
       order: { createdAt: "DESC" },
     });
   }

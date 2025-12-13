@@ -10,14 +10,15 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiParam,
   ApiBody,
+  ApiOkResponse,
 } from "@nestjs/swagger";
 import { UsersService } from "./users.service";
 import { UpdateUserDto } from "../dto/updateUser.dto";
 import { ChangeStatusDto } from "../dto/changeStatus.dto";
 import { ChangeRoleDto } from "../dto/changeRole.dto";
+import { UserResponseDto } from "../dto/userResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { IResponse } from "../interfaces/general";
@@ -38,19 +39,10 @@ export class UsersController {
    * @returns A response containing an array of users.
    */
   @ApiOperation({ summary: "Get all users" })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "Users retrieved successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: {
-          type: "array",
-          items: { $ref: "#/components/schemas/User" },
-        },
-      },
-    },
+    type: UserResponseDto,
+    isArray: true,
   })
   @UseGuards(CookieAuthGuard)
   @Roles([Role.SuperAdmin])
@@ -70,16 +62,9 @@ export class UsersController {
    */
   @ApiOperation({ summary: "Get a user by ID" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "User retrieved successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: { $ref: "#/components/schemas/User" },
-      },
-    },
+    type: UserResponseDto,
   })
   @Get(":id")
   @Roles([Role.SuperAdmin])
@@ -100,16 +85,9 @@ export class UsersController {
   @ApiOperation({ summary: "Update a user" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
   @ApiBody({ type: UpdateUserDto })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "User updated successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: { $ref: "#/components/schemas/User" },
-      },
-    },
+    type: UserResponseDto,
   })
   @Patch(":id")
   @Roles([Role.SuperAdmin])
@@ -131,21 +109,8 @@ export class UsersController {
    */
   @ApiOperation({ summary: "Delete a user" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "User deleted successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: {
-          type: "object",
-          properties: {
-            message: { type: "string" },
-          },
-        },
-      },
-    },
   })
   @Delete(":id")
   @Roles([Role.SuperAdmin])
@@ -168,16 +133,9 @@ export class UsersController {
   @ApiOperation({ summary: "Change user status" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
   @ApiBody({ type: ChangeStatusDto })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "User status changed successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: { $ref: "#/components/schemas/User" },
-      },
-    },
+    type: UserResponseDto,
   })
   @Patch(":id/status")
   @Roles([Role.SuperAdmin])
@@ -204,16 +162,9 @@ export class UsersController {
   @ApiOperation({ summary: "Change user role" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
   @ApiBody({ type: ChangeRoleDto })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: "User role changed successfully",
-    schema: {
-      type: "object",
-      properties: {
-        message: { type: "string" },
-        data: { $ref: "#/components/schemas/User" },
-      },
-    },
+    type: UserResponseDto,
   })
   @Patch(":id/role")
   @Roles([Role.SuperAdmin])
