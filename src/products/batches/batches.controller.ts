@@ -24,6 +24,7 @@ import { BatchesService } from "./batches.service";
 import { IPaginatedResponse, IResponse } from "../../interfaces/general";
 import { CreateBatchDto } from "../../dto/createBatch.dto";
 import { BatchQueryDto } from "../../dto/batchQuery.dto";
+import { BatchResponseDto } from "../../dto/batchResponse.dto";
 import { Batch } from "../../entities/Batch.entity";
 
 @ApiTags("Batches")
@@ -42,6 +43,7 @@ export class BatchesController {
   @ApiResponse({
     status: 201,
     description: "Batch created successfully",
+    type: BatchResponseDto,
   })
   @ApiResponse({ status: 400, description: "Invalid input data" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
@@ -76,7 +78,7 @@ export class BatchesController {
           properties: {
             batches: {
               type: "array",
-              items: { $ref: "#/components/schemas/Batch" },
+              items: { $ref: "#/components/schemas/BatchResponseDto" },
             },
             total: { type: "number" },
             page: { type: "number" },
@@ -110,6 +112,7 @@ export class BatchesController {
   @ApiResponse({
     status: 200,
     description: "Batch retrieved successfully",
+    type: BatchResponseDto,
   })
   @ApiResponse({ status: 404, description: "Batch not found" })
   public async getBatch(@Param("id") id: string): Promise<IResponse<Batch>> {
@@ -134,6 +137,7 @@ export class BatchesController {
   @ApiResponse({
     status: 200,
     description: "Batches retrieved successfully",
+    type: [BatchResponseDto],
   })
   @ApiResponse({ status: 404, description: "Product not found" })
   public async getBatchesByProduct(
