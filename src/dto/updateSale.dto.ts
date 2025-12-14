@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsArray,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,11 +9,12 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
+import { SaleStatus } from "../enum/sale-status.enum";
 
 class BatchAllocationDto {
   @ApiPropertyOptional()
   @IsString()
-  public batch_id: string;
+  public batchId: string;
 
   @ApiPropertyOptional()
   @IsNumber()
@@ -23,36 +25,44 @@ class UpdateSaleLineItemDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  public product_id?: string;
+  public productId?: string;
 
   @ApiPropertyOptional({ type: [BatchAllocationDto] })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchAllocationDto)
-  public batch_allocations?: BatchAllocationDto[];
+  public batchAllocations?: BatchAllocationDto[];
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
-  public requested_quantity?: number;
+  public requestedQuantity?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
-  public custom_price?: number;
+  public customPrice?: number;
 }
 
 export class UpdateSaleDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()
-  public customer_id?: string;
+  public customerId?: string;
+
+  @ApiPropertyOptional({
+    enum: SaleStatus,
+    default: SaleStatus.INVOICE_REQUESTED,
+  })
+  @IsOptional()
+  @IsEnum(SaleStatus)
+  public status?: SaleStatus;
 
   @ApiPropertyOptional({ type: [UpdateSaleLineItemDto] })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UpdateSaleLineItemDto)
-  public line_items?: UpdateSaleLineItemDto[];
+  public lineItems?: UpdateSaleLineItemDto[];
 }

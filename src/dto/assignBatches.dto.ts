@@ -13,7 +13,7 @@ class BatchAllocationDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  public batch_id: string;
+  public batchId: string;
 
   @ApiProperty()
   @IsNumber()
@@ -23,11 +23,11 @@ class BatchAllocationDto {
 export class AssignBatchesDto {
   @ApiProperty()
   @IsUUID()
-  public product_id: string;
+  public productId: string;
 
   @ApiProperty({ type: [BatchAllocationDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchAllocationDto)
-  public batch_allocations: BatchAllocationDto[];
+  public batchAllocations: BatchAllocationDto[];
 }

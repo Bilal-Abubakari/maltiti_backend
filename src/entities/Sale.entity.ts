@@ -33,7 +33,7 @@ export class Sale {
   public status: SaleStatus;
 
   @Column({ type: "json" })
-  public line_items: SaleLineItem[];
+  public lineItems: SaleLineItem[];
 
   @CreateDateColumn()
   public createdAt: Date;

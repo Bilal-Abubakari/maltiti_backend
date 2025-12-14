@@ -11,7 +11,7 @@ export class ListSalesDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  public customer_id?: string;
+  public customerId?: string;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()

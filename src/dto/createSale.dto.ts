@@ -16,7 +16,7 @@ class BatchAllocationDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  public batch_id: string;
+  public batchId: string;
 
   @ApiProperty()
   @IsNumber()
@@ -26,28 +26,28 @@ class BatchAllocationDto {
 class SaleLineItemDto {
   @ApiProperty()
   @IsUUID()
-  public product_id: string;
+  public productId: string;
 
   @ApiProperty({ type: [BatchAllocationDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchAllocationDto)
-  public batch_allocations: BatchAllocationDto[];
+  public batchAllocations: BatchAllocationDto[];
 
   @ApiProperty()
   @IsNumber()
-  public requested_quantity: number;
+  public requestedQuantity: number;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
-  public custom_price?: number;
+  public customPrice?: number;
 }
 
 export class CreateSaleDto {
   @ApiProperty()
   @IsUUID()
-  public customer_id: string;
+  public customerId: string;
 
   @ApiPropertyOptional({
     enum: SaleStatus,
@@ -61,5 +61,5 @@ export class CreateSaleDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SaleLineItemDto)
-  public line_items: SaleLineItemDto[];
+  public lineItems: SaleLineItemDto[];
 }

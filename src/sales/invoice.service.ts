@@ -35,9 +35,9 @@ export class InvoiceService {
 
     // Fetch product details for each line item
     const lineItemsWithProducts = await Promise.all(
-      sale.line_items.map(async item => {
+      sale.lineItems.map(async item => {
         const product = await this.productRepository.findOne({
-          where: { id: item.product_id, deletedAt: IsNull() },
+          where: { id: item.productId, deletedAt: IsNull() },
         });
         return { ...item, product };
       }),
@@ -48,7 +48,7 @@ export class InvoiceService {
 
     // Calculate subtotal
     const subtotal = lineItemsWithProducts.reduce(
-      (sum, item) => sum + item.final_price * item.requested_quantity,
+      (sum, item) => sum + item.finalPrice * item.requestedQuantity,
       0,
     );
 
@@ -246,7 +246,7 @@ export class InvoiceService {
       const productName = item.product?.name || "Unknown Product";
       const weight = item.product?.weight || "";
       const description = weight ? `${productName} (${weight})` : productName;
-      const itemTotal = item.final_price * item.requested_quantity;
+      const itemTotal = item.finalPrice * item.requestedQuantity;
 
       // Alternate row background
       if (index % 2 === 0) {
@@ -260,11 +260,11 @@ export class InvoiceService {
         .fillColor("#333333")
         .fontSize(9)
         .text(description, 55, yPosition, { width: 200 })
-        .text(item.requested_quantity.toString(), 270, yPosition, {
+        .text(item.requestedQuantity.toString(), 270, yPosition, {
           width: 60,
           align: "center",
         })
-        .text(`GHS ${item.final_price.toFixed(2)}`, 345, yPosition, {
+        .text(`GHS ${item.finalPrice.toFixed(2)}`, 345, yPosition, {
           width: 80,
           align: "right",
         })
