@@ -1,10 +1,10 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
@@ -39,61 +39,59 @@ export class SalesService {
 
   public async createSale(createSaleDto: CreateSaleDto): Promise<Sale> {
     const {
-      customer_id,
+      customerId,
       status = SaleStatus.INVOICE_REQUESTED,
-      line_items,
+      lineItems,
     } = createSaleDto;
 
     const customer = await this.customerRepository.findOne({
-      where: { id: customer_id, deletedAt: IsNull() },
+      where: { id: customerId, deletedAt: IsNull() },
     });
     if (!customer) {
-      throw new NotFoundException(
-        `Customer with ID "${customer_id}" not found`,
-      );
+      throw new NotFoundException(`Customer with ID "${customerId}" not found`);
     }
 
     // Validate line items
     const validatedLineItems: SaleLineItem[] = [];
-    for (const item of line_items) {
+    for (const item of lineItems) {
       const product = await this.productRepository.findOne({
-        where: { id: item.product_id, deletedAt: IsNull() },
+        where: { id: item.productId, deletedAt: IsNull() },
       });
       if (!product) {
         throw new NotFoundException(
-          `Product with ID "${item.product_id}" not found`,
+          `Product with ID "${item.productId}" not found`,
         );
       }
 
       let totalAllocated = 0;
-      if (item.batch_allocations.length > 0) {
-        for (const alloc of item.batch_allocations) {
+      if (item.batchAllocations.length > 0) {
+        for (const alloc of item.batchAllocations) {
           const batch = await this.batchRepository.findOne({
             where: {
-              id: alloc.batch_id,
-              product: { id: item.product_id },
+              id: alloc.batchId,
+              product: { id: item.productId },
               deletedAt: IsNull(),
             },
           });
           if (!batch) {
             throw new NotFoundException(
-              `Batch with ID "${alloc.batch_id}" not found for product`,
+              `Batch with ID "${alloc.batchId}" not found for product`,
             );
           }
           totalAllocated += alloc.quantity;
         }
       }
 
-      if (totalAllocated > item.requested_quantity) {
+      if (totalAllocated > item.requestedQuantity) {
         throw new BadRequestException(
           "Allocated quantity exceeds requested quantity",
         );
       }
 
-      const finalPrice = item.custom_price ?? product.retail;
+      const finalPrice = item.customPrice ?? product.retail;
       validatedLineItems.push({
         ...item,
-        final_price: finalPrice,
+        finalPrice: finalPrice,
       });
     }
 
@@ -105,7 +103,7 @@ export class SalesService {
     const sale = this.saleRepository.create({
       customer,
       status,
-      line_items: validatedLineItems,
+      lineItems: validatedLineItems,
     });
 
     return this.saleRepository.save(sale);
@@ -124,82 +122,78 @@ export class SalesService {
     }
 
     // Prevent editing if already paid or beyond
-    if (
-      [
-        SaleStatus.PAID,
-        SaleStatus.PACKAGING,
-        SaleStatus.IN_TRANSIT,
-        SaleStatus.DELIVERED,
-      ].includes(sale.status)
-    ) {
-      throw new BadRequestException("Cannot edit sale after payment");
+    if ([SaleStatus.IN_TRANSIT, SaleStatus.DELIVERED].includes(sale.status)) {
+      throw new BadRequestException(
+        "Cannot edit sale that has been delivered or in transit",
+      );
     }
 
-    // Update customer if provided
-    if (updateDto.customer_id) {
+    if (updateDto.customerId) {
+      // Update customer if provided
       const customer = await this.customerRepository.findOne({
-        where: { id: updateDto.customer_id, deletedAt: IsNull() },
+        where: { id: updateDto.customerId, deletedAt: IsNull() },
       });
       if (!customer) {
         throw new NotFoundException(
-          `Customer with ID "${updateDto.customer_id}" not found`,
+          `Customer with ID "${updateDto.customerId}" not found`,
         );
       }
       sale.customer = customer;
     }
 
+    if (updateDto.status) {
+      sale.status = updateDto.status;
+    }
+
     // Update line items if provided
-    if (updateDto.line_items) {
+    if (updateDto.lineItems) {
       const validatedLineItems: SaleLineItem[] = [];
-      for (const item of updateDto.line_items) {
+      for (const item of updateDto.lineItems) {
         const product = await this.productRepository.findOne({
-          where: { id: item.product_id, deletedAt: IsNull() },
+          where: { id: item.productId, deletedAt: IsNull() },
         });
         if (!product) {
           throw new NotFoundException(
-            `Product with ID "${item.product_id}" not found`,
+            `Product with ID "${item.productId}" not found`,
           );
         }
 
         let totalAllocated = 0;
-        const batchAllocations = item.batch_allocations || [];
+        const batchAllocations = item.batchAllocations || [];
         if (batchAllocations.length > 0) {
           for (const alloc of batchAllocations) {
             const batch = await this.batchRepository.findOne({
               where: {
-                id: alloc.batch_id,
-                product: { id: item.product_id },
+                id: alloc.batchId,
+                product: { id: item.productId },
                 deletedAt: IsNull(),
               },
             });
             if (!batch) {
               throw new NotFoundException(
-                `Batch with ID "${alloc.batch_id}" not found for product`,
+                `Batch with ID "${alloc.batchId}" not found for product`,
               );
             }
             totalAllocated += alloc.quantity;
           }
         }
 
-        if (
-          item.requested_quantity &&
-          totalAllocated > item.requested_quantity
-        ) {
+        if (item.requestedQuantity && totalAllocated > item.requestedQuantity) {
           throw new BadRequestException(
             "Allocated quantity exceeds requested quantity",
           );
         }
 
-        const finalPrice = item.custom_price ?? product.retail;
+        const finalPrice = item.customPrice ?? product.retail;
         validatedLineItems.push({
-          product_id: item.product_id,
-          batch_allocations: batchAllocations,
-          requested_quantity: item.requested_quantity,
-          custom_price: item.custom_price,
-          final_price: finalPrice,
+          productId: item.productId,
+          batchAllocations: batchAllocations,
+          requestedQuantity: item.requestedQuantity,
+          customPrice: item.customPrice,
+          finalPrice: finalPrice,
         });
       }
-      sale.line_items = validatedLineItems;
+      sale.lineItems = validatedLineItems;
     }
 
     return this.saleRepository.save(sale);
@@ -222,15 +216,15 @@ export class SalesService {
     // Validation based on status
     if (status === SaleStatus.PAID) {
       // Require batches
-      for (const item of sale.line_items) {
-        if (item.batch_allocations.length === 0) {
+      for (const item of sale.lineItems) {
+        if (item.batchAllocations.length === 0) {
           throw new BadRequestException(
             "Batches must be assigned before marking as paid",
           );
         }
       }
       // Deduct stock
-      await this.validateAndDeductStock(sale.line_items);
+      await this.validateAndDeductStock(sale.lineItems);
     } else if (
       [
         SaleStatus.PACKAGING,
@@ -239,8 +233,8 @@ export class SalesService {
       ].includes(status)
     ) {
       // Ensure batches are assigned
-      for (const item of sale.line_items) {
-        if (item.batch_allocations.length === 0) {
+      for (const item of sale.lineItems) {
+        if (item.batchAllocations.length === 0) {
           throw new BadRequestException(
             "Batches must be assigned for this status",
           );
@@ -276,21 +270,21 @@ export class SalesService {
     }
 
     const product = await this.productRepository.findOne({
-      where: { id: addDto.product_id, deletedAt: IsNull() },
+      where: { id: addDto.productId, deletedAt: IsNull() },
     });
     if (!product) {
       throw new NotFoundException(
-        `Product with ID "${addDto.product_id}" not found`,
+        `Product with ID "${addDto.productId}" not found`,
       );
     }
 
-    const finalPrice = addDto.custom_price ?? product.retail;
+    const finalPrice = addDto.customPrice ?? product.retail;
     const newItem: SaleLineItem = {
       ...addDto,
-      final_price: finalPrice,
+      finalPrice: finalPrice,
     };
 
-    sale.line_items.push(newItem);
+    sale.lineItems.push(newItem);
     return this.saleRepository.save(sale);
   }
 
@@ -317,23 +311,23 @@ export class SalesService {
       throw new BadRequestException("Cannot modify batches after payment");
     }
 
-    const itemIndex = sale.line_items.findIndex(
-      item => item.product_id === assignDto.product_id,
+    const itemIndex = sale.lineItems.findIndex(
+      item => item.productId === assignDto.productId,
     );
     if (itemIndex === -1) {
       throw new NotFoundException("Line item not found");
     }
 
-    sale.line_items[itemIndex].batch_allocations = assignDto.batch_allocations;
+    sale.lineItems[itemIndex].batchAllocations = assignDto.batchAllocations;
     return this.saleRepository.save(sale);
   }
 
   public async listSales(query: ListSalesDto): Promise<IPagination<Sale>> {
-    const { status, customer_id, page = 1, limit = 10 } = query;
+    const { status, customerId, page = 1, limit = 10 } = query;
 
     const where: Record<string, unknown> = { deletedAt: IsNull() };
     if (status) where.status = status;
-    if (customer_id) where.customer = { id: customer_id };
+    if (customerId) where.customer = { id: customerId };
 
     const [items, totalItems] = await this.saleRepository.findAndCount({
       where,
@@ -381,7 +375,7 @@ export class SalesService {
         SaleStatus.DELIVERED,
       ].includes(sale.status)
     ) {
-      await this.returnStock(sale.line_items);
+      await this.returnStock(sale.lineItems);
     }
 
     sale.deletedAt = new Date();
@@ -400,14 +394,14 @@ export class SalesService {
   ): Promise<void> {
     for (const item of lineItems) {
       let totalDeducted = 0;
-      for (const alloc of item.batch_allocations) {
+      for (const alloc of item.batchAllocations) {
         await this.batchesService.deductBatchQuantity(
-          alloc.batch_id,
+          alloc.batchId,
           alloc.quantity,
         );
         totalDeducted += alloc.quantity;
       }
-      if (totalDeducted !== item.requested_quantity) {
+      if (totalDeducted !== item.requestedQuantity) {
         throw new BadRequestException(
           "Allocated quantities do not match requested quantity",
         );
@@ -417,11 +411,11 @@ export class SalesService {
 
   private async returnStock(lineItems: SaleLineItem[]): Promise<void> {
     for (const item of lineItems) {
-      for (const alloc of item.batch_allocations) {
+      for (const alloc of item.batchAllocations) {
         // Assuming there's a method to add back, but since BatchesService has deduct, we need to add a method or directly update.
         // For now, directly update quantity
         const batch = await this.batchRepository.findOne({
-          where: { id: alloc.batch_id },
+          where: { id: alloc.batchId },
         });
         if (batch) {
           batch.quantity += alloc.quantity;
