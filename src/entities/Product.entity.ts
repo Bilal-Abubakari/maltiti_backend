@@ -118,12 +118,6 @@ export class Product {
   @Column({ nullable: true })
   public supplierReference: string;
 
-  @Column({ type: "date", nullable: true })
-  public producedAt: Date;
-
-  @Column({ type: "date", nullable: true })
-  public expiryDate: Date;
-
   @Column({ type: "int", default: 0 })
   public minOrderQuantity: number;
 

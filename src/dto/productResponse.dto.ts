@@ -71,8 +71,8 @@ export class ProductResponseDto {
   })
   public inBoxPrice?: number;
 
-  @ApiProperty({ example: 12 })
-  public quantityInBox: number;
+  @ApiPropertyOptional({ example: 12 })
+  public quantityInBox?: number;
 
   @ApiProperty({ example: false })
   public favorite: boolean;
@@ -97,12 +97,6 @@ export class ProductResponseDto {
 
   @ApiProperty({ example: "SUP-2024-001" })
   public supplierReference: string;
-
-  @ApiProperty({ example: "2024-01-15T00:00:00.000Z" })
-  public producedAt: Date;
-
-  @ApiProperty({ example: "2026-01-15T00:00:00.000Z" })
-  public expiryDate: Date;
 
   @ApiProperty({ example: 5 })
   public minOrderQuantity: number;

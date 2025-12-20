@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -189,22 +188,6 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   public supplierReference?: string;
-
-  @ApiPropertyOptional({
-    description: "Production date",
-    example: "2024-01-15",
-  })
-  @IsOptional()
-  @IsDateString()
-  public producedAt?: string;
-
-  @ApiPropertyOptional({
-    description: "Expiry date",
-    example: "2026-01-15",
-  })
-  @IsOptional()
-  @IsDateString()
-  public expiryDate?: string;
 
   @ApiPropertyOptional({
     description: "Minimum order quantity",

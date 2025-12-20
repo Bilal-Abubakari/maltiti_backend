@@ -65,24 +65,6 @@ export function isLowStock(
 }
 
 /**
- * Check if product is expiring soon
- */
-export function isExpiringSoon(
-  expiryDate: Date,
-  daysThreshold: number = 30,
-): boolean {
-  if (!expiryDate) return false;
-
-  const today = new Date();
-  const expiry = new Date(expiryDate);
-  const daysUntilExpiry = Math.ceil(
-    (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  return daysUntilExpiry <= daysThreshold && daysUntilExpiry > 0;
-}
-
-/**
  * Format product weight display
  */
 export function formatWeight(weight: string): string {
