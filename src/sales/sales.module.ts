@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SalesService } from "./sales.service";
 import { InvoiceService } from "./invoice.service";
+import { ReceiptService } from "./receipt.service";
 import { SalesController } from "./sales.controller";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
@@ -11,8 +12,8 @@ import { BatchesService } from "../products/batches/batches.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([Sale, Customer, Batch, Product])],
-  providers: [SalesService, InvoiceService, BatchesService],
+  providers: [SalesService, InvoiceService, ReceiptService, BatchesService],
   controllers: [SalesController],
-  exports: [SalesService, InvoiceService],
+  exports: [SalesService, InvoiceService, ReceiptService],
 })
 export class SalesModule {}

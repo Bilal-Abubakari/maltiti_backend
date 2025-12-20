@@ -20,6 +20,7 @@ import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
+import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { Sale } from "../entities/Sale.entity";
 import { IPaginatedResponse } from "../interfaces/general";
 
@@ -116,6 +117,30 @@ export class SalesController {
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=invoice-${saleId}.pdf`,
+    );
+    res.send(pdfBuffer);
+  }
+
+  @Post(":id/receipt")
+  @ApiOperation({ summary: "Generate receipt PDF for a sale" })
+  @ApiResponse({
+    status: 200,
+    description: "Receipt PDF generated successfully",
+  })
+  public async generateReceipt(
+    @Param("id") saleId: string,
+    @Body() receiptDto: GenerateReceiptDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdfBuffer = await this.salesService.generateReceipt(
+      saleId,
+      receiptDto,
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=receipt-${saleId}.pdf`,
     );
     res.send(pdfBuffer);
   }

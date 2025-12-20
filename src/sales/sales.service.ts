@@ -16,10 +16,12 @@ import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
+import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { SaleStatus } from "../enum/sale-status.enum";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { BatchesService } from "../products/batches/batches.service";
 import { InvoiceService } from "./invoice.service";
+import { ReceiptService } from "./receipt.service";
 import { IPagination } from "../interfaces/general";
 
 @Injectable()
@@ -35,6 +37,7 @@ export class SalesService {
     private readonly productRepository: Repository<Product>,
     private readonly batchesService: BatchesService,
     private readonly invoiceService: InvoiceService,
+    private readonly receiptService: ReceiptService,
   ) {}
 
   public async createSale(createSaleDto: CreateSaleDto): Promise<Sale> {
@@ -387,6 +390,13 @@ export class SalesService {
     invoiceDto: GenerateInvoiceDto,
   ): Promise<Buffer> {
     return this.invoiceService.generateInvoice(saleId, invoiceDto);
+  }
+
+  public async generateReceipt(
+    saleId: string,
+    receiptDto: GenerateReceiptDto,
+  ): Promise<Buffer> {
+    return this.receiptService.generateReceipt(saleId, receiptDto);
   }
 
   private async validateAndDeductStock(
