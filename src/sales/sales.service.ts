@@ -84,6 +84,12 @@ export class SalesService {
               `Batch with ID "${alloc.batchId}" not found for product`,
             );
           }
+          // Validate sufficient quantity in batch
+          if (batch.quantity < alloc.quantity) {
+            throw new BadRequestException(
+              `Insufficient quantity in batch "${batch.batchNumber}". Available: ${batch.quantity}, Requested: ${alloc.quantity}`,
+            );
+          }
           totalAllocated += alloc.quantity;
         }
       }
@@ -101,10 +107,8 @@ export class SalesService {
       });
     }
 
-    // If status is PAID, deduct stock immediately
-    if (status === SaleStatus.PAID) {
-      await this.validateAndDeductStock(validatedLineItems);
-    }
+    // Deduct stock immediately when batches are allocated
+    await this.validateAndDeductStock(validatedLineItems);
 
     const sale = this.saleRepository.create({
       customer,
@@ -134,6 +138,9 @@ export class SalesService {
       );
     }
 
+    // Store old line items to handle stock adjustments
+    const oldLineItems = [...sale.lineItems];
+
     if (updateDto.customerId) {
       // Update customer if provided
       const customer = await this.customerRepository.findOne({
@@ -153,6 +160,9 @@ export class SalesService {
 
     // Update line items if provided
     if (updateDto.lineItems) {
+      // Return old stock first before allocating new batches
+      await this.returnStock(oldLineItems);
+
       const validatedLineItems: SaleLineItem[] = [];
       for (const item of updateDto.lineItems) {
         const product = await this.productRepository.findOne({
@@ -180,6 +190,12 @@ export class SalesService {
                 `Batch with ID "${alloc.batchId}" not found for product`,
               );
             }
+            // Validate sufficient quantity in batch
+            if (batch.quantity < alloc.quantity) {
+              throw new BadRequestException(
+                `Insufficient quantity in batch "${batch.batchNumber}". Available: ${batch.quantity}, Requested: ${alloc.quantity}`,
+              );
+            }
             totalAllocated += alloc.quantity;
           }
         }
@@ -200,6 +216,9 @@ export class SalesService {
         });
       }
       sale.lineItems = validatedLineItems;
+
+      // Deduct stock for new batch allocations
+      await this.validateAndDeductStock(validatedLineItems);
     }
 
     return this.saleRepository.save(sale);
@@ -219,26 +238,16 @@ export class SalesService {
 
     const { status } = updateDto;
 
-    // Validation based on status
-    if (status === SaleStatus.PAID) {
-      // Require batches
-      for (const item of sale.lineItems) {
-        if (item.batchAllocations.length === 0) {
-          throw new BadRequestException(
-            "Batches must be assigned before marking as paid",
-          );
-        }
-      }
-      // Deduct stock
-      await this.validateAndDeductStock(sale.lineItems);
-    } else if (
+    // Validation based on status - require batches to be assigned for PAID and beyond
+    if (
       [
+        SaleStatus.PAID,
         SaleStatus.PACKAGING,
         SaleStatus.IN_TRANSIT,
         SaleStatus.DELIVERED,
       ].includes(status)
     ) {
-      // Ensure batches are assigned
+      // Ensure batches are assigned (stock is already deducted when batches were assigned)
       for (const item of sale.lineItems) {
         if (item.batchAllocations.length === 0) {
           throw new BadRequestException(
@@ -324,7 +333,66 @@ export class SalesService {
       throw new NotFoundException("Line item not found");
     }
 
+    // Store old batch allocations to return stock
+    const oldBatchAllocations = sale.lineItems[itemIndex].batchAllocations;
+
+    // Return stock from old batch allocations if they exist
+    if (oldBatchAllocations && oldBatchAllocations.length > 0) {
+      for (const alloc of oldBatchAllocations) {
+        const batch = await this.batchRepository.findOne({
+          where: { id: alloc.batchId },
+        });
+        if (batch) {
+          batch.quantity += alloc.quantity;
+          if (batch.quantity > 0) batch.isActive = true;
+          await this.batchRepository.save(batch);
+        }
+      }
+    }
+
+    // Validate new batch allocations
+    let totalAllocated = 0;
+    for (const alloc of assignDto.batchAllocations) {
+      const batch = await this.batchRepository.findOne({
+        where: {
+          id: alloc.batchId,
+          product: { id: assignDto.productId },
+          deletedAt: IsNull(),
+        },
+      });
+      if (!batch) {
+        throw new NotFoundException(
+          `Batch with ID "${alloc.batchId}" not found for product`,
+        );
+      }
+      // Validate sufficient quantity in batch
+      if (batch.quantity < alloc.quantity) {
+        throw new BadRequestException(
+          `Insufficient quantity in batch "${batch.batchNumber}". Available: ${batch.quantity}, Requested: ${alloc.quantity}`,
+        );
+      }
+      totalAllocated += alloc.quantity;
+    }
+
+    // Ensure allocated quantity matches requested quantity
+    const requestedQuantity = sale.lineItems[itemIndex].requestedQuantity;
+    if (totalAllocated !== requestedQuantity) {
+      throw new BadRequestException(
+        `Total allocated quantity (${totalAllocated}) must match requested quantity (${requestedQuantity})`,
+      );
+    }
+
+    // Update batch allocations
     sale.lineItems[itemIndex].batchAllocations = assignDto.batchAllocations;
+
+    // Deduct stock from new batch allocations immediately
+    for (const alloc of assignDto.batchAllocations) {
+      await this.batchesService.deductBatchQuantity(
+        alloc.batchId,
+        alloc.quantity,
+      );
+    }
+
     return this.saleRepository.save(sale);
   }
 
@@ -372,17 +440,8 @@ export class SalesService {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
     }
 
-    // If after paid, return stock
-    if (
-      sale.status === SaleStatus.PAID ||
-      [
-        SaleStatus.PACKAGING,
-        SaleStatus.IN_TRANSIT,
-        SaleStatus.DELIVERED,
-      ].includes(sale.status)
-    ) {
-      await this.returnStock(sale.lineItems);
-    }
+    // Return stock for any batches that were allocated (since stock is deducted immediately)
+    await this.returnStock(sale.lineItems);
 
     sale.deletedAt = new Date();
     return this.saleRepository.save(sale);
@@ -412,6 +471,7 @@ export class SalesService {
   private async validateAndDeductStock(
     lineItems: SaleLineItem[],
   ): Promise<void> {
+    console.log("Validating and deducting stock");
     for (const item of lineItems) {
       let totalDeducted = 0;
       for (const alloc of item.batchAllocations) {

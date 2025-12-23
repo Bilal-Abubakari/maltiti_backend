@@ -528,7 +528,14 @@ export class ProductsService {
   public async getAllProductsBasic(): Promise<LightProduct[]> {
     return await this.productsRepository.find({
       where: { deletedAt: IsNull() },
-      select: ["id", "name", "retail", "wholesale"],
+      select: [
+        "id",
+        "name",
+        "retail",
+        "wholesale",
+        "weight",
+        "unitOfMeasurement",
+      ],
     });
   }
 
