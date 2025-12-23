@@ -5,16 +5,19 @@ import * as PDFDocument from "pdfkit";
 import * as path from "path";
 import { Sale } from "../entities/Sale.entity";
 import { Product } from "../entities/Product.entity";
-import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
+import {
+  DriverDetailsDto,
+  GenerateWaybillDto,
+  ReceiverDetailsDto,
+} from "../dto/generateWaybill.dto";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
-import { unitSymbols } from "../utils/constants";
 
 interface LineItemWithProduct extends SaleLineItem {
   product?: Product;
 }
 
 @Injectable()
-export class ReceiptService {
+export class WaybillService {
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
@@ -22,9 +25,9 @@ export class ReceiptService {
     private readonly productRepository: Repository<Product>,
   ) {}
 
-  public async generateReceipt(
+  public async generateWaybill(
     saleId: string,
-    receiptDto: GenerateReceiptDto,
+    waybillDto: GenerateWaybillDto,
   ): Promise<Buffer> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
@@ -44,47 +47,39 @@ export class ReceiptService {
       }),
     );
 
-    const discount = receiptDto.discount || 0;
-    const transportation = receiptDto.transportation || 0;
-    const paymentMethod = receiptDto.paymentMethod || "Cash";
+    // Use receiver details if provided, otherwise fall back to customer
+    const receiver: ReceiverDetailsDto = waybillDto.receiver || {
+      name: sale.customer.name,
+      phone: sale.customer.phone,
+      email: sale.customer.email,
+      address: sale.customer.address,
+    };
 
-    // Calculate subtotal
-    const subtotal = lineItemsWithProducts.reduce(
-      (sum, item) => sum + item.finalPrice * item.requestedQuantity,
-      0,
-    );
+    const remarks = waybillDto.remarks || "All In Good Condition";
 
-    const total = subtotal - discount + transportation;
-
-    // Generate receipt number (using sale ID and date)
-    const receiptDate = new Date();
-    const receiptNo = `RCT-${receiptDate.getFullYear()}${String(
-      receiptDate.getMonth() + 1,
+    // Generate waybill number (using sale ID and date)
+    const waybillDate = new Date();
+    const waybillNo = `WB-${waybillDate.getFullYear()}${String(
+      waybillDate.getMonth() + 1,
     ).padStart(2, "0")}-${saleId.substring(0, 8).toUpperCase()}`;
 
     return this.generatePDF(
-      sale,
       lineItemsWithProducts,
-      receiptNo,
-      receiptDate,
-      subtotal,
-      discount,
-      transportation,
-      total,
-      paymentMethod,
+      waybillNo,
+      waybillDate,
+      waybillDto.driver,
+      receiver,
+      remarks,
     );
   }
 
   private generatePDF(
-    sale: Sale,
     lineItemsWithProducts: LineItemWithProduct[],
-    receiptNo: string,
-    receiptDate: Date,
-    subtotal: number,
-    discount: number,
-    transportation: number,
-    total: number,
-    paymentMethod: string,
+    waybillNo: string,
+    waybillDate: Date,
+    driver: DriverDetailsDto,
+    receiver: ReceiverDetailsDto,
+    remarks: string,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50 });
@@ -103,8 +98,8 @@ export class ReceiptService {
       // Add header
       this.addHeader(doc, primaryColor);
 
-      // Add receipt details
-      this.addReceiptDetails(doc, receiptNo, receiptDate, primaryColor);
+      // Add waybill details
+      this.addWaybillDetails(doc, waybillNo, waybillDate, primaryColor);
 
       // Add horizontal separator
       doc
@@ -114,8 +109,8 @@ export class ReceiptService {
         .lineTo(550, 170)
         .stroke();
 
-      // Add customer section
-      this.addCustomerSection(doc, sale, primaryColor);
+      // Add driver and receiver sections side by side
+      this.addDriverAndReceiverSections(doc, driver, receiver, primaryColor);
 
       // Add items table
       const yPositionAfterTable = this.addItemsTable(
@@ -124,17 +119,11 @@ export class ReceiptService {
         primaryColor,
       );
 
-      // Add totals section
-      this.addTotalsSection(
-        doc,
-        yPositionAfterTable,
-        subtotal,
-        discount,
-        transportation,
-        total,
-        paymentMethod,
-        primaryColor,
-      );
+      // Add remarks section
+      this.addRemarksSection(doc, yPositionAfterTable, remarks, primaryColor);
+
+      // Add signature section
+      this.addSignatureSection(doc);
 
       // Add footer
       this.addFooter(doc, primaryColor);
@@ -176,28 +165,25 @@ export class ReceiptService {
       .text("Email: info@maltitiaenterprise.com", 140, 137);
   }
 
-  private addReceiptDetails(
+  private addWaybillDetails(
     doc: PDFKit.PDFDocument,
-    receiptNo: string,
-    receiptDate: Date,
+    waybillNo: string,
+    waybillDate: Date,
     primaryColor: string,
   ): void {
-    // Receipt title
+    // Waybill title
     doc
       .fontSize(28)
       .fillColor(primaryColor)
-      .text("RECEIPT", 400, 50, { align: "right" });
+      .text("WAYBILL", 400, 50, { align: "right" });
 
-    // Receipt details (right side)
+    // Waybill details (right side)
     doc
       .fontSize(10)
       .fillColor("#333333")
-      .text(`Receipt No: ${receiptNo}`, 400, 85, {
-        align: "right",
-        width: -100,
-      })
+      .text(`Waybill No: ${waybillNo}`, 400, 85, { align: "right" })
       .text(
-        `Date: ${receiptDate.toLocaleDateString("en-GB", {
+        `Date: ${waybillDate.toLocaleDateString("en-GB", {
           day: "2-digit",
           month: "short",
           year: "numeric",
@@ -208,20 +194,55 @@ export class ReceiptService {
       );
   }
 
-  private addCustomerSection(
+  private addDriverAndReceiverSections(
     doc: PDFKit.PDFDocument,
-    sale: Sale,
+    driver: DriverDetailsDto,
+    receiver: ReceiverDetailsDto,
     primaryColor: string,
   ): void {
-    doc.fontSize(12).fillColor(primaryColor).text("RECEIVED FROM:", 50, 190);
+    const leftColumnX = 50;
+    const rightColumnX = 310;
+    const startY = 190;
+
+    // Driver section (left)
+    doc
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text("DRIVER DETAILS:", leftColumnX, startY);
 
     doc
       .fontSize(10)
       .fillColor("#333333")
-      .text(sale.customer.name || "N/A", 50, 210)
-      .text(sale.customer.phone || "", 50, 225)
-      .text(sale.customer.email || "", 50, 240)
-      .text(sale.customer.address || "", 50, 255, { width: 250 });
+      .text(`Name: ${driver.name}`, leftColumnX, startY + 20)
+      .text(`Vehicle No: ${driver.vehicleNumber}`, leftColumnX, startY + 35)
+      .text(`Phone: ${driver.phoneNumber}`, leftColumnX, startY + 50);
+
+    if (driver.email) {
+      doc.text(`Email: ${driver.email}`, leftColumnX, startY + 65);
+    }
+
+    // Receiver section (right)
+    doc
+      .fontSize(12)
+      .fillColor(primaryColor)
+      .text("RECEIVER DETAILS:", rightColumnX, startY);
+
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(`Name: ${receiver.name}`, rightColumnX, startY + 20)
+      .text(`Phone: ${receiver.phone}`, rightColumnX, startY + 35);
+
+    let yOffset = startY + 50;
+    if (receiver.email) {
+      doc.text(`Email: ${receiver.email}`, rightColumnX, yOffset);
+      yOffset += 15;
+    }
+    if (receiver.address) {
+      doc.text(`Address: ${receiver.address}`, rightColumnX, yOffset, {
+        width: 240,
+      });
+    }
   }
 
   private addItemsTable(
@@ -229,7 +250,7 @@ export class ReceiptService {
     lineItemsWithProducts: LineItemWithProduct[],
     primaryColor: string,
   ): number {
-    const tableTop = 295;
+    const tableTop = 305;
 
     // Table header background
     doc.rect(50, tableTop, 495, 25).fillColor(primaryColor).fill();
@@ -238,13 +259,10 @@ export class ReceiptService {
     doc
       .fillColor("#FFFFFF")
       .fontSize(10)
-      .text("DESCRIPTION", 55, tableTop + 10, { width: 180 })
-      .text("QUANTITY", 270, tableTop + 10, { width: 60, align: "center" })
-      .text("UNIT PRICE (GHS)", 345, tableTop + 10, {
-        width: 100,
-        align: "right",
-      })
-      .text("TOTAL (GHS)", 440, tableTop + 8, { width: 100, align: "right" });
+      .text("ITEM NO.", 55, tableTop + 10, { width: 50 })
+      .text("DESCRIPTION", 120, tableTop + 10, { width: 200 })
+      .text("QUANTITY", 350, tableTop + 10, { width: 80, align: "center" })
+      .text("UNIT", 445, tableTop + 10, { width: 90, align: "center" });
 
     // Table rows
     let yPosition = tableTop + 35;
@@ -253,11 +271,8 @@ export class ReceiptService {
     lineItemsWithProducts.forEach((item, index) => {
       const productName = item.product?.name || "Unknown Product";
       const weight = item.product?.weight || "";
-      const unitOfMeasurement = item.product?.unitOfMeasurement || "";
-      const description = weight
-        ? `${productName} (${weight}${unitSymbols[unitOfMeasurement]})`
-        : productName;
-      const itemTotal = item.finalPrice * item.requestedQuantity;
+      const description = weight ? `${productName} (${weight})` : productName;
+      const unit = item.product?.weight || "pcs";
 
       // Alternate row background
       if (index % 2 === 0) {
@@ -270,19 +285,13 @@ export class ReceiptService {
       doc
         .fillColor("#333333")
         .fontSize(9)
-        .text(description, 55, yPosition, { width: 200 })
-        .text(item.requestedQuantity.toString(), 270, yPosition, {
-          width: 60,
+        .text((index + 1).toString(), 55, yPosition, { width: 50 })
+        .text(description, 120, yPosition, { width: 220 })
+        .text(item.requestedQuantity.toString(), 350, yPosition, {
+          width: 80,
           align: "center",
         })
-        .text(`GHS ${item.finalPrice.toFixed(2)}`, 345, yPosition, {
-          width: 80,
-          align: "right",
-        })
-        .text(`GHS ${itemTotal.toFixed(2)}`, 440, yPosition, {
-          width: 100,
-          align: "right",
-        });
+        .text(unit, 445, yPosition, { width: 90, align: "center" });
 
       yPosition += 30;
     });
@@ -290,75 +299,55 @@ export class ReceiptService {
     return yPosition;
   }
 
-  private addTotalsSection(
+  private addRemarksSection(
     doc: PDFKit.PDFDocument,
     yPosition: number,
-    subtotal: number,
-    discount: number,
-    transportation: number,
-    total: number,
-    paymentMethod: string,
+    remarks: string,
     primaryColor: string,
   ): void {
-    yPosition += 20;
-    const totalsX = 380;
+    yPosition += 30;
+
+    doc.fontSize(11).fillColor(primaryColor).text("REMARKS:", 50, yPosition);
 
     doc
       .fontSize(10)
       .fillColor("#333333")
-      .text("Subtotal:", totalsX, yPosition, { width: 80, align: "right" })
-      .text(`GHS ${subtotal.toFixed(2)}`, 470, yPosition, {
-        width: 75,
-        align: "right",
-      });
+      .text(remarks, 50, yPosition + 20, { width: 495 });
+  }
 
-    yPosition += 20;
-    doc
-      .text("Discount:", totalsX, yPosition, { width: 80, align: "right" })
-      .text(`GHS ${discount.toFixed(2)}`, 470, yPosition, {
-        width: 75,
-        align: "right",
-      });
+  private addSignatureSection(doc: PDFKit.PDFDocument): void {
+    const signatureY = 680;
+    const leftColumnX = 80;
+    const rightColumnX = 350;
 
-    yPosition += 20;
+    // Driver signature
     doc
-      .text("Transportation:", totalsX, yPosition, {
-        width: 80,
-        align: "right",
-      })
-      .text(`GHS ${transportation.toFixed(2)}`, 470, yPosition, {
-        width: 75,
-        align: "right",
-      });
-
-    yPosition += 20;
-    // Total line
-    doc
-      .strokeColor(primaryColor)
+      .strokeColor("#333333")
       .lineWidth(1)
-      .moveTo(380, yPosition - 5)
-      .lineTo(545, yPosition - 5)
+      .moveTo(leftColumnX, signatureY)
+      .lineTo(leftColumnX + 150, signatureY)
       .stroke();
 
-    yPosition += 5;
-    doc
-      .fontSize(12)
-      .fillColor(primaryColor)
-      .text("TOTAL:", totalsX, yPosition, { width: 80, align: "right" })
-      .text(`GHS ${total.toFixed(2)}`, 470, yPosition, {
-        width: 75,
-        align: "right",
-      });
-
-    // Payment method
-    yPosition += 35;
     doc
       .fontSize(10)
       .fillColor("#333333")
-      .text("Payment Method:", 50, yPosition)
-      .font("Helvetica-Bold")
-      .text(paymentMethod, 165, yPosition)
-      .font("Helvetica");
+      .text("Driver's Signature", leftColumnX, signatureY + 10, {
+        width: 150,
+        align: "center",
+      });
+
+    // Receiver signature
+    doc
+      .strokeColor("#333333")
+      .lineWidth(1)
+      .moveTo(rightColumnX, signatureY)
+      .lineTo(rightColumnX + 150, signatureY)
+      .stroke();
+
+    doc.text("Receiver's Signature", rightColumnX, signatureY + 10, {
+      width: 150,
+      align: "center",
+    });
   }
 
   private addFooter(doc: PDFKit.PDFDocument, primaryColor: string): void {
@@ -371,11 +360,16 @@ export class ReceiptService {
       .stroke();
 
     doc
-      .fontSize(9)
+      .fontSize(8)
       .fillColor("#666666")
-      .text("Thank you for your purchase!", 50, footerY + 10, {
-        align: "center",
-        width: 500,
-      });
+      .text(
+        "This waybill serves as proof of goods in transit. Please verify items upon receipt.",
+        50,
+        footerY + 10,
+        {
+          align: "center",
+          width: 500,
+        },
+      );
   }
 }

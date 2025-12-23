@@ -21,6 +21,7 @@ import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
+import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
 import { Sale } from "../entities/Sale.entity";
 import { IPaginatedResponse } from "../interfaces/general";
 
@@ -141,6 +142,30 @@ export class SalesController {
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=receipt-${saleId}.pdf`,
+    );
+    res.send(pdfBuffer);
+  }
+
+  @Post(":id/waybill")
+  @ApiOperation({ summary: "Generate waybill PDF for a sale" })
+  @ApiResponse({
+    status: 200,
+    description: "Waybill PDF generated successfully",
+  })
+  public async generateWaybill(
+    @Param("id") saleId: string,
+    @Body() waybillDto: GenerateWaybillDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    const pdfBuffer = await this.salesService.generateWaybill(
+      saleId,
+      waybillDto,
+    );
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=waybill-${saleId}.pdf`,
     );
     res.send(pdfBuffer);
   }
