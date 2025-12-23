@@ -17,11 +17,13 @@ import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
+import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
 import { SaleStatus } from "../enum/sale-status.enum";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { BatchesService } from "../products/batches/batches.service";
 import { InvoiceService } from "./invoice.service";
 import { ReceiptService } from "./receipt.service";
+import { WaybillService } from "./waybill.service";
 import { IPagination } from "../interfaces/general";
 
 @Injectable()
@@ -38,6 +40,7 @@ export class SalesService {
     private readonly batchesService: BatchesService,
     private readonly invoiceService: InvoiceService,
     private readonly receiptService: ReceiptService,
+    private readonly waybillService: WaybillService,
   ) {}
 
   public async createSale(createSaleDto: CreateSaleDto): Promise<Sale> {
@@ -397,6 +400,13 @@ export class SalesService {
     receiptDto: GenerateReceiptDto,
   ): Promise<Buffer> {
     return this.receiptService.generateReceipt(saleId, receiptDto);
+  }
+
+  public async generateWaybill(
+    saleId: string,
+    waybillDto: GenerateWaybillDto,
+  ): Promise<Buffer> {
+    return this.waybillService.generateWaybill(saleId, waybillDto);
   }
 
   private async validateAndDeductStock(
