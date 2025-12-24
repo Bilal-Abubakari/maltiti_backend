@@ -24,6 +24,9 @@ import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
 import { Sale } from "../entities/Sale.entity";
 import { IPaginatedResponse } from "../interfaces/general";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
 
 @ApiTags("Sales")
 @Controller("sales")
@@ -40,6 +43,12 @@ export class SalesController {
   @Patch(":id")
   @ApiOperation({ summary: "Edit sale details" })
   @ApiResponse({ status: 200, type: Sale })
+  @AuditLog({
+    actionType: AuditActionType.SALE_UPDATED,
+    entityType: AuditEntityType.SALE,
+    description: "Updated sale details",
+    getEntityId: result => result?.id,
+  })
   public async updateSale(
     @Param("id") saleId: string,
     @Body() updateDto: UpdateSaleDto,
@@ -173,6 +182,12 @@ export class SalesController {
   @Delete(":id")
   @ApiOperation({ summary: "Cancel sale" })
   @ApiResponse({ status: 200, type: Sale })
+  @AuditLog({
+    actionType: AuditActionType.SALE_CANCELLED,
+    entityType: AuditEntityType.SALE,
+    description: "Cancelled sale",
+    getEntityId: result => result?.id,
+  })
   public async cancelSale(@Param("id") saleId: string): Promise<Sale> {
     return this.salesService.cancelSale(saleId);
   }

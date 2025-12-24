@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SalesService } from "./sales.service";
 import { InvoiceService } from "./invoice.service";
@@ -10,15 +10,25 @@ import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
 import { BatchesService } from "../products/batches/batches.service";
+import { AuditModule } from "../audit/audit.module";
+import { APP_INTERCEPTOR } from "@nestjs/core";
+import { AuditInterceptor } from "../interceptors/audit.interceptor";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Sale, Customer, Batch, Product])],
+  imports: [
+    TypeOrmModule.forFeature([Sale, Customer, Batch, Product]),
+    forwardRef(() => AuditModule),
+  ],
   providers: [
     SalesService,
     InvoiceService,
     ReceiptService,
     WaybillService,
     BatchesService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
   ],
   controllers: [SalesController],
   exports: [SalesService, InvoiceService, ReceiptService, WaybillService],
