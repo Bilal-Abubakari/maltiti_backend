@@ -16,6 +16,7 @@ import { DatabaseModule } from "./database/database.module";
 import { UploadModule } from "./upload/upload.module";
 import { SalesModule } from "./sales/sales.module";
 import { CustomerModule } from "./customer/customer.module";
+import { ReportsModule } from "./reports/reports.module";
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { CustomerModule } from "./customer/customer.module";
     UploadModule,
     SalesModule,
     CustomerModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService, NotificationService],
