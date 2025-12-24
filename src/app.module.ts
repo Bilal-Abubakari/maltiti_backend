@@ -17,6 +17,7 @@ import { UploadModule } from "./upload/upload.module";
 import { SalesModule } from "./sales/sales.module";
 import { CustomerModule } from "./customer/customer.module";
 import { ReportsModule } from "./reports/reports.module";
+import { DashboardModule } from "./dashboard/dashboard.module";
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ReportsModule } from "./reports/reports.module";
     SalesModule,
     CustomerModule,
     ReportsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService, NotificationService],
