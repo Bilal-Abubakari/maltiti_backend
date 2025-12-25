@@ -13,6 +13,7 @@ import { Batch } from "../entities/Batch.entity";
 import { Ingredient } from "../entities/Ingredient.entity";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
+import { AuditLog } from "../entities/AuditLog.entity";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { Customer } from "../entities/Customer.entity";
           Ingredient,
           Sale,
           Customer,
+          AuditLog,
         ],
         synchronize: false,
         autoLoadEntities: false,

@@ -18,6 +18,7 @@ import { SalesModule } from "./sales/sales.module";
 import { CustomerModule } from "./customer/customer.module";
 import { ReportsModule } from "./reports/reports.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { AuditModule } from "./audit/audit.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { DashboardModule } from "./dashboard/dashboard.module";
       isGlobal: true,
     }),
     DatabaseModule,
+    AuditModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

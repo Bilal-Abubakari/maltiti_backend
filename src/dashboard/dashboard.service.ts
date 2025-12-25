@@ -332,7 +332,7 @@ export class DashboardService {
       batchNumber: batch.batchNumber,
       productName: batch.product.name,
       quantity: batch.quantity,
-      productionDate: batch.productionDate.toISOString(),
+      productionDate: new Date(batch.productionDate).toISOString(),
     }));
 
     // Recent inventory changes (combined from batches and sales)

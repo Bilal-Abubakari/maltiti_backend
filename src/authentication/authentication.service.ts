@@ -15,6 +15,9 @@ import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
 import { IResponse } from "../interfaces/general";
 import { Verification } from "../entities/Verification.entity";
 import { User } from "../entities/User.entity";
+import { AuditService } from "../audit/audit.service";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
 
 @Injectable()
 export class AuthenticationService {
@@ -26,6 +29,7 @@ export class AuthenticationService {
     private jwtService: JwtService,
     private mailService: MailerService,
     private refreshTokenIdsStorage: RefreshTokenIdsStorage,
+    private auditService: AuditService,
   ) {}
 
   public async signIn(signInfo: SignInDto): Promise<{
@@ -80,23 +84,6 @@ export class AuthenticationService {
     return null;
   }
 
-  private async sendWelcomeMail(): Promise<unknown> {
-    return await this.mailService.sendMail({
-      to: "abubakaribilal99@gmail.com",
-      from: "abubakaribilal99@gmail.com",
-      subject: "Welcome on board",
-      template: "./welcome",
-      context: {
-        name: "Bilal",
-        url: "http://",
-        subject: "Welcome on board",
-        body: "Welcome to Maltiti A. Enterprise Ltd. We are pleased to have you here. Click the link below to to log in and access our wonderful resources. Welcome once again",
-        link: "Login",
-        action: "Login",
-      },
-    });
-  }
-
   public async refreshAccessToken(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
@@ -123,10 +110,30 @@ export class AuthenticationService {
     }
   }
 
-  public async invalidateToken(accessToken: string): Promise<void> {
+  public async invalidateToken(
+    accessToken: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
     try {
       const decoded = await this.jwtService.verifyAsync(accessToken);
+      const user = await this.usersService.findOne(decoded.sub);
+
       await this.refreshTokenIdsStorage.invalidate(decoded.sub);
+
+      // Log logout
+      if (user) {
+        await this.auditService.createAuditLog({
+          actionType: AuditActionType.LOGOUT,
+          entityType: AuditEntityType.AUTHENTICATION,
+          description: `User ${user.name} logged out`,
+          performedByUserId: user.id,
+          performedByUserName: user.name,
+          performedByRole: user.userType,
+          ipAddress,
+          userAgent,
+        });
+      }
     } catch (error) {
       throw new UnauthorizedException("Invalid access token");
     }

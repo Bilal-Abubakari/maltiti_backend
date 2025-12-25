@@ -40,6 +40,9 @@ import { Role } from "../enum/role.enum";
 import { Response } from "express";
 import { NotFoundException } from "@nestjs/common/exceptions";
 import { LightProduct } from "../interfaces/product-light.model";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
 
 @ApiTags("Products")
 @Controller("products")
@@ -181,6 +184,12 @@ export class ProductsController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Product not found" })
   @ApiResponse({ status: 409, description: "Product with SKU already exists" })
+  @AuditLog({
+    actionType: AuditActionType.UPDATE,
+    entityType: AuditEntityType.PRODUCT,
+    description: "Updated product",
+    getEntityId: result => result?.data?.id,
+  })
   public async editProduct(
     @Param("id") id: string,
     @Body() productInfo: UpdateProductDto,
@@ -212,6 +221,12 @@ export class ProductsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Product not found" })
+  @AuditLog({
+    actionType: AuditActionType.DELETE,
+    entityType: AuditEntityType.PRODUCT,
+    description: "Deleted product",
+    getEntityId: result => result?.data?.id,
+  })
   public async deleteProduct(
     @Param("id") id: string,
   ): Promise<IResponse<{ deleted: boolean; id: string }>> {

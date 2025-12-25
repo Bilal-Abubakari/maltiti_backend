@@ -79,6 +79,7 @@ export class AuthenticationController {
   @Post("login")
   public async signIn(
     @Body() signInDto: SignInDto,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<IResponse<User>> {
     const { user, accessToken, refreshToken } =
@@ -104,6 +105,17 @@ export class AuthenticationController {
       message: "You have successfully logged in",
       data: user,
     };
+  }
+
+  private getClientIp(request: Request): string {
+    return (
+      (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+      (request.headers["x-real-ip"] as string) ||
+      request.ip ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (request as any).connection?.remoteAddress ||
+      "unknown"
+    );
   }
 
   @UsePipes(new ValidationPipe())
@@ -182,8 +194,11 @@ export class AuthenticationController {
       request.cookies?.accessToken ||
       request.headers.authorization?.split(" ")[1];
 
+    const ipAddress = this.getClientIp(request);
+    const userAgent = request.headers["user-agent"];
+
     if (token) {
-      await this.authService.invalidateToken(token);
+      await this.authService.invalidateToken(token, ipAddress, userAgent);
     }
 
     // Clear cookies

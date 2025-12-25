@@ -24,6 +24,9 @@ import { Role } from "../enum/role.enum";
 import { IResponse } from "../interfaces/general";
 import { User } from "../entities/User.entity";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
 
 /**
  * Controller for managing user-related operations, accessible only to SuperAdmin users.
@@ -168,6 +171,12 @@ export class UsersController {
   })
   @Patch(":id/role")
   @Roles([Role.SuperAdmin])
+  @AuditLog({
+    actionType: AuditActionType.ROLE_CHANGED,
+    entityType: AuditEntityType.USER,
+    description: "Changed user role",
+    getEntityId: result => result?.data?.id,
+  })
   public async changeRole(
     @Param("id") id: string,
     @Body() changeRoleDto: ChangeRoleDto,

@@ -1,0 +1,2 @@
+ - Do not use `any` in type definitions; Always define specific types or use `unknown` if the type is not known.
+ - Use Nest JS and TypeScript best practices
