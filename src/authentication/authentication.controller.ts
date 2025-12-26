@@ -26,7 +26,16 @@ import { ForgotPasswordDto, ResetPasswordDto } from "../dto/forgotPassword.dto";
 import { CreateAdminDto } from "../dto/createAdmin.dto";
 import { ChangePasswordDto } from "../dto/changePassword.dto";
 import { Role } from "../enum/role.enum";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiCookieAuth,
+} from "@nestjs/swagger";
 
+@ApiTags("Authentication")
 @Controller("authentication")
 export class AuthenticationController {
   constructor(
@@ -34,6 +43,23 @@ export class AuthenticationController {
     private authService: AuthenticationService,
   ) {}
 
+  @ApiOperation({
+    summary: "Register a new user",
+    description: "Creates a new user account and sends a verification email",
+  })
+  @ApiBody({ type: RegisterUserDto })
+  @ApiResponse({
+    status: 201,
+    description: "User registration successful",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - validation failed",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "User with email already exists",
+  })
   @UsePipes(new ValidationPipe())
   @Post("sign-up")
   public async register(
@@ -47,6 +73,29 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "Verify phone number",
+    description: "Verifies user phone number using OTP code",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    type: "string",
+  })
+  @ApiBody({ type: VerifyPhoneDto })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Phone verification successful",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - invalid or missing token",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "User with phone number already exists",
+  })
   @UsePipes(new ValidationPipe())
   @Post("verify-phone/:id")
   @UseGuards(CookieAuthGuard, RolesGuard)
@@ -63,6 +112,23 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "Customer signup",
+    description: "Register a new customer account with email verification",
+  })
+  @ApiBody({ type: RegisterUserDto })
+  @ApiResponse({
+    status: 201,
+    description: "Customer account created, verification email sent",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - validation failed",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "User with email already exists",
+  })
   @UsePipes(new ValidationPipe())
   @Post("customer-signup")
   public async customerSignup(
@@ -76,6 +142,20 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "User login",
+    description:
+      "Authenticates user and returns access token and refresh token in HTTP-only cookies. Also logs the login event in audit logs.",
+  })
+  @ApiBody({ type: SignInDto })
+  @ApiResponse({
+    status: 200,
+    description: "Login successful, tokens set in cookies",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Invalid username or password",
+  })
   @Post("login")
   public async signIn(
     @Body() signInDto: SignInDto,
@@ -118,6 +198,19 @@ export class AuthenticationController {
     );
   }
 
+  @ApiOperation({
+    summary: "Request password reset",
+    description: "Sends a password reset link to the user's email",
+  })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: "Password reset email sent successfully",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "User with email does not exist",
+  })
   @UsePipes(new ValidationPipe())
   @Post("forgot-password")
   public async forgotPassword(
@@ -130,6 +223,23 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "Reset password",
+    description: "Resets user password using the reset token from email",
+  })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: "Password reset successful",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - passwords do not match",
+  })
+  @ApiResponse({
+    status: 410,
+    description: "Reset token has expired",
+  })
   @UsePipes(new ValidationPipe())
   @Post("reset-password")
   public async resetPassword(
@@ -142,6 +252,32 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "Verify email address",
+    description: "Verifies user email using the verification token from email",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    type: "string",
+  })
+  @ApiParam({
+    name: "token",
+    description: "Verification token",
+    type: "string",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Email verification successful",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Token does not exist or has expired",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "User not found",
+  })
   @Get("verify/:id/:token")
   public async emailVerification(
     @Param("id") id: string,
@@ -150,6 +286,20 @@ export class AuthenticationController {
     await this.authService.emailVerification(id, token);
   }
 
+  @ApiOperation({
+    summary: "Refresh access token",
+    description:
+      "Generates new access and refresh tokens using the refresh token from cookies. Implements token rotation for security.",
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Tokens refreshed successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Invalid or missing refresh token",
+  })
   @Post("refresh-token")
   public async refreshToken(
     @Req() request: Request,
@@ -183,6 +333,20 @@ export class AuthenticationController {
     return { message: "Tokens refreshed successfully" };
   }
 
+  @ApiOperation({
+    summary: "User logout",
+    description:
+      "Invalidates the current session, clears authentication cookies, and logs the logout event in audit logs",
+  })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Logged out successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - not logged in",
+  })
   @UseGuards(CookieAuthGuard)
   @Post("logout")
   public async logout(
@@ -217,6 +381,34 @@ export class AuthenticationController {
     return { message: "Logged out successfully" };
   }
 
+  @ApiOperation({
+    summary: "Create admin user (Super Admin only)",
+    description:
+      "Creates a new admin user account with auto-generated password. Credentials are sent via email. Only Super Admin can create admin accounts.",
+  })
+  @ApiBody({ type: CreateAdminDto })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 201,
+    description:
+      "Admin account created successfully, credentials sent to email",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - email must be @maltitiaenterprise.com",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - not logged in",
+  })
+  @ApiResponse({
+    status: 403,
+    description: "Forbidden - requires Super Admin role",
+  })
+  @ApiResponse({
+    status: 409,
+    description: "User with email already exists",
+  })
   @UsePipes(new ValidationPipe())
   @Post("create-admin")
   @UseGuards(CookieAuthGuard)
@@ -232,6 +424,35 @@ export class AuthenticationController {
     };
   }
 
+  @ApiOperation({
+    summary: "Change password",
+    description:
+      "Changes user password. Requires current password for validation. Updates mustChangePassword flag to false.",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    type: "string",
+  })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Password changed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Bad request - passwords do not match or current password is incorrect",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - not logged in",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "User not found",
+  })
   @UsePipes(new ValidationPipe())
   @Post("change-password/:id")
   @UseGuards(CookieAuthGuard)

@@ -19,6 +19,7 @@ import { CustomerModule } from "./customer/customer.module";
 import { ReportsModule } from "./reports/reports.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { AuditModule } from "./audit/audit.module";
+import { ProfileModule } from "./profile/profile.module";
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { AuditModule } from "./audit/audit.module";
     CustomerModule,
     ReportsModule,
     DashboardModule,
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService, NotificationService],

@@ -35,6 +35,9 @@ export class User {
   public phoneNumber: string;
 
   @Column({ nullable: true })
+  public avatarUrl: string;
+
+  @Column({ nullable: true })
   public permissions: string;
 
   @Column({ default: false })

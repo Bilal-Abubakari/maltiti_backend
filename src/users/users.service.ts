@@ -26,6 +26,8 @@ import { generateRandomPassword } from "../utils/passwordGenerator";
 import { ChangePasswordDto } from "../dto/changePassword.dto";
 import { UpdateUserDto } from "../dto/updateUser.dto";
 import { Status } from "../enum/status.enum";
+import { UploadService } from "../upload/upload.service";
+import { UploadPresets } from "../interfaces/upload.interface";
 
 @Injectable()
 export class UsersService {
@@ -34,9 +36,10 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Verification)
     private readonly verificationRepository: Repository<Verification>,
-    private mailService: MailerService,
-    private notificationService: NotificationService,
-    private configService: ConfigService,
+    private readonly mailService: MailerService,
+    private readonly notificationService: NotificationService,
+    private readonly configService: ConfigService,
+    private readonly uploadService: UploadService,
   ) {}
 
   public async create(userInfo: RegisterUserDto): Promise<User> {
@@ -150,6 +153,14 @@ export class UsersService {
 
   public async findOne(id: string): Promise<User> {
     return this.userRepository.findOne({ where: { id } });
+  }
+
+  public async findUserById(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+    return user;
   }
 
   public async verifyUserEmail(id: string): Promise<void> {
@@ -457,5 +468,32 @@ export class UsersService {
     user.userType = userType;
     user.updatedAt = new Date();
     return this.userRepository.save(user);
+  }
+
+  /**
+   * Upload user avatar
+   * Stores file and returns the URL
+   */
+  public async uploadAvatar(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const user = await this.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    const avatarUrl = await this.uploadService.upload(
+      file,
+      UploadPresets.AVATARS_PRESET,
+    );
+
+    user.avatarUrl = avatarUrl;
+    user.updatedAt = new Date();
+
+    await this.userRepository.save(user);
+
+    return avatarUrl;
   }
 }
