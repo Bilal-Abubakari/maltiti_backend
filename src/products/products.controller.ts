@@ -137,6 +137,7 @@ export class ProductsController {
   }
 
   @UseGuards(CookieAuthGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Post("add-product")
   @ApiOperation({
     summary: "Create new product",
@@ -203,7 +204,7 @@ export class ProductsController {
   }
 
   @UseGuards(CookieAuthGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Delete("delete-product/:id")
   @ApiBearerAuth()
   @ApiOperation({
@@ -239,7 +240,7 @@ export class ProductsController {
   }
 
   @UseGuards(CookieAuthGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Patch("change-status/:id")
   @ApiBearerAuth()
   @ApiOperation({
@@ -304,7 +305,7 @@ export class ProductsController {
   }
 
   @UseGuards(CookieAuthGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Get("export/excel")
   @ApiBearerAuth()
   @ApiOperation({
