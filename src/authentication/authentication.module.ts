@@ -12,6 +12,7 @@ import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
 import { JwtStrategy } from "./strategy/jwt.strategy";
 import { NotificationService } from "../notification/notification.service";
 import { CookieAuthGuard } from "./guards/cookie-auth.guard";
+import { OptionalAuthGuard } from "./guards/optional-auth.guard";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../entities/User.entity";
 import { Verification } from "../entities/Verification.entity";
@@ -37,7 +38,8 @@ import { Verification } from "../entities/Verification.entity";
     JwtRefreshTokenStrategy,
     NotificationService,
     CookieAuthGuard,
+    OptionalAuthGuard,
   ],
-  exports: [JwtModule, AuthenticationService, UsersService],
+  exports: [JwtModule, AuthenticationService, UsersService, OptionalAuthGuard],
 })
 export class AuthenticationModule {}

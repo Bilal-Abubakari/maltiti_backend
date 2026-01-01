@@ -21,6 +21,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { OptionalAuthGuard } from "../authentication/guards/optional-auth.guard";
+import { CurrentUser } from "../authentication/decorators/current-user.decorator";
 import { ProductsService } from "./products.service";
 import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { CreateProductDto } from "../dto/createProduct.dto";
@@ -31,6 +33,7 @@ import {
 } from "../dto/productQuery.dto";
 import {
   BestProductsResponseDto,
+  BestProductsApiResponseDto,
   ProductResponseDto,
   ProductsPaginationResponseDto,
 } from "../dto/productResponse.dto";
@@ -43,6 +46,7 @@ import { LightProduct } from "../interfaces/product-light.model";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
+import { User } from "../entities/User.entity";
 
 @ApiTags("Products")
 @Controller("products")
@@ -72,21 +76,33 @@ export class ProductsController {
     };
   }
 
+  @UseGuards(OptionalAuthGuard)
   @Get("best-products")
   @ApiOperation({
-    summary: "Get featured products",
-    description: "Retrieve 8 random featured/best products",
+    summary: "Get preview products for homepage",
+    description:
+      "Returns 8-10 highly relevant products for homepage display. " +
+      "For authenticated users: personalized based on purchase history, cart activity, and preferences. " +
+      "For anonymous users: curated based on best-sellers, trending items, and engagement metrics. " +
+      "This endpoint is not paginated and is optimized for preview/featured sections.",
   })
   @ApiResponse({
     status: 200,
-    description: "Featured products retrieved successfully",
-    type: BestProductsResponseDto,
+    description:
+      "Preview products retrieved successfully. Response includes personalized products for logged-in users or curated best performers for anonymous users.",
+    type: BestProductsApiResponseDto,
   })
-  public async getBestProducts(): Promise<IResponse<BestProductsResponseDto>> {
-    const products = await this.productsService.getBestProducts();
+  public async getBestProducts(
+    @CurrentUser() user?: User,
+  ): Promise<IResponse<BestProductsResponseDto>> {
+    const products = await this.productsService.getBestProducts(user);
+
+    const message = user
+      ? "Personalized products loaded successfully"
+      : "Featured products loaded successfully";
 
     return {
-      message: "Featured products loaded successfully",
+      message,
       data: products,
     };
   }

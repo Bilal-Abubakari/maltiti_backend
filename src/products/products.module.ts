@@ -11,10 +11,20 @@ import { BatchesController } from "./batches/batches.controller";
 import { IngredientsModule } from "./ingredients/ingredients.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { AuditInterceptor } from "../interceptors/audit.interceptor";
+import { Sale } from "../entities/Sale.entity";
+import { Cart } from "../entities/Cart.entity";
+import { Customer } from "../entities/Customer.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, Batch, Ingredient]),
+    TypeOrmModule.forFeature([
+      Product,
+      Batch,
+      Ingredient,
+      Sale,
+      Cart,
+      Customer,
+    ]),
     IngredientsModule,
   ],
   exports: [TypeOrmModule, ProductsService],
