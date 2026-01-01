@@ -135,3 +135,18 @@ export class BestProductsResponseDto {
   @ApiProperty({ type: [ProductResponseDto] })
   public data: ProductResponseDto[];
 }
+
+/**
+ * API Response wrapper for best products endpoint
+ */
+export class BestProductsApiResponseDto {
+  @ApiProperty({
+    example: "Personalized products loaded successfully",
+    description:
+      "Response message indicating whether products are personalized or curated",
+  })
+  public message: string;
+
+  @ApiProperty({ type: BestProductsResponseDto })
+  public data: BestProductsResponseDto;
+}
