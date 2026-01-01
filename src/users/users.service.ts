@@ -105,15 +105,11 @@ export class UsersService {
     await this.mailService.sendMail({
       to: email,
       from: "no-reply@maltitiaenterprise.com",
-      subject: "Verify your email",
-      template: "./welcome",
+      subject: "Verify Your Email - Maltiti A. Enterprise Ltd",
+      template: "./verify-email",
       context: {
-        name: name,
-        url: `${this.configService.get<string>("FRONTEND_URL")}/${idToken}`,
-        subject: "Verify your email",
-        body: `You have successfully created an account. Please verify your email by clicking the button below. Welcome onboard`,
-        link: `${this.configService.get<string>("APP_URL")}/${idToken}`,
-        action: "Verify",
+        customerName: name,
+        verificationLink: `${this.configService.get<string>("FRONTEND_URL")}/${idToken}`,
       },
     });
   }
