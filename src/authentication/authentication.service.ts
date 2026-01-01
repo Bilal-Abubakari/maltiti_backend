@@ -18,6 +18,7 @@ import { User } from "../entities/User.entity";
 import { AuditService } from "../audit/audit.service";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
+import { Role } from "../enum/role.enum";
 
 @Injectable()
 export class AuthenticationService {
@@ -41,6 +42,12 @@ export class AuthenticationService {
 
     const user =
       await this.usersService.findUserIncludingPasswordByEmail(email);
+
+    if (user.userType === Role.User && !user.emailVerifiedAt) {
+      throw new UnauthorizedException(
+        "User email not verified. We have sent another verification email",
+      );
+    }
 
     if (!user) {
       throw new UnauthorizedException("Invalid username or password");
