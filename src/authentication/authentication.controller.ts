@@ -45,9 +45,11 @@ import {
   PasswordResetEmailResponseDto,
   PasswordResetResponseDto,
   PhoneVerificationResponseDto,
+  ResendVerificationResponseDto,
   TokenRefreshResponseDto,
   ValidationErrorResponseDto,
 } from "../dto/authResponse.dto";
+import { ResendVerificationDto } from "../dto/resendVerification.dto";
 
 @ApiTags("Authentication")
 @Controller("authentication")
@@ -316,7 +318,7 @@ export class AuthenticationController {
   @ApiOperation({
     summary: "Verify email address",
     description:
-      "Verifies user email using the verification token from email. Redirects to appropriate page after verification.",
+      "Verifies user email using the verification token from email and logs the user in. Sets authentication cookies (accessToken: 15min, refreshToken: 1day).",
   })
   @ApiParam({
     name: "id",
@@ -330,7 +332,8 @@ export class AuthenticationController {
   })
   @ApiResponse({
     status: 200,
-    description: "Email verification successful, redirects to success page",
+    description: "Email verification successful and user logged in",
+    type: LoginResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -346,8 +349,30 @@ export class AuthenticationController {
   public async emailVerification(
     @Param("id") id: string,
     @Param("token") token: string,
-  ): Promise<void> {
-    await this.authService.emailVerification(id, token);
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<IResponse<User>> {
+    const { user, accessToken, refreshToken } =
+      await this.authService.emailVerification(id, token);
+
+    // Set authentication cookies to log the user in
+    response.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+
+    response.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    });
+
+    return {
+      message: "Email verified successfully. You are now logged in.",
+      data: user,
+    };
   }
 
   @ApiOperation({
@@ -548,6 +573,42 @@ export class AuthenticationController {
     delete user.password;
     return {
       message: "Password changed successfully",
+      data: user,
+    };
+  }
+
+  @ApiOperation({
+    summary: "Resend verification email",
+    description:
+      "Resends the email verification link to the user's email address. Creates a new verification token and sends a new verification email.",
+  })
+  @ApiBody({ type: ResendVerificationDto })
+  @ApiResponse({
+    status: 200,
+    description: "Verification email resent successfully",
+    type: ResendVerificationResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Bad request - email already verified or validation failed",
+    type: ValidationErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: "User with email does not exist",
+    type: ErrorResponseDto,
+  })
+  @UsePipes(new ValidationPipe())
+  @Post("resend-verification")
+  public async resendVerificationEmail(
+    @Body() resendVerificationDto: ResendVerificationDto,
+  ): Promise<IResponse<User>> {
+    const user = await this.usersService.resendVerificationEmail(
+      resendVerificationDto.email,
+    );
+    delete user.password;
+    return {
+      message: `Verification email has been resent to ${user.email}`,
       data: user,
     };
   }
