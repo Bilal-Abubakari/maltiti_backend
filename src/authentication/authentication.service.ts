@@ -12,7 +12,6 @@ import { MailerService } from "@nestjs-modules/mailer";
 import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
 import { Repository } from "typeorm";
 import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
-import { IResponse } from "../interfaces/general";
 import { Verification } from "../entities/Verification.entity";
 import { User } from "../entities/User.entity";
 import { AuditService } from "../audit/audit.service";
@@ -43,14 +42,14 @@ export class AuthenticationService {
     const user =
       await this.usersService.findUserIncludingPasswordByEmail(email);
 
+    if (!user) {
+      throw new UnauthorizedException("Invalid username or password");
+    }
+
     if (user.userType === Role.User && !user.emailVerifiedAt) {
       throw new UnauthorizedException(
         "User email not verified. We have sent another verification email",
       );
-    }
-
-    if (!user) {
-      throw new UnauthorizedException("Invalid username or password");
     }
 
     const passwordIsValid = await this.usersService.validatePassword(
@@ -149,7 +148,11 @@ export class AuthenticationService {
   public async emailVerification(
     id: string,
     token: string,
-  ): Promise<IResponse<User>> {
+  ): Promise<{
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const user = await this.usersService.findOne(id);
     if (!user) {
       throw new NotFoundException("User not found");
@@ -157,6 +160,8 @@ export class AuthenticationService {
     const userVerification = await this.verificationRepository.findOneBy({
       token,
     });
+
+    console.log("User verification: ", userVerification);
 
     if (
       !userVerification ||
@@ -169,9 +174,21 @@ export class AuthenticationService {
     await this.verificationRepository.delete({ id: userVerification.id });
     await this.usersService.verifyUserEmail(user.id);
 
+    // Generate access and refresh tokens to log the user in
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = await this.jwtService.signAsync(payload);
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      expiresIn: "1d",
+    });
+
+    // Store the refresh token in redis
+    await this.refreshTokenIdsStorage.insert(user.id, refreshToken);
+    delete user.password;
+
     return {
-      message: "Verification has been successful",
-      data: user,
+      user,
+      accessToken,
+      refreshToken,
     };
   }
 
@@ -180,6 +197,8 @@ export class AuthenticationService {
     const difference = dateNow - date.getTime();
     const differenceInSeconds = difference / 1000;
     const differenceInMinutes = differenceInSeconds / 60;
+
+    console.log("Difference in minutes: ", differenceInMinutes);
 
     return differenceInMinutes > 60;
   }

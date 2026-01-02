@@ -80,7 +80,7 @@ export class UsersService {
       verification.token = token;
       const userResponse = await this.userRepository.save(user);
       await this.verificationRepository.save(verification);
-      const idToken = `verify/${user.id}/${token}`;
+      const idToken = `auth/verify/${user.id}/${token}`;
       await this.sendVerificationEmail(user.email, user.name, idToken);
       return userResponse;
     }
@@ -90,7 +90,6 @@ export class UsersService {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(userInfo.password, salt);
     user.name = userInfo.name;
-    user.createdAt = new Date();
     user.phoneNumber = userInfo.phoneNumber;
     user.password = hashedPassword;
     user.userType = userInfo.userType;
@@ -326,7 +325,6 @@ export class UsersService {
     user.userType = Role.Admin;
     user.emailVerifiedAt = new Date(); // Auto-verify admin accounts
     user.mustChangePassword = true;
-    user.createdAt = new Date();
 
     // Hash password
     const salt = await bcrypt.genSalt();
@@ -491,5 +489,45 @@ export class UsersService {
     await this.userRepository.save(user);
 
     return avatarUrl;
+  }
+
+  /**
+   * Resend verification email to user
+   * Creates new verification token and sends email
+   */
+  public async resendVerificationEmail(email: string): Promise<User> {
+    const user = await this.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException("User with email does not exist");
+    }
+
+    // Check if email is already verified
+    if (user.emailVerifiedAt) {
+      throw new BadRequestException({
+        message: "Email is already verified",
+        status: 400,
+      });
+    }
+
+    // Delete existing verification tokens for this user
+    await this.verificationRepository.delete({
+      user: { id: user.id },
+      type: "email",
+    });
+
+    // Create new verification token
+    const verification = new Verification();
+    verification.user = user;
+    verification.type = "email";
+    const token = generateRandomToken();
+    verification.token = token;
+    await this.verificationRepository.save(verification);
+
+    // Send verification email
+    const idToken = `auth/verify/${user.id}/${token}`;
+    await this.sendVerificationEmail(user.email, user.name, idToken);
+
+    return user;
   }
 }

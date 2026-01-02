@@ -179,6 +179,23 @@ export class PasswordChangeResponseDto {
 }
 
 /**
+ * Resend verification email response
+ */
+export class ResendVerificationResponseDto {
+  @ApiProperty({
+    description: "Success message with email address",
+    example: "Verification email has been resent to user@example.com",
+  })
+  public message: string;
+
+  @ApiProperty({
+    description: "User data",
+    type: UserResponseDto,
+  })
+  public data: UserResponseDto;
+}
+
+/**
  * Error response structure
  */
 export class ErrorResponseDto {
