@@ -179,7 +179,26 @@ export class ProductsService {
 
     if (user) {
       // Personalized recommendations for authenticated users
-      products = await this.getPersonalizedProducts(user, fullConfig);
+      const personalizedProducts = await this.getPersonalizedProducts(
+        user,
+        fullConfig,
+      );
+
+      // If we don't have enough personalized products, fill with curated products
+      if (personalizedProducts.length < fullConfig.limit) {
+        const curatedProducts = await this.getCuratedProducts(fullConfig);
+        const existingIds = new Set(personalizedProducts.map(p => p.id));
+
+        // Add curated products that aren't already in personalized list
+        for (const curated of curatedProducts) {
+          if (!existingIds.has(curated.id)) {
+            personalizedProducts.push(curated);
+            if (personalizedProducts.length >= fullConfig.limit) break;
+          }
+        }
+      }
+
+      products = personalizedProducts.slice(0, fullConfig.limit);
     } else {
       // Curated recommendations for anonymous users
       products = await this.getCuratedProducts(fullConfig);

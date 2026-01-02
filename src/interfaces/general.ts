@@ -2,6 +2,7 @@ import { Cooperative } from "../entities/Cooperative.entity";
 import { CooperativeMember } from "../entities/CooperativeMember.entity";
 import { User } from "../entities/User.entity";
 import { Checkout } from "../entities/Checkout.entity";
+import { CartItemDto } from "../dto/cartResponse.dto";
 
 export interface IResponse<T> {
   message: string;
@@ -85,4 +86,10 @@ export interface IUserToken {
   accessToken: string;
   refreshToken: string;
   user: User;
+}
+
+export interface ICartData {
+  items: CartItemDto[];
+  count: number;
+  total: number;
 }
