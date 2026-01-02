@@ -46,6 +46,7 @@ async function bootstrap(): Promise<void> {
     .addTag("Checkout", "Order and checkout endpoints")
     .addTag("Cooperative", "Cooperative management endpoints")
     .addTag("Users", "User management endpoints")
+    .addTag("Contact", "Contact us form submission endpoints")
     .addBearerAuth(
       {
         type: "http",
