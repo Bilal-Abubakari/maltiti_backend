@@ -1,0 +1,140 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>New Contact Us Submission</title>
+    <style>
+        body {
+            width: 100%;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .email-container {
+            max-width: 700px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .email-header {
+            background: linear-gradient(135deg, #2c5f2d 0%, #97bc62 100%);
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .email-header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .email-body {
+            padding: 40px 30px;
+        }
+        .email-body h2 {
+            color: #2c5f2d;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .info-section {
+            background-color: #f9f9f9;
+            border-left: 4px solid #97bc62;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .info-row {
+            margin-bottom: 15px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #2c5f2d;
+            display: inline-block;
+            width: 140px;
+        }
+        .info-value {
+            color: #333333;
+        }
+        .message-section {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .message-section h3 {
+            color: #2c5f2d;
+            font-size: 16px;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .message-content {
+            color: #333333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .email-footer {
+            background-color: #2c5f2d;
+            padding: 20px;
+            text-align: center;
+        }
+        .email-footer p {
+            color: #ffffff;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+        .timestamp {
+            color: #666666;
+            font-size: 12px;
+            font-style: italic;
+            margin-top: 20px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>New Contact Us Submission</h1>
+        </div>
+        <div class="email-body">
+            <h2>You have received a new contact message.</h2>
+            <div class="info-section">
+                <div class="info-row">
+                    <span class="info-label">Full Name:</span>
+                    <span class="info-value">{{fullName}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">{{email}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone Number:</span>
+                    <span class="info-value">{{phoneNumber}}</span>
+                </div>
+            </div>
+            <div class="message-section">
+                <h3>Message:</h3>
+                <div class="message-content">{{message}}</div>
+            </div>
+            <div class="timestamp">
+                Submitted At: {{submittedAt}}
+            </div>
+            {{#if senderIp}}
+            <div class="timestamp">
+                Sender IP: {{senderIp}}
+            </div>
+            {{/if}}
+        </div>
+        <div class="email-footer">
+            <p><strong>Maltiti A. Enterprise Ltd</strong></p>
+            <p>This is an automated notification from your Contact Us form.</p>
+            <p>&copy; {{currentYear}} Maltiti A. Enterprise Ltd. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
