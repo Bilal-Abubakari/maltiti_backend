@@ -7,6 +7,7 @@ import {
   IsArray,
   ValidateNested,
   ArrayMinSize,
+  IsOptional,
 } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -23,6 +24,20 @@ export class AddCartDto {
   @IsNotEmpty({ message: "Product ID is required" })
   @IsUUID("4", { message: "Product ID must be a valid UUID" })
   public id: string;
+
+  @ApiProperty({
+    description:
+      "The quantity of the product in the cart (must be a positive integer)",
+    example: 5,
+    type: Number,
+    required: false,
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt({ message: "Quantity must be an integer" })
+  @Min(1, { message: "Quantity must be at least 1" })
+  @Type(() => Number)
+  public quantity?: number;
 }
 
 /**
