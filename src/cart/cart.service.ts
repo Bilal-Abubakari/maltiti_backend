@@ -98,7 +98,7 @@ export class CartService {
       );
     }
 
-    const cartUser = cartItem.user;
+    const cartUser = await cartItem.user;
     if (cartUser.id !== user.id) {
       throw new HttpException(
         {
@@ -124,7 +124,7 @@ export class CartService {
     const { user, product, existingCart } = await this.findCart(id, addCart.id);
 
     if (existingCart) {
-      existingCart.quantity += 1;
+      existingCart.quantity += addCart.quantity || 1;
       const updatedCart = await this.cartRepository.save(existingCart);
       return this.transformCartToDto(updatedCart);
     }
@@ -132,7 +132,7 @@ export class CartService {
     const cart = new Cart();
     cart.user = user;
     cart.product = product;
-    cart.quantity = 1;
+    cart.quantity = addCart.quantity || 1;
 
     const savedCart = await this.cartRepository.save(cart);
     return this.transformCartToDto(savedCart);
@@ -159,8 +159,7 @@ export class CartService {
         HttpStatus.NOT_FOUND,
       );
     }
-
-    const cartUser = cart.user;
+    const cartUser = await cart.user;
     if (cartUser.id !== user.id) {
       throw new HttpException(
         {

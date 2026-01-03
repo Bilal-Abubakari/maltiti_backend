@@ -51,6 +51,7 @@ export class CreateSaleDto {
 
   @ApiPropertyOptional({
     enum: SaleStatus,
+    enumName: "SaleStatus",
     default: SaleStatus.INVOICE_REQUESTED,
   })
   @IsOptional()

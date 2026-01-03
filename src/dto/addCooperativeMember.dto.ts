@@ -101,6 +101,7 @@ export class AddCooperativeMemberDto {
     type: String,
     required: true,
     enum: IdType,
+    enumName: "IdType",
   })
   @IsNotEmpty({ message: "ID type is required" })
   @IsEnum(IdType, { message: "ID type must be a valid identification type" })
@@ -153,6 +154,7 @@ export class AddCooperativeMemberDto {
     type: String,
     required: true,
     enum: GhanaRegion,
+    enumName: "GhanaRegion",
   })
   @IsNotEmpty({ message: "Region is required" })
   @IsEnum(GhanaRegion, { message: "Region must be a valid Ghana region" })
@@ -175,6 +177,7 @@ export class AddCooperativeMemberDto {
     type: String,
     required: true,
     enum: EducationLevel,
+    enumName: "EducationLevel",
   })
   @IsNotEmpty({ message: "Education level is required" })
   @IsEnum(EducationLevel, {
