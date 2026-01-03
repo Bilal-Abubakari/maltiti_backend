@@ -36,6 +36,7 @@ import {
   BestProductsApiResponseDto,
   ProductResponseDto,
   ProductPaginationApiResponseDto,
+  SingleProductResponseDto,
 } from "../dto/productResponse.dto";
 import { Product } from "../entities/Product.entity";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
@@ -138,7 +139,7 @@ export class ProductsController {
   @ApiResponse({
     status: 200,
     description: "Product retrieved successfully",
-    type: ProductResponseDto,
+    type: SingleProductResponseDto,
   })
   @ApiResponse({ status: 404, description: "Product not found" })
   public async getProduct(

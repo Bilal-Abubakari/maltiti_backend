@@ -109,6 +109,20 @@ export class ProductResponseDto {
 }
 
 /**
+ * Retrieve a single product response DTO
+ */
+export class SingleProductResponseDto {
+  @ApiProperty({
+    example: "Product loaded successfully",
+    description: "Response message indicating whether product is loaded",
+  })
+  public message: string;
+
+  @ApiProperty({ type: ProductResponseDto })
+  public data: ProductResponseDto;
+}
+
+/**
  * Paginated products response
  */
 export class ProductsPaginationResponse {
