@@ -28,6 +28,7 @@ export class UserResponseDto {
     description: "User role/type",
     enum: Role,
     example: Role.SuperAdmin,
+    enumName: "Role",
   })
   public userType: Role;
 

@@ -1,18 +1,20 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
-  IsEnum,
-  IsOptional,
-  IsInt,
-  Min,
-  IsString,
-  IsNumber,
   IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
 } from "class-validator";
 import { ProductCategory } from "../enum/product-category.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 import { ProductGrade } from "../enum/product-grade.enum";
 import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
+import { SortOrder } from "../enum/sort-order.enum";
+import { ProductSortBy } from "../enum/product-sort-by.enum";
 
 /**
  * DTO for querying/filtering products with pagination
@@ -54,6 +56,8 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product category",
     enum: ProductCategory,
+    enumName: "ProductCategory",
+
     example: ProductCategory.SHEA_BUTTER,
   })
   @IsOptional()
@@ -63,6 +67,7 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product status",
     enum: ProductStatus,
+    enumName: "ProductStatus",
     example: ProductStatus.ACTIVE,
   })
   @IsOptional()
@@ -72,6 +77,7 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product grade",
     enum: ProductGrade,
+    enumName: "ProductGrade",
     example: ProductGrade.GRADE_A,
   })
   @IsOptional()
@@ -81,6 +87,7 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by unit of measurement",
     enum: UnitOfMeasurement,
+    enumName: "UnitOfMeasurement",
     example: UnitOfMeasurement.KILOGRAM,
   })
   @IsOptional()
@@ -126,20 +133,22 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: "Sort field",
     example: "createdAt",
-    enum: ["name", "retail", "createdAt", "rating", "stockQuantity"],
+    enum: ProductSortBy,
+    enumName: "ProductSortBy",
   })
   @IsOptional()
   @IsString()
-  public sortBy?: string = "createdAt";
+  public sortBy?: string = ProductSortBy.CREATED_AT;
 
   @ApiPropertyOptional({
     description: "Sort order",
-    example: "DESC",
-    enum: ["ASC", "DESC"],
+    example: SortOrder.DESC,
+    enum: SortOrder,
+    enumName: "SortOrder",
   })
   @IsOptional()
   @IsString()
-  public sortOrder?: "ASC" | "DESC" = "DESC";
+  public sortOrder?: SortOrder = SortOrder.DESC;
 
   @ApiPropertyOptional({
     description: "Filter by batch ID",
@@ -166,6 +175,7 @@ export class ExportProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product category",
     enum: ProductCategory,
+    enumName: "ProductCategory",
     example: ProductCategory.SHEA_BUTTER,
   })
   @IsOptional()
@@ -175,6 +185,7 @@ export class ExportProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product status",
     enum: ProductStatus,
+    enumName: "ProductStatus",
     example: ProductStatus.ACTIVE,
   })
   @IsOptional()
@@ -184,6 +195,7 @@ export class ExportProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by product grade",
     enum: ProductGrade,
+    enumName: "ProductGrade",
     example: ProductGrade.GRADE_A,
   })
   @IsOptional()
@@ -193,6 +205,7 @@ export class ExportProductQueryDto {
   @ApiPropertyOptional({
     description: "Filter by unit of measurement",
     enum: UnitOfMeasurement,
+    enumName: "UnitOfMeasurement",
     example: UnitOfMeasurement.KILOGRAM,
   })
   @IsOptional()

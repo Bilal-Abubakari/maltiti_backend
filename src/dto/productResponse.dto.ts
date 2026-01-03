@@ -111,7 +111,7 @@ export class ProductResponseDto {
 /**
  * Paginated products response
  */
-export class ProductsPaginationResponseDto {
+export class ProductsPaginationResponse {
   @ApiProperty({ example: 50 })
   public totalItems: number;
 
@@ -122,7 +122,19 @@ export class ProductsPaginationResponseDto {
   public totalPages: number;
 
   @ApiProperty({ type: [ProductResponseDto] })
-  public products: ProductResponseDto[];
+  public items: ProductResponseDto[];
+}
+
+export class ProductPaginationApiResponseDto {
+  @ApiProperty({
+    example: "Products loaded successfully",
+    description:
+      "Response message indicating whether products are personalized or curated",
+  })
+  public message: string;
+
+  @ApiProperty({ type: ProductsPaginationResponse })
+  public data: ProductsPaginationResponse;
 }
 
 /**

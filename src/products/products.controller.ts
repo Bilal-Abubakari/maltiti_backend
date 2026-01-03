@@ -35,7 +35,7 @@ import {
   BestProductsResponseDto,
   BestProductsApiResponseDto,
   ProductResponseDto,
-  ProductsPaginationResponseDto,
+  ProductPaginationApiResponseDto,
 } from "../dto/productResponse.dto";
 import { Product } from "../entities/Product.entity";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
@@ -62,7 +62,7 @@ export class ProductsController {
   @ApiResponse({
     status: 200,
     description: "Products retrieved successfully",
-    type: ProductsPaginationResponseDto,
+    type: ProductPaginationApiResponseDto,
   })
   @ApiResponse({ status: 400, description: "Invalid query parameters" })
   public async getAllProducts(
