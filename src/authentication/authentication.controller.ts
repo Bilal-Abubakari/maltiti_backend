@@ -207,7 +207,6 @@ export class AuthenticationController {
   @Post("login")
   public async signIn(
     @Body() signInDto: SignInDto,
-    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<IResponse<User>> {
     const { user, accessToken, refreshToken } =

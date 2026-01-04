@@ -56,6 +56,7 @@ export class AddProductDto {
     description: "Product category",
     example: ProductCategory.SHEA_BUTTER,
     enum: ProductCategory,
+    enumName: "ProductCategory",
     required: true,
   })
   @IsNotEmpty({ message: "Category is required" })
@@ -80,6 +81,7 @@ export class AddProductDto {
       "Product status (active, inactive, out of stock, discontinued)",
     example: ProductStatus.ACTIVE,
     enum: ProductStatus,
+    enumName: "ProductStatus",
     default: ProductStatus.ACTIVE,
   })
   @IsOptional()
@@ -90,6 +92,7 @@ export class AddProductDto {
     description: "Packaging size",
     example: PackagingSize.SIZE_1KG,
     enum: PackagingSize,
+    enumName: "PackagingSize",
   })
   @IsOptional()
   @IsEnum(PackagingSize, { message: "Size must be a valid packaging size" })
