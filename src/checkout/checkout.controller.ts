@@ -40,7 +40,7 @@ import {
   CheckoutsResponseDto,
   CheckoutResponseDto,
   OrdersPaginationResponseDto,
-  TransportationResponseDto,
+  DeliveryResponseDto,
   InitializeTransactionResponseDto,
   SaleResponseDto,
   CheckoutDto,
@@ -52,6 +52,7 @@ import {
   SaleLineItemDto,
 } from "../dto/checkoutResponse.dto";
 import { SaleDto } from "../dto/sales/sale.dto";
+import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
 
 @ApiTags("Checkout")
 @Controller("checkout")
@@ -127,27 +128,21 @@ export class CheckoutController {
     };
   }
 
-  @Get("transportation/:location")
+  @Post("delivery")
   @Roles([Role.User])
-  @ApiOperation({ summary: "Calculate transportation cost" })
-  @ApiParam({
-    name: "location",
-    enum: ["local", "other"],
-    description: "Delivery location type",
+  @ApiOperation({
+    summary: "Calculate delivery cost based on location details",
   })
   @ApiResponse({
     status: 200,
     description: "Transportation cost calculated successfully",
-    type: TransportationResponseDto,
+    type: DeliveryResponseDto,
   })
-  public async getTransportation(
+  public async getDeliveryCost(
     @CurrentUser() user: User,
-    @Param("location") location: "local" | "other",
+    @Body() dto: GetDeliveryCostDto,
   ): Promise<IResponse<number>> {
-    const response = await this.checkoutService.getTransportation(
-      user.id,
-      location,
-    );
+    const response = await this.checkoutService.getDeliveryCost(user.id, dto);
     return {
       message: "Transportation cost calculated successfully",
       data: response,

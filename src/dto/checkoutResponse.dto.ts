@@ -155,7 +155,7 @@ export class OrdersPaginationResponseDto {
   public data: OrdersPaginationDto;
 }
 
-export class TransportationResponseDto {
+export class DeliveryResponseDto {
   @ApiProperty()
   public message: string;
 

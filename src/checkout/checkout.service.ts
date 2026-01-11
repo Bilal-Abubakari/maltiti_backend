@@ -3,7 +3,6 @@ import { UsersService } from "../users/users.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Cart } from "../entities/Cart.entity";
 import { DataSource, IsNull, QueryRunner, Repository } from "typeorm";
-import { boxesCharge } from "../utils/constants";
 import axios from "axios";
 import * as process from "process";
 import { InitializeTransaction } from "../dto/checkout.dto";
@@ -18,6 +17,7 @@ import { Sale } from "../entities/Sale.entity";
 import { SaleStatus } from "../enum/sale-status.enum";
 import { User } from "../entities/User.entity";
 import { Customer } from "../entities/Customer.entity";
+import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
 
 @Injectable()
 export class CheckoutService {
@@ -36,9 +36,9 @@ export class CheckoutService {
     private dataSource: DataSource,
   ) {}
 
-  public async getTransportation(
+  public async getDeliveryCost(
     id: string,
-    location: "local" | "other",
+    dto: GetDeliveryCostDto,
   ): Promise<number> {
     const user = await this.userService.findOne(id);
     const cart = await this.cartRepository.findBy({ user });
@@ -53,9 +53,26 @@ export class CheckoutService {
       boxes = 1;
     }
 
-    return (
-      boxes * (location === "local" ? boxesCharge.Tamale : boxesCharge.Other)
-    );
+    // Delivery charges per box in cedis
+    const deliveryCharges = {
+      tamale: 25,
+      northern: 35,
+      other: 60,
+    };
+
+    if (dto.country.toLowerCase() !== "ghana") {
+      return -1;
+    }
+
+    let charge = deliveryCharges.other;
+
+    if (dto.city.toLowerCase() === "tamale") {
+      charge = deliveryCharges.tamale;
+    } else if (dto.region.toLowerCase() === "northern") {
+      charge = deliveryCharges.northern;
+    }
+
+    return boxes * charge;
   }
 
   private async calculateCartAmount(carts: Cart[]): Promise<number> {
@@ -98,7 +115,15 @@ export class CheckoutService {
     try {
       const customer = await this.findOrCreateCustomer(user, data, queryRunner);
 
-      const totalAmount = await this.calculateCartAmount(cartsToUpdate);
+      const deliverCost = await this.getDeliveryCost(user.id, {
+        city: data.city,
+        country: data.country,
+        region: data.region,
+      });
+
+      const productTotal = await this.calculateCartAmount(cartsToUpdate);
+      const totalAmount =
+        deliverCost === -1 ? productTotal : productTotal + deliverCost;
 
       const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
 
