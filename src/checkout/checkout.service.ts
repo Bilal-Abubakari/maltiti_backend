@@ -5,7 +5,11 @@ import { Cart } from "../entities/Cart.entity";
 import { DataSource, IsNull, QueryRunner, Repository } from "typeorm";
 import axios from "axios";
 import * as process from "process";
-import { InitializeTransaction } from "../dto/checkout.dto";
+import {
+  InitializeTransaction,
+  PlaceOrderDto,
+  UpdateDeliveryCostDto,
+} from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
 import {
   IInitalizeTransactionData,
@@ -161,6 +165,154 @@ export class CheckoutService {
       );
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  public async placeOrder(id: string, data: PlaceOrderDto): Promise<Checkout> {
+    const user = await this.userService.findOne(id);
+    const cartsToUpdate = await this.cartRepository.findBy({
+      user,
+      checkout: IsNull(),
+    });
+
+    if (!cartsToUpdate || cartsToUpdate.length === 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: "No items in cart to checkout",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const customer = await this.findOrCreateCustomer(user, data, queryRunner);
+
+      const deliverCost = await this.getDeliveryCost(user.id, {
+        city: data.city,
+        country: data.country,
+        region: data.region,
+      });
+
+      const productTotal = await this.calculateCartAmount(cartsToUpdate);
+      const totalAmount =
+        deliverCost === -1 ? productTotal : productTotal + deliverCost;
+
+      const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
+      sale.status = SaleStatus.INVOICE_REQUESTED;
+      await queryRunner.manager.save(sale);
+
+      const checkout = await this.createCheckout(
+        sale,
+        totalAmount,
+        queryRunner,
+      );
+
+      await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
+
+      await queryRunner.commitTransaction();
+
+      await this.sendOrderNotifications(user);
+
+      await this.notificationService.sendEmail(
+        "Your order has been placed successfully. You can make payment later from your dashboard.",
+        user.email,
+        "Order Placed",
+        user.name,
+        process.env.APP_URL,
+        "Go to Dashboard",
+        "Go to Dashboard",
+      );
+
+      return await this.checkoutRepository.findOne({
+        where: { id: checkout.id },
+        relations: ["sale", "sale.customer", "carts", "carts.product"],
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error("Error placing order", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  public async payForOrder(
+    userId: string,
+    checkoutId: string,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const user = await this.userService.findOne(userId);
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id: checkoutId },
+      relations: ["sale", "sale.customer"],
+    });
+
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Checkout not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (checkout.sale.customer.user.id !== userId) {
+      throw new HttpException(
+        {
+          status: HttpStatus.FORBIDDEN,
+          error: "You are not authorized to pay for this order",
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (
+      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
+      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: `Cannot pay for order with status: ${checkout.sale.status}`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const response = await this.initializePaystack(
+        checkout,
+        user,
+        Number(checkout.amount),
+      );
+
+      checkout.paystackReference = response.data.data.reference;
+      checkout.sale.status = SaleStatus.PENDING_PAYMENT;
+      await this.saleRepository.save(checkout.sale);
+      await this.checkoutRepository.save(checkout);
+
+      return response.data;
+    } catch (error) {
+      this.logger.error("Error initializing payment for order", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -337,6 +489,72 @@ export class CheckoutService {
     return await this.saleRepository.save(sale);
   }
 
+  public async updateDeliveryCost(
+    id: string,
+    dto: UpdateDeliveryCostDto,
+  ): Promise<Checkout> {
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id },
+      relations: [
+        "sale",
+        "sale.customer",
+        "sale.customer.user",
+        "carts",
+        "carts.product",
+      ],
+    });
+
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Checkout not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (
+      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
+      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: `Cannot update delivery cost for order with status: ${checkout.sale.status}`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const carts = await checkout.carts;
+    const productTotal = await this.calculateCartAmount(carts);
+    const newTotalAmount = productTotal + dto.deliveryCost;
+
+    checkout.amount = newTotalAmount;
+    await this.checkoutRepository.save(checkout);
+
+    const customer = checkout.sale.customer;
+    const user = customer.user;
+
+    if (user) {
+      await this.notificationService.sendEmail(
+        `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
+        user.email,
+        "Delivery Cost Updated",
+        user.name,
+        process.env.APP_URL,
+        "View Order",
+        "View Order",
+      );
+    }
+
+    return await this.checkoutRepository.findOne({
+      where: { id: checkout.id },
+      relations: ["sale", "sale.customer", "carts", "carts.product"],
+    });
+  }
+
   public async cancelOrder(id: string): Promise<Checkout> {
     const order = await this.checkoutRepository.findOne({
       where: { id },
@@ -451,7 +669,7 @@ export class CheckoutService {
 
   private async findOrCreateCustomer(
     user: User,
-    data: InitializeTransaction,
+    data: InitializeTransaction | PlaceOrderDto,
     queryRunner: QueryRunner,
   ): Promise<Customer> {
     let customer = await queryRunner.manager.findOne(Customer, {
