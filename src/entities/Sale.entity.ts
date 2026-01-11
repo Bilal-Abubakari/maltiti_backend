@@ -5,12 +5,14 @@ import {
   Entity,
   ManyToOne,
   JoinColumn,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { SaleStatus } from "../enum/sale-status.enum";
 import { Customer } from "./Customer.entity";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
+import { Checkout } from "./Checkout.entity";
 
 @Entity({ name: "Sales" })
 export class Sale {
@@ -24,6 +26,9 @@ export class Sale {
   @ManyToOne(() => Customer, customer => customer.sales, { nullable: false })
   @JoinColumn({ name: "customerId" })
   public customer: Customer;
+
+  @OneToOne(() => Checkout, checkout => checkout.sale, { nullable: true })
+  public checkout: Checkout;
 
   @Column({
     type: "enum",

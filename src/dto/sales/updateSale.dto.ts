@@ -9,7 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { SaleStatus } from "../../enum/sale-status.enum";
 
 class BatchAllocationDto {
   @ApiPropertyOptional()

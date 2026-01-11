@@ -1,35 +1,41 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { UsersService } from "../users/users.service";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Cart } from "../entities/Cart.entity";
-import { IsNull, Repository, UpdateResult } from "typeorm";
+import { DataSource, IsNull, QueryRunner, Repository } from "typeorm";
 import { boxesCharge } from "../utils/constants";
 import axios from "axios";
 import * as process from "process";
-import {
-  InitializeTransaction,
-  OrderStatus,
-  PaymentStatus,
-} from "../dto/checkout.dto";
+import { InitializeTransaction } from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
 import {
   IInitalizeTransactionData,
   IInitializeTransactionResponse,
   ordersPagination,
 } from "../interfaces/general";
-import { paymentStatus, status } from "../interfaces/checkout.interface";
 import { NotificationService } from "../notification/notification.service";
+import { Sale } from "../entities/Sale.entity";
+import { SaleStatus } from "../enum/sale-status.enum";
+import { User } from "../entities/User.entity";
+import { Customer } from "../entities/Customer.entity";
 
 @Injectable()
 export class CheckoutService {
+  private logger = new Logger("CheckoutService");
   constructor(
     private readonly userService: UsersService,
     @InjectRepository(Cart)
     private readonly cartRepository: Repository<Cart>,
     @InjectRepository(Checkout)
     private readonly checkoutRepository: Repository<Checkout>,
+    @InjectRepository(Sale)
+    private readonly saleRepository: Repository<Sale>,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
     private notificationService: NotificationService,
+    private dataSource: DataSource,
   ) {}
+
   public async getTransportation(
     id: string,
     location: "local" | "other",
@@ -52,71 +58,75 @@ export class CheckoutService {
     );
   }
 
+  private async calculateCartAmount(carts: Cart[]): Promise<number> {
+    let totalAmount = 0;
+
+    for (const cart of carts) {
+      const product = cart.product;
+      const itemTotal = product.retail * cart.quantity;
+      totalAmount += itemTotal;
+    }
+
+    return Number(totalAmount.toFixed(2));
+  }
+
   public async initializeTransaction(
     id: string,
     data: InitializeTransaction,
   ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
-    const checkout = new Checkout();
     const user = await this.userService.findOne(id);
     const cartsToUpdate = await this.cartRepository.findBy({
       user,
       checkout: IsNull(),
     });
-    cartsToUpdate.forEach(cart => {
-      cart.checkout = checkout;
-    });
-    checkout.user = user;
-    checkout.orderStatus = "review";
-    checkout.paymentStatus = "unpaid";
-    checkout.extraInfo = data.extraInfo;
-    checkout.location = data.location;
-    checkout.name = data.name;
-    checkout.amount = data.amount;
+
+    if (!cartsToUpdate || cartsToUpdate.length === 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: "No items in cart to checkout",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const response = await axios.post(
-        `${process.env.PAYSTACK_BASE_URL}/transaction/initialize`,
-        {
-          ...data,
-          reference: `${id}=${checkout.id}`,
-          email: user.email,
-          callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${id}/${checkout.id}`,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          },
-        },
+      const customer = await this.findOrCreateCustomer(user, data, queryRunner);
+
+      const totalAmount = await this.calculateCartAmount(cartsToUpdate);
+
+      const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
+
+      const checkout = await this.createCheckout(
+        sale,
+        totalAmount,
+        queryRunner,
       );
-      await this.checkoutRepository.save(checkout);
-      await this.cartRepository.save(cartsToUpdate);
-      await this.notificationService.sendSms(
-        "233557309018",
-        "A new order has been placed. Please visit the admin dashboard",
+
+      await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
+
+      const response = await this.initializePaystack(
+        checkout,
+        user,
+        totalAmount,
       );
-      await this.notificationService.sendEmail(
-        "A new order has been placed. Please visit the admin dashboard",
-        "bilal.abubakari@maltitiaenterprise.com",
-        "Order Received",
-        user.name,
-        process.env.ADMIN_URL,
-        "Go",
-        "Go",
-      );
-      await this.notificationService.sendSms(
-        user.phoneNumber,
-        "Your order has been placed and currently in review",
-      );
-      await this.notificationService.sendEmail(
-        "Your order has been received and it currently in review",
-        user.email,
-        "Order Received",
-        user.name,
-        process.env.APP_URL,
-        "Go",
-        "Go",
-      );
+
+      checkout.paystackReference = response.data.data.reference;
+      await queryRunner.manager.save(checkout);
+
+      await queryRunner.commitTransaction();
+
+      await this.sendOrderNotifications(user);
+
       return response.data;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error("Error initializing transaction", error);
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -124,6 +134,8 @@ export class CheckoutService {
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -131,7 +143,6 @@ export class CheckoutService {
     userId: string,
     checkoutId: string,
   ): Promise<Checkout> {
-    const user = await this.userService.findOne(userId);
     try {
       await axios.get(
         `${process.env.PAYSTACK_BASE_URL}/transaction/verify/${userId}=${checkoutId}`,
@@ -141,14 +152,26 @@ export class CheckoutService {
           },
         },
       );
-      const checkout = await this.checkoutRepository.findOneBy({
-        id: checkoutId,
+      const checkout = await this.checkoutRepository.findOne({
+        where: { id: checkoutId },
+        relations: ["sale", "sale.customer", "sale.customer.user"],
       });
-      checkout.paymentStatus = "paid";
-      await this.notificationService.sendSms(
-        user.phoneNumber,
-        "Your payment has been received, your order is already in progress",
-      );
+
+      if (!checkout) {
+        throw new HttpException(
+          {
+            status: HttpStatus.NOT_FOUND,
+            error: "Checkout not found",
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const sale = checkout.sale;
+      const user = sale.customer.user;
+      sale.status = SaleStatus.PAID;
+      await this.saleRepository.save(sale);
+
       await this.notificationService.sendEmail(
         "Your payment has been received, your order is already in progress",
         user.email,
@@ -160,6 +183,7 @@ export class CheckoutService {
       );
       return this.checkoutRepository.save(checkout);
     } catch (error) {
+      this.logger.error("Error confirming payment", error);
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -172,13 +196,37 @@ export class CheckoutService {
 
   public async getOrders(id: string): Promise<Checkout[]> {
     const user = await this.userService.findOne(id);
-    return this.checkoutRepository.findBy({ user });
+    const customer = await this.customerRepository.findOne({
+      where: { user: { id: user.id } },
+    });
+
+    if (!customer) {
+      return [];
+    }
+
+    return this.checkoutRepository.find({
+      where: { sale: { customer: { id: customer.id } } },
+      relations: ["sale", "sale.customer", "carts", "carts.product"],
+      order: { createdAt: "DESC" },
+    });
   }
 
   public async getOrder(id: string): Promise<Checkout> {
-    const checkout = await this.checkoutRepository.findOneBy({ id });
-    await checkout.carts;
-    await checkout.user;
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id },
+      relations: ["sale", "sale.customer", "carts", "carts.product"],
+    });
+
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Order not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
     return checkout;
   }
 
@@ -186,37 +234,25 @@ export class CheckoutService {
     page: number = 1,
     limit: number = 10,
     searchTerm: string = "",
-    orderStatus: status,
-    paymentStatus: paymentStatus,
+    saleStatus: SaleStatus,
   ): Promise<ordersPagination> {
     const skip = (page - 1) * limit;
     const queryBuilder = this.checkoutRepository.createQueryBuilder("checkout");
 
     queryBuilder.leftJoinAndSelect("checkout.carts", "carts");
-
     queryBuilder.leftJoinAndSelect("carts.product", "product");
-
-    queryBuilder.leftJoinAndSelect("checkout.user", "user");
-
-    // queryBuilder.leftJoinAndSelect('user.phoneNumber', 'phoneNumber');
+    queryBuilder.leftJoinAndSelect("checkout.sale", "sale");
+    queryBuilder.leftJoinAndSelect("sale.customer", "customer");
 
     if (searchTerm) {
-      queryBuilder.where("LOWER(checkout.name) LIKE LOWER(:searchTerm)", {
+      queryBuilder.where("LOWER(customer.name) LIKE LOWER(:searchTerm)", {
         searchTerm: `%${searchTerm.toLowerCase()}%`,
       });
     }
 
-    if (orderStatus) {
-      queryBuilder.andWhere(
-        "LOWER(checkout.orderStatus) = LOWER(:orderStatus)",
-        {
-          orderStatus,
-        },
-      );
-    }
-    if (paymentStatus) {
-      queryBuilder.andWhere("LOWER(checkout.paymentStatus) = :paymentStatus", {
-        paymentStatus: paymentStatus,
+    if (saleStatus) {
+      queryBuilder.andWhere("LOWER(sale.status) = LOWER(:saleStatus)", {
+        saleStatus,
       });
     }
 
@@ -224,7 +260,7 @@ export class CheckoutService {
 
     const [orders, totalItems] = await queryBuilder
       .skip(skip)
-      .take(10)
+      .take(limit)
       .getManyAndCount();
 
     return {
@@ -235,61 +271,68 @@ export class CheckoutService {
     };
   }
 
-  public async orderStatus(
-    id: string,
-    data: OrderStatus,
-  ): Promise<UpdateResult> {
-    const checkout = await this.checkoutRepository.findOne({ where: { id } });
-    const user = await checkout.user;
-    await this.notificationService.sendSms(
-      user.phoneNumber,
-      "Your order status been updated to: " + data.status,
-    );
-    await this.notificationService.sendEmail(
-      "Your order status been updated to: " + data.status,
-      user.email,
-      "Order Status",
-      user.name,
-      process.env.APP_URL,
-      "Go",
-      "Go",
-    );
-    return await this.checkoutRepository.update(
-      { id },
-      { orderStatus: data.status },
-    );
-  }
+  public async updateSaleStatus(id: string, status: SaleStatus): Promise<Sale> {
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id },
+      relations: ["sale", "sale.customer", "sale.customer.user"],
+    });
 
-  public async paymentStatus(
-    id: string,
-    data: PaymentStatus,
-  ): Promise<UpdateResult> {
-    const checkout = await this.checkoutRepository.findOne({ where: { id } });
-    const user = await checkout.user;
-    await this.notificationService.sendSms(
-      user.phoneNumber,
-      "Your order payment status has been updated to " + data.status,
-    );
-    await this.notificationService.sendEmail(
-      "Your order payment status has been updated to " + data.status,
-      user.email,
-      "Payment Status",
-      user.name,
-      process.env.APP_URL,
-      "Go",
-      "Go",
-    );
-    return await this.checkoutRepository.update(
-      { id },
-      { paymentStatus: data.status },
-    );
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Checkout not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const sale = checkout.sale;
+    sale.status = status;
+
+    const customer = sale.customer;
+    const user = customer.user;
+
+    if (user) {
+      await this.notificationService.sendSms(
+        user.phoneNumber,
+        `Your order status has been updated to: ${status}`,
+      );
+      await this.notificationService.sendEmail(
+        `Your order status has been updated to: ${status}`,
+        user.email,
+        "Order Status Update",
+        user.name,
+        process.env.APP_URL,
+        "Go",
+        "Go",
+      );
+    }
+
+    return await this.saleRepository.save(sale);
   }
 
   public async cancelOrder(id: string): Promise<Checkout> {
-    const order = await this.checkoutRepository.findOneByOrFail({ id });
-    const user = await order.user;
+    const order = await this.checkoutRepository.findOne({
+      where: { id },
+      relations: ["sale", "sale.customer", "sale.customer.user", "carts"],
+    });
 
-    if (order.orderStatus === "cancelled") {
+    if (!order) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Order not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const sale = order.sale;
+    const customer = sale.customer;
+    const user = customer.user;
+
+    if (sale.status === SaleStatus.CANCELLED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -299,81 +342,194 @@ export class CheckoutService {
       );
     }
 
-    order.orderStatus = "cancelled";
-
-    if (
-      order.orderStatus === "delivered" ||
-      order.orderStatus === "delivery in progress"
-    ) {
+    if (sale.status === SaleStatus.DELIVERED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error:
-            "This order is already in progress or delivered and cannot be cancelled",
+          error: "This order is already delivered and cannot be cancelled",
         },
         HttpStatus.CONFLICT,
       );
     }
 
-    if (order.paymentStatus === "paid") {
+    if (sale.status === SaleStatus.IN_TRANSIT) {
+      throw new HttpException(
+        {
+          status: HttpStatus.CONFLICT,
+          error: "This order is already in transit and cannot be cancelled",
+        },
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    if (
+      sale.status === SaleStatus.PAID ||
+      sale.status === SaleStatus.PACKAGING
+    ) {
       try {
         await axios.post(
           `${process.env.PAYSTACK_BASE_URL}/refund/`,
-          { transaction: `${user.id}=${id}` },
+          { transaction: order.paystackReference || `${user?.id}=${id}` },
           {
             headers: {
               Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
             },
           },
         );
-        order.paymentStatus = "refunded";
+        sale.status = SaleStatus.CANCELLED;
       } catch (error) {
         throw new HttpException(
           {
             status: HttpStatus.INTERNAL_SERVER_ERROR,
-            error: error.response?.data?.message || "Internal Server Error",
+            error: error.response?.data?.message || "Refund failed",
           },
           HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
     }
-    await order.carts;
-    await this.notificationService.sendSms(
-      "233557309018",
-      `${user.name} has cancelled the order with id ${order.id}`,
-    );
-    await this.notificationService.sendEmail(
-      `${user.name} has cancelled the order with id ${order.id}`,
-      "bilal.abubakari@maltitiaenterprise.com",
-      "Order Cancelled",
-      user.name,
-      process.env.ADMIN_URL,
-      "Go",
-      "Go",
-    );
-    await this.notificationService.sendSms(
-      user.phoneNumber,
-      "Your order has been cancelled successfully, please do order again",
-    );
-    await this.notificationService.sendEmail(
-      "Your order has been cancelled successfully, please do order again",
-      user.email,
-      "Order Cancelled",
-      user.name,
-      process.env.APP_URL,
-      "Go",
-      "Go",
-    );
+
+    sale.status = SaleStatus.CANCELLED;
+    sale.deletedAt = new Date();
+    await this.saleRepository.save(sale);
+
+    if (user) {
+      await this.notificationService.sendSms(
+        "233557309018",
+        `${user.name} has cancelled the order with id ${order.id}`,
+      );
+      await this.notificationService.sendEmail(
+        `${user.name} has cancelled the order with id ${order.id}`,
+        "bilal.abubakari@maltitiaenterprise.com",
+        "Order Cancelled",
+        user.name,
+        process.env.ADMIN_URL,
+        "Go",
+        "Go",
+      );
+      await this.notificationService.sendSms(
+        user.phoneNumber,
+        "Your order has been cancelled successfully, please do order again",
+      );
+      await this.notificationService.sendEmail(
+        "Your order has been cancelled successfully, please do order again",
+        user.email,
+        "Order Cancelled",
+        user.name,
+        process.env.APP_URL,
+        "Go",
+        "Go",
+      );
+    }
+
     return await this.checkoutRepository.save(order);
   }
 
-  public async testMail(): Promise<void> {
+  private async findOrCreateCustomer(
+    user: User,
+    data: InitializeTransaction,
+    queryRunner: QueryRunner,
+  ): Promise<Customer> {
+    let customer = await queryRunner.manager.findOne(Customer, {
+      where: { user: { id: user.id } },
+      relations: ["user"],
+    });
+
+    if (!customer) {
+      customer = new Customer();
+      customer.user = user;
+      customer.name = user.name;
+      customer.email = user.email;
+      customer.phone = user.phoneNumber;
+    }
+
+    customer.country = data.country;
+    customer.region = data.region;
+    customer.city = data.city;
+    customer.phoneNumber = data.phoneNumber;
+    customer.extraInfo = data.extraInfo || null;
+    customer.address = `${data.country}, ${data.region}, ${data.city}${data.extraInfo ? ", " + data.extraInfo : ""}`;
+
+    customer = await queryRunner.manager.save(customer);
+
+    return customer;
+  }
+
+  private async createSale(
+    customer: Customer,
+    carts: Cart[],
+    queryRunner: QueryRunner,
+  ): Promise<Sale> {
+    const sale = new Sale();
+    sale.customer = customer;
+    sale.status = SaleStatus.PENDING_PAYMENT;
+    sale.lineItems = carts.map(cart => ({
+      productId: cart.product.id,
+      batchAllocations: [],
+      requestedQuantity: cart.quantity,
+      customPrice: undefined,
+      finalPrice: cart.product.retail * cart.quantity,
+    }));
+
+    return await queryRunner.manager.save(sale);
+  }
+
+  private async createCheckout(
+    sale: Sale,
+    totalAmount: number,
+    queryRunner: QueryRunner,
+  ): Promise<Checkout> {
+    const checkout = new Checkout();
+    checkout.sale = sale;
+    checkout.amount = totalAmount;
+
+    return await queryRunner.manager.save(checkout);
+  }
+
+  private async linkCartsToCheckout(
+    carts: Cart[],
+    checkout: Checkout,
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    carts.forEach(cart => {
+      cart.checkout = checkout;
+    });
+
+    await queryRunner.manager.save(carts);
+  }
+
+  private async initializePaystack(
+    checkout: Checkout,
+    user: User,
+    totalAmount: number,
+  ): Promise<{
+    data: IInitializeTransactionResponse<IInitalizeTransactionData>;
+  }> {
+    return await axios.post(
+      `${process.env.PAYSTACK_BASE_URL}/transaction/initialize`,
+      {
+        amount: Math.round(totalAmount * 100),
+        email: user.email,
+        reference: `${user.id}=${checkout.id}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkout.id}`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      },
+    );
+  }
+
+  private async sendOrderNotifications(user: User): Promise<void> {
     await this.notificationService.sendEmail(
-      "This is a test mail",
-      "abubakaribilal99@gmail.com",
-      "Testing 1, 2, 3",
-      "Bilal",
-      process.env.APP_URL,
+      "A new order has been placed. Please visit the admin dashboard",
+      [
+        "bilal.abubakari@maltitiaenterprise.com",
+        "mohammed.abubakari@maltitiaenterprise.com",
+      ],
+      "Order Received",
+      user.name,
+      process.env.FRONTEND_URL_ADMIN,
       "Go",
       "Go",
     );

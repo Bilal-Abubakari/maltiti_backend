@@ -9,6 +9,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
+import { CurrentUser } from "../authentication/decorators/current-user.decorator";
+import { User } from "../entities/User.entity";
 import {
   IInitalizeTransactionData,
   IInitializeTransactionResponse,
@@ -20,56 +22,103 @@ import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import {
   InitializeTransaction,
-  OrderStatus,
-  PaymentStatus,
+  UpdateSaleStatusDto,
 } from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
-import {
-  paymentStatus as paymentsStatus,
-  status,
-} from "../interfaces/checkout.interface";
+import { Sale } from "../entities/Sale.entity";
 import { Role } from "../enum/role.enum";
+import { SaleStatus } from "../enum/sale-status.enum";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiExtraModels,
+} from "@nestjs/swagger";
+import {
+  CheckoutsResponseDto,
+  CheckoutResponseDto,
+  OrdersPaginationResponseDto,
+  TransportationResponseDto,
+  InitializeTransactionResponseDto,
+  SaleResponseDto,
+  CheckoutDto,
+  CustomerDto,
+  UserDto,
+  CartDto,
+  OrdersPaginationDto,
+  InitializeTransactionDataDto,
+  SaleLineItemDto,
+} from "../dto/checkoutResponse.dto";
+import { SaleDto } from "../dto/sales/sale.dto";
 
+@ApiTags("Checkout")
 @Controller("checkout")
 @UseGuards(CookieAuthGuard, RolesGuard)
+@ApiExtraModels(
+  CheckoutDto,
+  SaleDto,
+  CustomerDto,
+  UserDto,
+  CartDto,
+  OrdersPaginationDto,
+  InitializeTransactionDataDto,
+  SaleLineItemDto,
+)
 export class CheckoutController {
   constructor(private readonly checkoutService: CheckoutService) {}
 
-  @Get("orders/:id")
+  @Get("orders")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Get all orders for current user" })
+  @ApiResponse({
+    status: 200,
+    description: "Customer orders loaded successfully",
+    type: CheckoutsResponseDto,
+  })
   public async getOrders(
-    @Param("id") id: string,
+    @CurrentUser() user: User,
   ): Promise<IResponse<Checkout[]>> {
-    const response = await this.checkoutService.getOrders(id);
+    const response = await this.checkoutService.getOrders(user.id);
     return {
-      message: "Customer cart loaded successfully",
+      message: "Customer orders loaded successfully",
       data: response,
     };
   }
 
   @Get("order/:id")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Get a specific order" })
+  @ApiParam({ name: "id", description: "Order ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Order loaded successfully",
+    type: CheckoutResponseDto,
+  })
   public async getOrder(@Param("id") id: string): Promise<IResponse<Checkout>> {
     const response = await this.checkoutService.getOrder(id);
     return {
-      message: "Customer cart loaded successfully",
+      message: "Order loaded successfully",
       data: response,
     };
   }
 
-  @Get("test-mail")
-  public async testMail(): Promise<void> {
-    await this.checkoutService.testMail();
-  }
-
-  @Get("confirm-payment/:userId/:checkoutId")
+  @Get("confirm-payment/:checkoutId")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Confirm payment for an order" })
+  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment confirmed successfully",
+    type: CheckoutResponseDto,
+  })
   public async confirmPayment(
-    @Param("userId") userId: string,
+    @CurrentUser() user: User,
     @Param("checkoutId") checkoutId: string,
   ): Promise<IResponse<Checkout>> {
     const response = await this.checkoutService.confirmPayment(
-      userId,
+      user.id,
       checkoutId,
     );
     return {
@@ -78,33 +127,54 @@ export class CheckoutController {
     };
   }
 
-  @Get(":id/:location")
+  @Get("transportation/:location")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Calculate transportation cost" })
+  @ApiParam({
+    name: "location",
+    enum: ["local", "other"],
+    description: "Delivery location type",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Transportation cost calculated successfully",
+    type: TransportationResponseDto,
+  })
   public async getTransportation(
-    @Param("id") id: string,
+    @CurrentUser() user: User,
     @Param("location") location: "local" | "other",
   ): Promise<IResponse<number>> {
-    const response = await this.checkoutService.getTransportation(id, location);
+    const response = await this.checkoutService.getTransportation(
+      user.id,
+      location,
+    );
     return {
-      message: "Customer cart loaded successfully",
+      message: "Transportation cost calculated successfully",
       data: response,
     };
   }
 
-  @Get("orders")
+  @Get("admin/orders")
   @Roles([Role.Admin])
+  @ApiOperation({ summary: "Get all orders (admin)" })
+  @ApiQuery({ name: "saleStatus", enum: SaleStatus, required: false })
+  @ApiQuery({ name: "searchTerm", required: false })
+  @ApiQuery({ name: "page", required: false, type: Number })
+  @ApiResponse({
+    status: 200,
+    description: "Orders loaded successfully",
+    type: OrdersPaginationResponseDto,
+  })
   public async getAllOrders(
-    @Query("orderStatus") orderStatus: status,
+    @Query("saleStatus") saleStatus: SaleStatus,
     @Query("searchTerm") searchTerm: string,
     @Query("page") page: number,
-    @Query("paymentStatus") paymentStatus: paymentsStatus,
   ): Promise<IResponse<ordersPagination>> {
     const response = await this.checkoutService.getAllOrders(
       page,
       10,
       searchTerm,
-      orderStatus,
-      paymentStatus,
+      saleStatus,
     );
     return {
       message: "Orders loaded successfully",
@@ -112,47 +182,61 @@ export class CheckoutController {
     };
   }
 
-  @Post("initialize-transaction/:id")
+  @Post("initialize-transaction")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Initialize payment transaction" })
+  @ApiResponse({
+    status: 201,
+    description: "Transaction initialized successfully",
+    type: InitializeTransactionResponseDto,
+  })
   public async initializeTransaction(
+    @CurrentUser() user: User,
     @Body() data: InitializeTransaction,
-    @Param("id") id: string,
   ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
-    const response = await this.checkoutService.initializeTransaction(id, data);
+    const response = await this.checkoutService.initializeTransaction(
+      user.id,
+      data,
+    );
     return {
-      message: "Customer cart loaded successfully",
+      message: "Transaction initialized successfully",
       ...response,
     };
   }
 
-  @Patch("order-status/:id")
+  @Patch("sale-status/:id")
   @Roles([Role.Admin])
-  public async orderStatus(
+  @ApiOperation({ summary: "Update sale status" })
+  @ApiParam({ name: "id", description: "Checkout ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Sale status updated successfully",
+    type: SaleResponseDto,
+  })
+  public async updateSaleStatus(
     @Param("id") id: string,
-    @Body() data: OrderStatus,
-  ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.orderStatus(id, data);
+    @Body() data: UpdateSaleStatusDto,
+  ): Promise<IResponse<Sale>> {
+    const response = await this.checkoutService.updateSaleStatus(
+      id,
+      data.status,
+    );
     return {
-      message: "Order status updated successfully",
-      data: response.raw,
-    };
-  }
-
-  @Patch("payment-status/:id")
-  @Roles([Role.Admin])
-  public async paymentStatus(
-    @Param("id") id: string,
-    @Body() data: PaymentStatus,
-  ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.paymentStatus(id, data);
-    return {
-      message: "Order status updated successfully",
-      data: response.raw,
+      message: "Sale status updated successfully",
+      data: response,
     };
   }
 
   @Patch("cancel-order/:id")
   @Roles([Role.User])
+  @ApiOperation({ summary: "Cancel an order" })
+  @ApiParam({ name: "id", description: "Checkout ID" })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Order has been successfully cancelled. If you have paid, you will receive refund in 3 working days",
+    type: CheckoutResponseDto,
+  })
   public async cancelOrder(
     @Param("id") id: string,
   ): Promise<IResponse<Checkout>> {

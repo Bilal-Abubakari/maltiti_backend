@@ -33,6 +33,21 @@ export class Customer {
   @Column({ type: "text", nullable: true })
   public address: string;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  public country: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  public region: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  public city: string;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  public phoneNumber: string;
+
+  @Column({ type: "text", nullable: true })
+  public extraInfo: string;
+
   @OneToMany(() => Sale, sale => sale.customer)
   public sales: Sale[];
 

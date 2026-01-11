@@ -1,57 +1,47 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   JoinColumn,
-  ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
-import { User } from "./User.entity";
 import { Cart } from "./Cart.entity";
-import { orderStatuses } from "../interfaces/checkout.interface";
+import { Sale } from "./Sale.entity";
 
 @Entity({ name: "Checkouts" })
 export class Checkout {
   constructor() {
-    // Generate a UUID for the new user instance
+    // Generate a UUID for the new checkout instance
     this.id = uuidv4();
   }
 
   @PrimaryGeneratedColumn("uuid")
   public id: string;
 
-  @ManyToOne(() => User, { lazy: true, onDelete: "CASCADE" })
-  @JoinColumn({ name: "userId" })
-  public user: User;
+  @OneToOne(() => Sale, sale => sale.checkout, { nullable: false })
+  @JoinColumn({ name: "saleId" })
+  public sale: Sale;
 
   @OneToMany(() => Cart, cart => cart.checkout, { lazy: true })
   @JoinColumn()
   public carts: Cart[];
 
-  @Column({
-    enum: orderStatuses,
-  })
-  public orderStatus: string;
+  @Column({ type: "decimal", precision: 10, scale: 2 })
+  public amount: number;
 
-  @Column()
-  public amount: string;
+  @Column({ nullable: true })
+  public paystackReference: string;
 
-  @Column({ enum: ["paid", "unpaid", "refunded"] })
-  public paymentStatus: string;
-
-  @Column({ default: new Date() })
+  @CreateDateColumn()
   public createdAt: Date;
 
-  @Column({ default: new Date() })
+  @UpdateDateColumn()
   public updatedAt: Date;
 
-  @Column()
-  public location: string;
-
-  @Column()
-  public name: string;
-
-  @Column()
-  public extraInfo: string;
+  @Column({ nullable: true, type: "timestamp" })
+  public deletedAt: Date;
 }
