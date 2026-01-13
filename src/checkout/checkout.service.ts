@@ -945,7 +945,6 @@ export class CheckoutService {
 
       return response.data;
     } catch (error) {
-      console.log("Error here", error);
       await queryRunner.rollbackTransaction();
       this.logger.error("Error initializing guest transaction", error);
       throw new HttpException(
