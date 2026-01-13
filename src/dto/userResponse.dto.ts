@@ -44,6 +44,12 @@ export class UserResponseDto {
   })
   public permissions?: string;
 
+  @ApiPropertyOptional({
+    description: "URL of the user's avatar",
+    example: "https://example.com/avatars/user.jpg",
+  })
+  public avatarUrl?: string;
+
   @ApiProperty({
     description: "Whether the user must change their password on next login",
     example: false,
