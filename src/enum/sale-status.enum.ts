@@ -5,4 +5,5 @@ export enum SaleStatus {
   PACKAGING = "packaging",
   IN_TRANSIT = "in_transit",
   DELIVERED = "delivered",
+  CANCELLED = "cancelled",
 }

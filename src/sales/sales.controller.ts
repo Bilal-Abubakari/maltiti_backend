@@ -13,9 +13,9 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { Response } from "express";
 import { SalesService } from "./sales.service";
-import { CreateSaleDto } from "../dto/createSale.dto";
-import { UpdateSaleDto } from "../dto/updateSale.dto";
-import { UpdateSaleStatusDto } from "../dto/updateSaleStatus.dto";
+import { CreateSaleDto } from "../dto/sales/createSale.dto";
+import { UpdateSaleDto } from "../dto/sales/updateSale.dto";
+import { UpdateSaleStatusDto } from "../dto/sales/updateSaleStatus.dto";
 import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";

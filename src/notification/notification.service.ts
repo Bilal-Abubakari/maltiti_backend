@@ -39,7 +39,7 @@ export class NotificationService {
 
   public async sendEmail(
     body: string,
-    to: string,
+    to: string | string[],
     subject: string,
     name: string,
     url: string,
