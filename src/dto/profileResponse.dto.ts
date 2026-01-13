@@ -46,13 +46,13 @@ export class ProfileResponseDto {
     description: "Email verification status (read-only)",
     example: true,
   })
-  public emailVerified: boolean;
+  public emailVerifiedAt: string;
 
   @ApiProperty({
     description: "Phone verification status (read-only)",
     example: true,
   })
-  public phoneVerified: boolean;
+  public phoneVerifiedAt: string;
 
   @ApiProperty({
     description: "Account creation date (read-only)",
@@ -65,4 +65,38 @@ export class ProfileResponseDto {
     example: "2023-12-24T12:00:00Z",
   })
   public updatedAt: Date;
+}
+
+/**
+ * Wrapper DTO for profile API responses
+ */
+export class ProfileResponseWrapperDto {
+  @ApiProperty({
+    description: "Response message",
+    example: "Profile retrieved successfully",
+  })
+  public message: string;
+
+  @ApiProperty({
+    description: "Profile data",
+    type: ProfileResponseDto,
+  })
+  public data: ProfileResponseDto;
+}
+
+/**
+ * Wrapper DTO for avatar upload response
+ */
+export class AvatarUploadResponseDto {
+  @ApiProperty({
+    description: "Response message",
+    example: "Profile picture uploaded successfully",
+  })
+  public message: string;
+
+  @ApiProperty({
+    description: "Avatar URL",
+    example: "https://example.com/avatars/user.jpg",
+  })
+  public data: string;
 }

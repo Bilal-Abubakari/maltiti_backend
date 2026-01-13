@@ -897,6 +897,7 @@ export class ProductsService {
   public async getOneProduct(id: string): Promise<Product> {
     const product = await this.productsRepository.findOne({
       where: { id, deletedAt: IsNull() },
+      relations: ["ingredients"],
     });
 
     if (!product) {

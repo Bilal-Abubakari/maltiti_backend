@@ -23,7 +23,10 @@ import { Request } from "express";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { UsersService } from "../users/users.service";
 import { UpdateProfileDto } from "../dto/updateProfile.dto";
-import { ProfileResponseDto } from "../dto/profileResponse.dto";
+import {
+  ProfileResponseWrapperDto,
+  AvatarUploadResponseDto,
+} from "../dto/profileResponse.dto";
 import { IResponse } from "../interfaces/general";
 import { User } from "../entities/User.entity";
 import { AuditLog } from "../interceptors/audit.interceptor";
@@ -55,7 +58,7 @@ export class ProfileController {
   @ApiResponse({
     status: 200,
     description: "Profile retrieved successfully",
-    type: ProfileResponseDto,
+    type: ProfileResponseWrapperDto,
   })
   @ApiResponse({
     status: 401,
@@ -66,9 +69,7 @@ export class ProfileController {
   public async getProfile(
     @Req() request: Request,
   ): Promise<IResponse<Partial<User>>> {
-    // console.log("Request", request);
     const user = (request as unknown as { user: User }).user as User;
-    // console.log("User", user);
 
     // Fetch fresh user data from database
     const profile = await this.usersService.findUserById(user.id);
@@ -92,9 +93,9 @@ export class ProfileController {
   })
   @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: "Profile updated successfully",
-    type: ProfileResponseDto,
+    type: ProfileResponseWrapperDto,
   })
   @ApiResponse({
     status: 400,
@@ -158,6 +159,7 @@ export class ProfileController {
   @ApiResponse({
     status: 200,
     description: "Avatar uploaded successfully",
+    type: AvatarUploadResponseDto,
   })
   @ApiResponse({
     status: 400,
