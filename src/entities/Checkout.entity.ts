@@ -36,6 +36,9 @@ export class Checkout {
   @Column({ nullable: true })
   public paystackReference: string;
 
+  @Column({ nullable: true })
+  public guestEmail: string | null;
+
   @CreateDateColumn()
   public createdAt: Date;
 

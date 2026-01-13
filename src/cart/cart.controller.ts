@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -21,6 +22,10 @@ import { CartService } from "./cart.service";
 import { IResponse } from "../interfaces/general";
 import { DeleteResult } from "typeorm";
 import { AddCartDto, AddQuantityDto, BulkAddCartDto } from "../dto/addCart.dto";
+import {
+  AddToGuestCartDto,
+  UpdateGuestCartQuantityDto,
+} from "../dto/guestCart.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import { Role } from "../enum/role.enum";
@@ -309,6 +314,129 @@ export class CartController {
 
     return {
       message,
+      data: response,
+    };
+  }
+
+  // Guest cart endpoints (no authentication required)
+  @ApiOperation({
+    summary: "Get guest shopping cart",
+    description:
+      "Retrieves all cart items for a guest user session. Only returns items that have not been checked out.",
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Cart retrieved successfully. Returns array of cart items, total item count, and total price.",
+    type: GetCartResponseDto,
+  })
+  @Get("guest/:sessionId")
+  public async getGuestCart(
+    @Param("sessionId") sessionId: string,
+  ): Promise<IResponse<CartDataDto>> {
+    const response = await this.cartService.getGuestCart(sessionId);
+    return {
+      message: "Guest cart loaded successfully",
+      data: response,
+    };
+  }
+
+  @ApiOperation({
+    summary: "Add product to guest cart",
+    description:
+      "Adds a product to the guest user's shopping cart. If product already exists in cart, the quantity is incremented.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Product added to guest cart successfully",
+    type: CartResponseDto,
+  })
+  @Post("guest")
+  public async addToGuestCart(
+    @Body() data: AddToGuestCartDto,
+  ): Promise<IResponse<CartItemDto>> {
+    const addCartDto: AddCartDto = {
+      id: data.id,
+      quantity: data.quantity,
+    };
+    const response = await this.cartService.addToGuestCart(
+      data.sessionId,
+      addCartDto,
+    );
+    return {
+      message: "Product added to guest cart successfully",
+      data: response,
+    };
+  }
+
+  @ApiOperation({
+    summary: "Remove product from guest cart",
+    description: "Removes a specific cart item from the guest user's cart.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Product removed from guest cart successfully",
+    type: DeleteCartResponseDto,
+  })
+  @Delete("guest/:cartId")
+  public async removeFromGuestCart(
+    @Param("cartId") cartId: string,
+    @Query("sessionId") sessionId: string,
+  ): Promise<IResponse<DeleteResult>> {
+    const response = await this.cartService.removeFromGuestCart(
+      cartId,
+      sessionId,
+    );
+    return {
+      message: "Product removed from guest cart successfully",
+      data: response,
+    };
+  }
+
+  @ApiOperation({
+    summary: "Clear all items from guest cart",
+    description: "Removes all items from the guest user's shopping cart.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Guest cart cleared successfully",
+    type: DeleteCartResponseDto,
+  })
+  @Delete("guest/all/:sessionId")
+  public async removeAllFromGuestCart(
+    @Param("sessionId") sessionId: string,
+  ): Promise<IResponse<DeleteResult>> {
+    const response = await this.cartService.removeAllFromGuestCart(sessionId);
+    return {
+      message: "Guest cart cleared successfully",
+      data: response,
+    };
+  }
+
+  @ApiOperation({
+    summary: "Update guest cart item quantity",
+    description: "Updates the quantity of a specific item in the guest cart.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Guest cart item quantity updated successfully",
+    type: GetCartResponseDto,
+  })
+  @Patch("guest/:cartId")
+  public async updateGuestCartQuantity(
+    @Param("cartId") cartId: string,
+    @Body() data: UpdateGuestCartQuantityDto,
+  ): Promise<IResponse<CartDataDto>> {
+    const addQuantityDto: AddQuantityDto = {
+      quantity: data.quantity,
+    };
+    const response = await this.cartService.updateGuestCartQuantity(
+      cartId,
+      data.sessionId,
+      addQuantityDto,
+    );
+    return {
+      message: "Guest cart item quantity updated successfully",
       data: response,
     };
   }

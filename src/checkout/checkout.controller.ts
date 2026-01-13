@@ -25,6 +25,10 @@ import {
   UpdateSaleStatusDto,
   PlaceOrderDto,
   UpdateDeliveryCostDto,
+  GuestInitializeTransactionDto,
+  GuestPlaceOrderDto,
+  GetOrderStatusDto,
+  GuestGetDeliveryCostDto,
 } from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
 import { Sale } from "../entities/Sale.entity";
@@ -103,6 +107,28 @@ export class CheckoutController {
     const response = await this.checkoutService.getOrder(id);
     return {
       message: "Order loaded successfully",
+      data: response,
+    };
+  }
+
+  @Get("guest/confirm-payment/:checkoutId")
+  @ApiOperation({
+    summary: "Confirm payment for a guest order (no authentication required)",
+    description:
+      "Public endpoint to confirm payment after Paystack redirect for guest users",
+  })
+  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment confirmed successfully",
+    type: CheckoutResponseDto,
+  })
+  public async confirmGuestPayment(
+    @Param("checkoutId") checkoutId: string,
+  ): Promise<IResponse<Checkout>> {
+    const response = await this.checkoutService.confirmGuestPayment(checkoutId);
+    return {
+      message: "Payment confirmed successfully",
       data: response,
     };
   }
@@ -316,6 +342,125 @@ export class CheckoutController {
       message:
         "Order has been successfully cancelled. If you have paid, you will receive refund in 3 working days",
       data: response,
+    };
+  }
+
+  // Guest checkout endpoints (no authentication required)
+  @Post("guest/delivery")
+  @ApiOperation({
+    summary: "Calculate delivery cost for guest checkout",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Transportation cost calculated successfully",
+    type: DeliveryResponseDto,
+  })
+  public async getGuestDeliveryCost(
+    @Body() dto: GuestGetDeliveryCostDto,
+  ): Promise<IResponse<number>> {
+    const response = await this.checkoutService.getGuestDeliveryCost(dto);
+    return {
+      message: "Transportation cost calculated successfully",
+      data: response,
+    };
+  }
+
+  @Post("guest/initialize-transaction")
+  @ApiOperation({ summary: "Initialize payment transaction for guest user" })
+  @ApiResponse({
+    status: 201,
+    description: "Transaction initialized successfully",
+    type: InitializeTransactionResponseDto,
+  })
+  public async guestInitializeTransaction(
+    @Body() data: GuestInitializeTransactionDto,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const response =
+      await this.checkoutService.guestInitializeTransaction(data);
+    return {
+      message: "Transaction initialized successfully",
+      ...response,
+    };
+  }
+
+  @Post("guest/place-order")
+  @ApiOperation({
+    summary:
+      "Place an order as guest without immediate payment - payment can be made later",
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      "Order placed successfully. Check your email for order tracking information.",
+    type: CheckoutResponseDto,
+  })
+  public async guestPlaceOrder(
+    @Body() data: GuestPlaceOrderDto,
+  ): Promise<IResponse<Checkout>> {
+    const response = await this.checkoutService.guestPlaceOrder(data);
+    return {
+      message:
+        "Order placed successfully. Check your email for order tracking information.",
+      data: response,
+    };
+  }
+
+  @Get("track/:checkoutId")
+  @ApiOperation({
+    summary: "Get order status by checkout ID and email (for guest users)",
+  })
+  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiQuery({
+    name: "email",
+    description: "Email address used during checkout",
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Order status retrieved successfully",
+    type: CheckoutResponseDto,
+  })
+  public async getOrderStatus(
+    @Param("checkoutId") checkoutId: string,
+    @Query() query: GetOrderStatusDto,
+  ): Promise<IResponse<Checkout>> {
+    const response = await this.checkoutService.getOrderStatus(
+      checkoutId,
+      query.email,
+    );
+    return {
+      message: "Order status retrieved successfully",
+      data: response,
+    };
+  }
+
+  @Post("guest/pay-for-order/:checkoutId")
+  @ApiOperation({
+    summary:
+      "Initialize payment for a previously placed guest order (invoice requested or pending payment)",
+  })
+  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiQuery({
+    name: "email",
+    description: "Email address used during checkout",
+    required: true,
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Payment initialized successfully",
+    type: InitializeTransactionResponseDto,
+  })
+  public async payForGuestOrder(
+    @Param("checkoutId") checkoutId: string,
+    @Query() query: GetOrderStatusDto,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const response = await this.checkoutService.payForGuestOrder(
+      checkoutId,
+      query.email,
+    );
+    return {
+      message: "Payment initialized successfully",
+      ...response,
     };
   }
 }

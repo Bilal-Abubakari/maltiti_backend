@@ -237,4 +237,214 @@ export class CartService {
 
     return { addedItems, skippedItems };
   }
+
+  // Guest cart methods
+  public async getGuestCart(sessionId: string): Promise<CartDataDto> {
+    const cartAndCount = await this.cartRepository.findAndCountBy({
+      sessionId: sessionId,
+      checkout: IsNull(),
+    });
+    let total = 0;
+    cartAndCount[0].forEach(
+      cart => (total += cart.quantity * cart.product.retail),
+    );
+
+    const cartItems = cartAndCount[0].map(cart =>
+      this.transformCartToDto(cart),
+    );
+
+    return {
+      items: cartItems,
+      count: cartAndCount[1],
+      total,
+    };
+  }
+
+  public async addToGuestCart(
+    sessionId: string,
+    addCart: AddCartDto,
+  ): Promise<CartItemDto> {
+    const product = await this.productsService.findOne(addCart.id);
+
+    const existingCart = await this.cartRepository.findOne({
+      where: {
+        product: { id: addCart.id },
+        sessionId: sessionId,
+        checkout: IsNull(),
+      },
+    });
+
+    if (existingCart) {
+      existingCart.quantity += addCart.quantity || 1;
+      const updatedCart = await this.cartRepository.save(existingCart);
+      return this.transformCartToDto(updatedCart);
+    }
+
+    const cart = new Cart();
+    cart.user = null;
+    cart.sessionId = sessionId;
+    cart.product = product;
+    cart.quantity = addCart.quantity || 1;
+
+    const savedCart = await this.cartRepository.save(cart);
+    return this.transformCartToDto(savedCart);
+  }
+
+  public async removeFromGuestCart(
+    cartId: string,
+    sessionId: string,
+  ): Promise<DeleteResult> {
+    // Verify the cart item exists and belongs to the session
+    const cartItem = await this.cartRepository.findOne({
+      where: { id: cartId, sessionId: sessionId },
+    });
+
+    if (!cartItem) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Cart item not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return await this.cartRepository.delete(cartId);
+  }
+
+  public async removeAllFromGuestCart(
+    sessionId: string,
+  ): Promise<DeleteResult> {
+    return await this.cartRepository.delete({ sessionId });
+  }
+
+  public async updateGuestCartQuantity(
+    cartId: string,
+    sessionId: string,
+    addQuantity: AddQuantityDto,
+  ): Promise<CartDataDto> {
+    const cart = await this.cartRepository.findOne({
+      where: { id: cartId, sessionId: sessionId },
+    });
+
+    if (!cart) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Cart item not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    cart.quantity = addQuantity.quantity;
+    await this.cartRepository.save(cart);
+    return await this.getGuestCart(sessionId);
+  }
+
+  public async bulkAddToGuestCart(
+    sessionId: string,
+    bulkAddCart: BulkAddCartDto,
+  ): Promise<{ addedItems: CartItemDto[]; skippedItems: string[] }> {
+    const addedItems: CartItemDto[] = [];
+    const skippedItems: string[] = [];
+
+    for (const item of bulkAddCart.items) {
+      try {
+        // Check if product exists
+        const product = await this.productsService.findOne(item.productId);
+
+        // Check if item already exists in cart
+        const existingCart = await this.cartRepository.findOne({
+          where: {
+            product: { id: item.productId },
+            sessionId: sessionId,
+            checkout: IsNull(),
+          },
+        });
+
+        if (existingCart) {
+          // Update quantity if item already exists
+          existingCart.quantity += item.quantity;
+          const updatedCart = await this.cartRepository.save(existingCart);
+          addedItems.push(this.transformCartToDto(updatedCart));
+        } else {
+          // Create new cart item
+          const cart = new Cart();
+          cart.user = null;
+          cart.sessionId = sessionId;
+          cart.product = product;
+          cart.quantity = item.quantity;
+          const savedCart = await this.cartRepository.save(cart);
+          addedItems.push(this.transformCartToDto(savedCart));
+        }
+      } catch (error) {
+        // If product not found or any other error, skip this item
+        skippedItems.push(item.productId);
+      }
+    }
+
+    return { addedItems, skippedItems };
+  }
+
+  /**
+   * Sync guest cart with user cart after login/signup
+   * Merges guest cart items into user's cart
+   */
+  public async syncGuestCartWithUser(
+    userId: string,
+    sessionId: string,
+  ): Promise<{ syncedCount: number; skippedCount: number }> {
+    const user = await this.userService.findOne(userId);
+
+    // Get all guest cart items for this session
+    const guestCartItems = await this.cartRepository.findBy({
+      sessionId: sessionId,
+      checkout: IsNull(),
+    });
+
+    if (!guestCartItems || guestCartItems.length === 0) {
+      return { syncedCount: 0, skippedCount: 0 };
+    }
+
+    let syncedCount = 0;
+    let skippedCount = 0;
+
+    for (const guestItem of guestCartItems) {
+      try {
+        // Check if user already has this product in their cart
+        const existingUserCart = await this.cartRepository.findOne({
+          where: {
+            product: { id: guestItem.product.id },
+            user: { id: userId },
+            checkout: IsNull(),
+          },
+        });
+
+        if (existingUserCart) {
+          // Merge quantities
+          existingUserCart.quantity += guestItem.quantity;
+          await this.cartRepository.save(existingUserCart);
+          syncedCount++;
+        } else {
+          // Transfer guest cart item to user
+          guestItem.user = user;
+          guestItem.sessionId = null;
+          await this.cartRepository.save(guestItem);
+          syncedCount++;
+        }
+      } catch (error) {
+        // If any error occurs, skip this item
+        skippedCount++;
+      }
+    }
+
+    // Delete any remaining guest cart items for this session
+    await this.cartRepository.delete({
+      sessionId: sessionId,
+      checkout: IsNull(),
+    });
+
+    return { syncedCount, skippedCount };
+  }
 }

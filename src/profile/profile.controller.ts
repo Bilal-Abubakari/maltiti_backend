@@ -98,6 +98,11 @@ export class ProfileController {
     type: ProfileResponseWrapperDto,
   })
   @ApiResponse({
+    status: 200,
+    description: "Profile updated successfully",
+    type: ProfileResponseWrapperDto,
+  })
+  @ApiResponse({
     status: 400,
     description: "Bad request - validation failed",
   })
@@ -158,6 +163,11 @@ export class ProfileController {
   })
   @ApiResponse({
     status: 200,
+    description: "Avatar uploaded successfully",
+    type: AvatarUploadResponseDto,
+  })
+  @ApiResponse({
+    status: 201,
     description: "Avatar uploaded successfully",
     type: AvatarUploadResponseDto,
   })
