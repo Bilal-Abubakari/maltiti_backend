@@ -26,7 +26,7 @@ import {
   RecommendationConfig,
   DEFAULT_RECOMMENDATION_CONFIG,
 } from "../interfaces/product-recommendation.interface";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 
 @Injectable()
 export class ProductsService {
@@ -315,13 +315,10 @@ export class ProductsService {
       where: {
         customer: { id: customerId },
         deletedAt: IsNull(),
-        status: In([
-          SaleStatus.INVOICE_REQUESTED,
-          SaleStatus.PENDING_PAYMENT,
-          SaleStatus.PAID,
-          SaleStatus.PACKAGING,
-          SaleStatus.IN_TRANSIT,
-          SaleStatus.DELIVERED,
+        paymentStatus: In([
+          PaymentStatus.INVOICE_REQUESTED,
+          PaymentStatus.PENDING_PAYMENT,
+          PaymentStatus.PAID,
         ]),
       },
       order: { createdAt: "DESC" },
@@ -373,13 +370,10 @@ export class ProductsService {
       where: {
         customer: { id: customerId },
         deletedAt: IsNull(),
-        status: In([
-          SaleStatus.INVOICE_REQUESTED,
-          SaleStatus.PENDING_PAYMENT,
-          SaleStatus.PAID,
-          SaleStatus.PACKAGING,
-          SaleStatus.IN_TRANSIT,
-          SaleStatus.DELIVERED,
+        paymentStatus: In([
+          PaymentStatus.INVOICE_REQUESTED,
+          PaymentStatus.PENDING_PAYMENT,
+          PaymentStatus.PAID,
         ]),
       },
       take: 30,
@@ -490,13 +484,10 @@ export class ProductsService {
     const sales = await this.saleRepository.find({
       where: {
         deletedAt: IsNull(),
-        status: In([
-          SaleStatus.INVOICE_REQUESTED,
-          SaleStatus.PENDING_PAYMENT,
-          SaleStatus.PAID,
-          SaleStatus.PACKAGING,
-          SaleStatus.IN_TRANSIT,
-          SaleStatus.DELIVERED,
+        paymentStatus: In([
+          PaymentStatus.INVOICE_REQUESTED,
+          PaymentStatus.PENDING_PAYMENT,
+          PaymentStatus.PAID,
         ]),
       },
       order: { createdAt: "DESC" },
@@ -580,13 +571,10 @@ export class ProductsService {
       where: {
         deletedAt: IsNull(),
         createdAt: MoreThanOrEqual(thirtyDaysAgo),
-        status: In([
-          SaleStatus.INVOICE_REQUESTED,
-          SaleStatus.PENDING_PAYMENT,
-          SaleStatus.PAID,
-          SaleStatus.PACKAGING,
-          SaleStatus.IN_TRANSIT,
-          SaleStatus.DELIVERED,
+        paymentStatus: In([
+          PaymentStatus.INVOICE_REQUESTED,
+          PaymentStatus.PENDING_PAYMENT,
+          PaymentStatus.PAID,
         ]),
       },
       order: { createdAt: "DESC" },

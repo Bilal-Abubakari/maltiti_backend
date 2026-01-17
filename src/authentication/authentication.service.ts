@@ -3,6 +3,8 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
+  Inject,
+  forwardRef,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { SignInDto } from "../dto/signIn.dto";
@@ -18,6 +20,7 @@ import { AuditService } from "../audit/audit.service";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
 import { Role } from "../enum/role.enum";
+import { CartService } from "../cart/cart.service";
 
 @Injectable()
 export class AuthenticationService {
@@ -30,9 +33,14 @@ export class AuthenticationService {
     private mailService: MailerService,
     private refreshTokenIdsStorage: RefreshTokenIdsStorage,
     private auditService: AuditService,
+    @Inject(forwardRef(() => CartService))
+    private cartService: CartService,
   ) {}
 
-  public async signIn(signInfo: SignInDto): Promise<{
+  public async signIn(
+    signInfo: SignInDto,
+    sessionId?: string,
+  ): Promise<{
     user: User;
     accessToken: string;
     refreshToken: string;
@@ -59,6 +67,18 @@ export class AuthenticationService {
 
     if (!passwordIsValid) {
       throw new UnauthorizedException("Invalid username or password");
+    }
+
+    // Sync guest cart with user cart if sessionId is provided
+    if (sessionId) {
+      try {
+        await this.cartService.syncGuestCartWithUser(user.id, sessionId);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to sync guest cart for user ${user.id}: ${error.message}`,
+        );
+        // Continue with login even if cart sync fails
+      }
     }
 
     const payload = { sub: user.id, email: user.email };
@@ -148,6 +168,7 @@ export class AuthenticationService {
   public async emailVerification(
     id: string,
     token: string,
+    sessionId?: string,
   ): Promise<{
     user: User;
     accessToken: string;
@@ -161,8 +182,6 @@ export class AuthenticationService {
       token,
     });
 
-    console.log("User verification: ", userVerification);
-
     if (
       !userVerification ||
       user.id !== userVerification.user.id ||
@@ -173,6 +192,18 @@ export class AuthenticationService {
 
     await this.verificationRepository.delete({ id: userVerification.id });
     await this.usersService.verifyUserEmail(user.id);
+
+    // Sync guest cart with user cart if sessionId is provided
+    if (sessionId) {
+      try {
+        await this.cartService.syncGuestCartWithUser(user.id, sessionId);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to sync guest cart for user ${user.id}: ${error.message}`,
+        );
+        // Continue with email verification even if cart sync fails
+      }
+    }
 
     // Generate access and refresh tokens to log the user in
     const payload = { sub: user.id, email: user.email };

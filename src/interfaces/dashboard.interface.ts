@@ -118,7 +118,8 @@ export interface RecentSale {
   customerName: string;
   totalAmount: number;
   itemCount: number;
-  status: string;
+  orderStatus: string;
+  paymentStatus: string;
   createdAt: string;
 }
 

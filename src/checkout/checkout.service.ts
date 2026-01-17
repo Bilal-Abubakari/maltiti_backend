@@ -9,6 +9,9 @@ import {
   InitializeTransaction,
   PlaceOrderDto,
   UpdateDeliveryCostDto,
+  GuestInitializeTransactionDto,
+  GuestPlaceOrderDto,
+  GuestGetDeliveryCostDto,
 } from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
 import {
@@ -18,7 +21,8 @@ import {
 } from "../interfaces/general";
 import { NotificationService } from "../notification/notification.service";
 import { Sale } from "../entities/Sale.entity";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 import { User } from "../entities/User.entity";
 import { Customer } from "../entities/Customer.entity";
 import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
@@ -204,7 +208,8 @@ export class CheckoutService {
         deliverCost === -1 ? productTotal : productTotal + deliverCost;
 
       const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
-      sale.status = SaleStatus.INVOICE_REQUESTED;
+      sale.orderStatus = OrderStatus.PENDING;
+      sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
       await queryRunner.manager.save(sale);
 
       const checkout = await this.createCheckout(
@@ -279,13 +284,13 @@ export class CheckoutService {
     }
 
     if (
-      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
-      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot pay for order with status: ${checkout.sale.status}`,
+          error: `Cannot pay for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -299,7 +304,7 @@ export class CheckoutService {
       );
 
       checkout.paystackReference = response.data.data.reference;
-      checkout.sale.status = SaleStatus.PENDING_PAYMENT;
+      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
       await this.saleRepository.save(checkout.sale);
       await this.checkoutRepository.save(checkout);
 
@@ -346,21 +351,83 @@ export class CheckoutService {
 
       const sale = checkout.sale;
       const user = sale.customer.user;
-      sale.status = SaleStatus.PAID;
+      sale.paymentStatus = PaymentStatus.PAID;
       await this.saleRepository.save(sale);
 
-      await this.notificationService.sendEmail(
-        "Your payment has been received, your order is already in progress",
-        user.email,
-        "Payment Confirmation",
-        user.name,
-        process.env.APP_URL,
-        "Go",
-        "Go",
-      );
+      if (user) {
+        await this.notificationService.sendEmail(
+          "Your payment has been received, your order is already in progress",
+          user.email,
+          "Payment Confirmation",
+          user.name,
+          process.env.APP_URL,
+          "Go",
+          "Go",
+        );
+      }
       return this.checkoutRepository.save(checkout);
     } catch (error) {
       this.logger.error("Error confirming payment", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  public async confirmGuestPayment(checkoutId: string): Promise<Checkout> {
+    try {
+      // For guest payments, the reference is "guest={checkoutId}"
+      await axios.get(
+        `${process.env.PAYSTACK_BASE_URL}/transaction/verify/guest=${checkoutId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
+      );
+
+      const checkout = await this.checkoutRepository.findOne({
+        where: { id: checkoutId },
+        relations: ["sale", "sale.customer", "sale.customer.user"],
+      });
+
+      if (!checkout) {
+        throw new HttpException(
+          {
+            status: HttpStatus.NOT_FOUND,
+            error: "Checkout not found",
+          },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const sale = checkout.sale;
+      sale.paymentStatus = PaymentStatus.PAID;
+      await this.saleRepository.save(sale);
+
+      // Send email to guest or user
+      const email = checkout.guestEmail || sale.customer.email;
+      const name = sale.customer.name;
+
+      if (email) {
+        await this.notificationService.sendEmail(
+          `Your payment has been received, your order is already in progress. Your Order ID is ${sale.id}. You can track your order anytime using this ID and your email address.`,
+          email,
+          "Payment Confirmation",
+          name,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "Track Order",
+          "Track Order",
+        );
+      }
+
+      return this.checkoutRepository.save(checkout);
+    } catch (error) {
+      this.logger.error("Error confirming guest payment", error);
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -411,7 +478,8 @@ export class CheckoutService {
     page: number = 1,
     limit: number = 10,
     searchTerm: string = "",
-    saleStatus: SaleStatus,
+    orderStatus?: OrderStatus,
+    paymentStatus?: PaymentStatus,
   ): Promise<ordersPagination> {
     const skip = (page - 1) * limit;
     const queryBuilder = this.checkoutRepository.createQueryBuilder("checkout");
@@ -427,10 +495,19 @@ export class CheckoutService {
       });
     }
 
-    if (saleStatus) {
-      queryBuilder.andWhere("LOWER(sale.status) = LOWER(:saleStatus)", {
-        saleStatus,
+    if (orderStatus) {
+      queryBuilder.andWhere("LOWER(sale.orderStatus) = LOWER(:orderStatus)", {
+        orderStatus,
       });
+    }
+
+    if (paymentStatus) {
+      queryBuilder.andWhere(
+        "LOWER(sale.paymentStatus) = LOWER(:paymentStatus)",
+        {
+          paymentStatus,
+        },
+      );
     }
 
     queryBuilder.orderBy("checkout.createdAt", "DESC");
@@ -448,7 +525,11 @@ export class CheckoutService {
     };
   }
 
-  public async updateSaleStatus(id: string, status: SaleStatus): Promise<Sale> {
+  public async updateSaleStatus(
+    id: string,
+    orderStatus?: OrderStatus,
+    paymentStatus?: PaymentStatus,
+  ): Promise<Sale> {
     const checkout = await this.checkoutRepository.findOne({
       where: { id },
       relations: ["sale", "sale.customer", "sale.customer.user"],
@@ -465,18 +546,28 @@ export class CheckoutService {
     }
 
     const sale = checkout.sale;
-    sale.status = status;
+
+    if (orderStatus) {
+      sale.orderStatus = orderStatus;
+    }
+
+    if (paymentStatus) {
+      sale.paymentStatus = paymentStatus;
+    }
 
     const customer = sale.customer;
     const user = customer.user;
 
     if (user) {
-      await this.notificationService.sendSms(
-        user.phoneNumber,
-        `Your order status has been updated to: ${status}`,
-      );
+      const statusMessage = [];
+      if (orderStatus) statusMessage.push(`Order Status: ${orderStatus}`);
+      if (paymentStatus) statusMessage.push(`Payment Status: ${paymentStatus}`);
+
+      const message = `Your order has been updated. ${statusMessage.join(", ")}`;
+
+      await this.notificationService.sendSms(user.phoneNumber, message);
       await this.notificationService.sendEmail(
-        `Your order status has been updated to: ${status}`,
+        message,
         user.email,
         "Order Status Update",
         user.name,
@@ -515,13 +606,13 @@ export class CheckoutService {
     }
 
     if (
-      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
-      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot update delivery cost for order with status: ${checkout.sale.status}`,
+          error: `Cannot update delivery cost for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -575,7 +666,7 @@ export class CheckoutService {
     const customer = sale.customer;
     const user = customer.user;
 
-    if (sale.status === SaleStatus.CANCELLED) {
+    if (sale.orderStatus === OrderStatus.CANCELLED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -585,7 +676,7 @@ export class CheckoutService {
       );
     }
 
-    if (sale.status === SaleStatus.DELIVERED) {
+    if (sale.orderStatus === OrderStatus.DELIVERED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -595,7 +686,7 @@ export class CheckoutService {
       );
     }
 
-    if (sale.status === SaleStatus.IN_TRANSIT) {
+    if (sale.orderStatus === OrderStatus.IN_TRANSIT) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -606,8 +697,8 @@ export class CheckoutService {
     }
 
     if (
-      sale.status === SaleStatus.PAID ||
-      sale.status === SaleStatus.PACKAGING
+      sale.paymentStatus === PaymentStatus.PAID ||
+      sale.orderStatus === OrderStatus.PACKAGING
     ) {
       try {
         await axios.post(
@@ -619,7 +710,8 @@ export class CheckoutService {
             },
           },
         );
-        sale.status = SaleStatus.CANCELLED;
+        sale.orderStatus = OrderStatus.CANCELLED;
+        sale.paymentStatus = PaymentStatus.REFUNDED;
       } catch (error) {
         throw new HttpException(
           {
@@ -631,7 +723,7 @@ export class CheckoutService {
       }
     }
 
-    sale.status = SaleStatus.CANCELLED;
+    sale.orderStatus = OrderStatus.CANCELLED;
     sale.deletedAt = new Date();
     await this.saleRepository.save(sale);
 
@@ -704,7 +796,8 @@ export class CheckoutService {
   ): Promise<Sale> {
     const sale = new Sale();
     sale.customer = customer;
-    sale.status = SaleStatus.PENDING_PAYMENT;
+    sale.orderStatus = OrderStatus.PENDING;
+    sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
     sale.lineItems = carts.map(cart => ({
       productId: cart.product.id,
       batchAllocations: [],
@@ -772,6 +865,386 @@ export class CheckoutService {
       ],
       "Order Received",
       user.name,
+      process.env.FRONTEND_URL_ADMIN,
+      "Go",
+      "Go",
+    );
+  }
+
+  // Guest checkout methods
+  public async getGuestDeliveryCost(
+    dto: GuestGetDeliveryCostDto,
+  ): Promise<number> {
+    const cart = await this.cartRepository.findBy({ sessionId: dto.sessionId });
+
+    let boxes = 0;
+
+    cart.forEach(cartItem => {
+      boxes += cartItem.quantity / cartItem.product.quantityInBox;
+    });
+
+    if (boxes < 1) {
+      boxes = 1;
+    }
+
+    // Delivery charges per box in cedis
+    const deliveryCharges = {
+      tamale: 25,
+      northern: 35,
+      other: 60,
+    };
+
+    if (dto.country.toLowerCase() !== "ghana") {
+      return -1;
+    }
+
+    let charge = deliveryCharges.other;
+
+    if (dto.city.toLowerCase() === "tamale") {
+      charge = deliveryCharges.tamale;
+    } else if (dto.region.toLowerCase() === "northern") {
+      charge = deliveryCharges.northern;
+    }
+
+    return boxes * charge;
+  }
+
+  public async guestInitializeTransaction(
+    data: GuestInitializeTransactionDto,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const cartsToUpdate = await this.cartRepository.findBy({
+      sessionId: data.sessionId,
+      checkout: IsNull(),
+    });
+
+    if (!cartsToUpdate || cartsToUpdate.length === 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: "No items in cart to checkout",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const customer = await this.findOrCreateGuestCustomer(data, queryRunner);
+
+      const deliverCost = await this.getGuestDeliveryCost({
+        sessionId: data.sessionId,
+        city: data.city,
+        country: data.country,
+        region: data.region,
+      });
+
+      const productTotal = await this.calculateCartAmount(cartsToUpdate);
+      const totalAmount =
+        deliverCost === -1 ? productTotal : productTotal + deliverCost;
+
+      const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
+
+      const checkout = await this.createCheckout(
+        sale,
+        totalAmount,
+        queryRunner,
+      );
+      checkout.guestEmail = data.email;
+      await queryRunner.manager.save(checkout);
+
+      await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
+
+      const response = await this.initializeGuestPaystack(
+        sale,
+        data.email,
+        totalAmount,
+      );
+
+      checkout.paystackReference = response.data.data.reference;
+      await queryRunner.manager.save(checkout);
+
+      await queryRunner.commitTransaction();
+
+      await this.sendGuestOrderNotifications(data.name);
+
+      return response.data;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error("Error initializing guest transaction", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  public async guestPlaceOrder(data: GuestPlaceOrderDto): Promise<Checkout> {
+    const cartsToUpdate = await this.cartRepository.findBy({
+      sessionId: data.sessionId,
+      checkout: IsNull(),
+    });
+
+    if (!cartsToUpdate || cartsToUpdate.length === 0) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: "No items in cart to checkout",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const customer = await this.findOrCreateGuestCustomer(data, queryRunner);
+
+      const deliverCost = await this.getGuestDeliveryCost({
+        sessionId: data.sessionId,
+        city: data.city,
+        country: data.country,
+        region: data.region,
+      });
+
+      const productTotal = await this.calculateCartAmount(cartsToUpdate);
+      const totalAmount =
+        deliverCost === -1 ? productTotal : productTotal + deliverCost;
+
+      const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
+      sale.orderStatus = OrderStatus.PENDING;
+      sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
+      await queryRunner.manager.save(sale);
+
+      const checkout = await this.createCheckout(
+        sale,
+        totalAmount,
+        queryRunner,
+      );
+      checkout.guestEmail = data.email;
+      await queryRunner.manager.save(checkout);
+
+      await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
+
+      await queryRunner.commitTransaction();
+
+      await this.sendGuestOrderNotifications(data.name);
+
+      await this.notificationService.sendEmail(
+        "Your order has been placed successfully. You can make payment later using the order tracking link sent to your email.",
+        data.email,
+        "Order Placed",
+        data.name,
+        `${process.env.FRONTEND_URL}/track-order/${checkout.id}`,
+        "Track Order",
+        "Track Order",
+      );
+
+      return await this.checkoutRepository.findOne({
+        where: { id: checkout.id },
+        relations: ["sale", "sale.customer", "carts", "carts.product"],
+      });
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error("Error placing guest order", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  public async getOrderStatus(
+    checkoutId: string,
+    email: string,
+  ): Promise<Checkout> {
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id: checkoutId },
+      relations: ["sale", "sale.customer", "carts", "carts.product"],
+    });
+
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Order not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Check if the email matches either guest email or customer email
+    const customerEmail = checkout.sale.customer.email;
+    const guestEmail = checkout.guestEmail;
+
+    if (
+      email.toLowerCase() !== customerEmail?.toLowerCase() &&
+      email.toLowerCase() !== guestEmail?.toLowerCase()
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.FORBIDDEN,
+          error: "Email does not match order records",
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return checkout;
+  }
+
+  public async payForGuestOrder(
+    checkoutId: string,
+    email: string,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const checkout = await this.checkoutRepository.findOne({
+      where: { id: checkoutId },
+      relations: ["sale", "sale.customer"],
+    });
+
+    if (!checkout) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Checkout not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Verify email
+    const customerEmail = checkout.sale.customer.email;
+    const guestEmail = checkout.guestEmail;
+
+    if (
+      email.toLowerCase() !== customerEmail?.toLowerCase() &&
+      email.toLowerCase() !== guestEmail?.toLowerCase()
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.FORBIDDEN,
+          error: "Email does not match order records",
+        },
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: `Cannot pay for order with payment status: ${checkout.sale.paymentStatus}`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    try {
+      const useEmail = guestEmail || customerEmail;
+      const response = await this.initializeGuestPaystack(
+        checkout.sale,
+        useEmail,
+        Number(checkout.amount),
+      );
+
+      checkout.paystackReference = response.data.data.reference;
+      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+      await this.saleRepository.save(checkout.sale);
+      await this.checkoutRepository.save(checkout);
+
+      return response.data;
+    } catch (error) {
+      this.logger.error("Error initializing payment for guest order", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private async findOrCreateGuestCustomer(
+    data: GuestInitializeTransactionDto | GuestPlaceOrderDto,
+    queryRunner: QueryRunner,
+  ): Promise<Customer> {
+    // Try to find existing customer by email
+    let customer = await queryRunner.manager.findOne(Customer, {
+      where: { email: data.email },
+    });
+
+    if (!customer) {
+      customer = new Customer();
+      customer.user = null;
+      customer.name = data.name;
+      customer.email = data.email;
+      customer.phone = data.phoneNumber;
+    }
+
+    customer.country = data.country;
+    customer.region = data.region;
+    customer.city = data.city;
+    customer.phoneNumber = data.phoneNumber;
+    customer.extraInfo = data.extraInfo || null;
+    customer.address = `${data.country}, ${data.region}, ${data.city}${data.extraInfo ? ", " + data.extraInfo : ""}`;
+
+    customer = await queryRunner.manager.save(customer);
+
+    return customer;
+  }
+
+  private async initializeGuestPaystack(
+    sale: Sale,
+    email: string,
+    totalAmount: number,
+  ): Promise<{
+    data: IInitializeTransactionResponse<IInitalizeTransactionData>;
+  }> {
+    return await axios.post(
+      `${process.env.PAYSTACK_BASE_URL}/transaction/initialize`,
+      {
+        amount: Math.round(totalAmount * 100),
+        email: email,
+        reference: `guest=${sale.id}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${sale.id}`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      },
+    );
+  }
+
+  private async sendGuestOrderNotifications(name: string): Promise<void> {
+    await this.notificationService.sendEmail(
+      "A new order has been placed by a guest user. Please visit the admin dashboard",
+      [
+        "bilal.abubakari@maltitiaenterprise.com",
+        "mohammed.abubakari@maltitiaenterprise.com",
+      ],
+      "Guest Order Received",
+      name,
       process.env.FRONTEND_URL_ADMIN,
       "Go",
       "Go",

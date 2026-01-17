@@ -16,11 +16,26 @@ import { OptionalAuthGuard } from "./guards/optional-auth.guard";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../entities/User.entity";
 import { Verification } from "../entities/Verification.entity";
+import { CartService } from "../cart/cart.service";
+import { Cart } from "../entities/Cart.entity";
+import { ProductsService } from "../products/products.service";
+import { Product } from "../entities/Product.entity";
+import { Batch } from "../entities/Batch.entity";
+import { Sale } from "../entities/Sale.entity";
+import { Customer } from "../entities/Customer.entity";
 
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Verification]),
+    TypeOrmModule.forFeature([
+      User,
+      Verification,
+      Cart,
+      Product,
+      Batch,
+      Sale,
+      Customer,
+    ]),
     ConfigModule.forRoot(),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
@@ -39,6 +54,8 @@ import { Verification } from "../entities/Verification.entity";
     NotificationService,
     CookieAuthGuard,
     OptionalAuthGuard,
+    CartService,
+    ProductsService,
   ],
   exports: [JwtModule, AuthenticationService, UsersService, OptionalAuthGuard],
 })

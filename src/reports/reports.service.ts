@@ -35,7 +35,7 @@ import {
   RevenueByProductData,
   BatchAgingData,
 } from "../interfaces/reports.interface";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 
 @Injectable()
 export class ReportsService {
@@ -68,8 +68,8 @@ export class ReportsService {
       .createQueryBuilder("sale")
       .leftJoinAndSelect("sale.customer", "customer")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       });
 
     // Apply date filters
@@ -129,8 +129,8 @@ export class ReportsService {
     const queryBuilder = this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       });
 
     if (fromDate && toDate) {
@@ -206,8 +206,8 @@ export class ReportsService {
     const queryBuilder = this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       });
 
     if (fromDate && toDate) {
@@ -287,8 +287,8 @@ export class ReportsService {
     const queryBuilder = this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       });
 
     if (fromDate && toDate) {
@@ -631,8 +631,8 @@ export class ReportsService {
     const salesQuery = this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :fromDate AND :toDate", {
         fromDate: new Date(fromDate),
@@ -935,8 +935,8 @@ export class ReportsService {
     const queryBuilder = this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :fromDate AND :toDate", {
         fromDate: new Date(fromDate),
@@ -953,8 +953,8 @@ export class ReportsService {
     const sales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .getMany();
 

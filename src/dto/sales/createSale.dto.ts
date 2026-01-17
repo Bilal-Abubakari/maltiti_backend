@@ -10,7 +10,8 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { SaleStatus } from "../../enum/sale-status.enum";
+import { OrderStatus } from "../../enum/order-status.enum";
+import { PaymentStatus } from "../../enum/payment-status.enum";
 
 class BatchAllocationDto {
   @ApiProperty()
@@ -50,13 +51,22 @@ export class CreateSaleDto {
   public customerId: string;
 
   @ApiPropertyOptional({
-    enum: SaleStatus,
-    enumName: "SaleStatus",
-    default: SaleStatus.INVOICE_REQUESTED,
+    enum: OrderStatus,
+    enumName: "OrderStatus",
+    default: OrderStatus.PENDING,
   })
   @IsOptional()
-  @IsEnum(SaleStatus)
-  public status?: SaleStatus;
+  @IsEnum(OrderStatus)
+  public orderStatus?: OrderStatus;
+
+  @ApiPropertyOptional({
+    enum: PaymentStatus,
+    enumName: "PaymentStatus",
+    default: PaymentStatus.INVOICE_REQUESTED,
+  })
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  public paymentStatus?: PaymentStatus;
 
   @ApiProperty({ type: [SaleLineItemDto] })
   @IsArray()

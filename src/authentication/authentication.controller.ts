@@ -10,6 +10,7 @@ import {
   UsePipes,
   ValidationPipe,
   UnauthorizedException,
+  Query,
 } from "@nestjs/common";
 import { IResponse } from "../interfaces/general";
 import { UsersService } from "../users/users.service";
@@ -146,7 +147,8 @@ export class AuthenticationController {
 
   @ApiOperation({
     summary: "Customer signup",
-    description: "Register a new customer account with email verification",
+    description:
+      "Register a new customer account with email verification. If sessionId is provided, guest cart items will be synced when email is verified.",
   })
   @ApiBody({ type: RegisterUserDto })
   @ApiResponse({
@@ -180,11 +182,17 @@ export class AuthenticationController {
   @ApiOperation({
     summary: "User login",
     description:
-      "Authenticates user and returns access token and refresh token in HTTP-only cookies. Also logs the login event in audit logs.",
+      "Authenticates user and returns access token and refresh token in HTTP-only cookies. Also logs the login event in audit logs. If sessionId is provided, guest cart items will be synced with user cart.",
   })
   @ApiBody({ type: SignInDto })
   @ApiResponse({
     status: 200,
+    description:
+      "Login successful, tokens set in cookies (accessToken: 15min, refreshToken: 1day)",
+    type: LoginResponseDto,
+  })
+  @ApiResponse({
+    status: 201,
     description:
       "Login successful, tokens set in cookies (accessToken: 15min, refreshToken: 1day)",
     type: LoginResponseDto,
@@ -209,8 +217,10 @@ export class AuthenticationController {
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<IResponse<User>> {
-    const { user, accessToken, refreshToken } =
-      await this.authService.signIn(signInDto);
+    const { user, accessToken, refreshToken } = await this.authService.signIn(
+      signInDto,
+      signInDto.sessionId,
+    );
 
     // Set access token in HTTP-only cookie (15 minutes expiry)
     response.cookie("accessToken", accessToken, {
@@ -317,7 +327,7 @@ export class AuthenticationController {
   @ApiOperation({
     summary: "Verify email address",
     description:
-      "Verifies user email using the verification token from email and logs the user in. Sets authentication cookies (accessToken: 15min, refreshToken: 1day).",
+      "Verifies user email using the verification token from email and logs the user in. Sets authentication cookies (accessToken: 15min, refreshToken: 1day). If sessionId is provided, guest cart items will be synced with user cart.",
   })
   @ApiParam({
     name: "id",
@@ -348,10 +358,11 @@ export class AuthenticationController {
   public async emailVerification(
     @Param("id") id: string,
     @Param("token") token: string,
+    @Query("sessionId") sessionId: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<IResponse<User>> {
     const { user, accessToken, refreshToken } =
-      await this.authService.emailVerification(id, token);
+      await this.authService.emailVerification(id, token, sessionId);
 
     // Set authentication cookies to log the user in
     response.cookie("accessToken", accessToken, {
