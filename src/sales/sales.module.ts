@@ -1,4 +1,4 @@
-import { Module, forwardRef } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SalesService } from "./sales.service";
 import { InvoiceService } from "./invoice.service";
@@ -9,15 +9,14 @@ import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
+import { Checkout } from "../entities/Checkout.entity";
 import { BatchesService } from "../products/batches/batches.service";
-import { AuditModule } from "../audit/audit.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { AuditInterceptor } from "../interceptors/audit.interceptor";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Sale, Customer, Batch, Product]),
-    forwardRef(() => AuditModule),
+    TypeOrmModule.forFeature([Sale, Customer, Batch, Product, Checkout]),
   ],
   providers: [
     SalesService,

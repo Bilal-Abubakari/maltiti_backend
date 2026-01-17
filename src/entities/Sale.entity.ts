@@ -9,10 +9,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { SaleStatus } from "../enum/sale-status.enum";
 import { Customer } from "./Customer.entity";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { Checkout } from "./Checkout.entity";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 
 @Entity({ name: "Sales" })
 export class Sale {
@@ -32,10 +33,17 @@ export class Sale {
 
   @Column({
     type: "enum",
-    enum: SaleStatus,
-    default: SaleStatus.INVOICE_REQUESTED,
+    enum: OrderStatus,
+    default: OrderStatus.PENDING,
   })
-  public status: SaleStatus;
+  public orderStatus: OrderStatus;
+
+  @Column({
+    type: "enum",
+    enum: PaymentStatus,
+    default: PaymentStatus.INVOICE_REQUESTED,
+  })
+  public paymentStatus: PaymentStatus;
 
   @Column({ type: "json" })
   public lineItems: SaleLineItem[];

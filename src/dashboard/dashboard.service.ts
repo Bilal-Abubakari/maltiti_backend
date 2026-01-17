@@ -26,7 +26,7 @@ import {
   RecentBatch,
   RecentInventoryChange,
 } from "../interfaces/dashboard.interface";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 import { ProductStatus } from "../enum/product-status.enum";
 
 @Injectable()
@@ -314,7 +314,8 @@ export class DashboardService {
         0,
       ),
       itemCount: sale.lineItems.length,
-      status: sale.status,
+      paymentStatus: sale.orderStatus,
+      orderStatus: sale.paymentStatus,
       createdAt: sale.createdAt.toISOString(),
     }));
 
@@ -388,8 +389,8 @@ export class DashboardService {
     const periodSales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate,
@@ -411,8 +412,8 @@ export class DashboardService {
     const allSales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .getMany();
 
@@ -523,8 +524,8 @@ export class DashboardService {
     const sales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate,
@@ -545,8 +546,8 @@ export class DashboardService {
     const sales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate,
@@ -591,8 +592,8 @@ export class DashboardService {
     const sales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate,
@@ -620,8 +621,8 @@ export class DashboardService {
     const currentSales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate,
@@ -633,8 +634,8 @@ export class DashboardService {
     const previousSales = await this.saleRepository
       .createQueryBuilder("sale")
       .where("sale.deletedAt IS NULL")
-      .andWhere("sale.status IN (:...statuses)", {
-        statuses: [SaleStatus.DELIVERED, SaleStatus.PAID],
+      .andWhere("sale.paymentStatus = :paymentStatus", {
+        paymentStatus: PaymentStatus.PAID,
       })
       .andWhere("sale.createdAt BETWEEN :startDate AND :endDate", {
         startDate: prevStartDate,

@@ -4,6 +4,8 @@ import {
   CustomerDto,
   SaleLineItemDto,
 } from "../checkoutResponse.dto";
+import { OrderStatus } from "../../enum/order-status.enum";
+import { PaymentStatus } from "../../enum/payment-status.enum";
 
 export class SaleDto {
   @ApiProperty()
@@ -16,7 +18,10 @@ export class SaleDto {
   public checkout: CheckoutDto;
 
   @ApiProperty()
-  public status: string;
+  public orderStatus: OrderStatus;
+
+  @ApiProperty()
+  public paymentStatus: PaymentStatus;
 
   @ApiProperty({ type: () => [SaleLineItemDto] })
   public lineItems: SaleLineItemDto[]; // or define SaleLineItemDto

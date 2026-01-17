@@ -1,9 +1,16 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum } from "class-validator";
-import { SaleStatus } from "../../enum/sale-status.enum";
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEnum, IsOptional } from "class-validator";
+import { OrderStatus } from "../../enum/order-status.enum";
+import { PaymentStatus } from "../../enum/payment-status.enum";
 
 export class UpdateSaleStatusDto {
-  @ApiProperty({ enum: SaleStatus })
-  @IsEnum(SaleStatus)
-  public status: SaleStatus;
+  @ApiPropertyOptional({ enum: OrderStatus })
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  public orderStatus?: OrderStatus;
+
+  @ApiPropertyOptional({ enum: PaymentStatus })
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  public paymentStatus?: PaymentStatus;
 }

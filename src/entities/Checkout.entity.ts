@@ -26,8 +26,7 @@ export class Checkout {
   @JoinColumn({ name: "saleId" })
   public sale: Sale;
 
-  @OneToMany(() => Cart, cart => cart.checkout, { lazy: true })
-  @JoinColumn()
+  @OneToMany(() => Cart, cart => cart.checkout)
   public carts: Cart[];
 
   @Column({ type: "decimal", precision: 10, scale: 2 })

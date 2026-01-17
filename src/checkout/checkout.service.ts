@@ -21,7 +21,8 @@ import {
 } from "../interfaces/general";
 import { NotificationService } from "../notification/notification.service";
 import { Sale } from "../entities/Sale.entity";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 import { User } from "../entities/User.entity";
 import { Customer } from "../entities/Customer.entity";
 import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
@@ -207,7 +208,8 @@ export class CheckoutService {
         deliverCost === -1 ? productTotal : productTotal + deliverCost;
 
       const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
-      sale.status = SaleStatus.INVOICE_REQUESTED;
+      sale.orderStatus = OrderStatus.PENDING;
+      sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
       await queryRunner.manager.save(sale);
 
       const checkout = await this.createCheckout(
@@ -282,13 +284,13 @@ export class CheckoutService {
     }
 
     if (
-      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
-      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot pay for order with status: ${checkout.sale.status}`,
+          error: `Cannot pay for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -302,7 +304,7 @@ export class CheckoutService {
       );
 
       checkout.paystackReference = response.data.data.reference;
-      checkout.sale.status = SaleStatus.PENDING_PAYMENT;
+      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
       await this.saleRepository.save(checkout.sale);
       await this.checkoutRepository.save(checkout);
 
@@ -349,7 +351,7 @@ export class CheckoutService {
 
       const sale = checkout.sale;
       const user = sale.customer.user;
-      sale.status = SaleStatus.PAID;
+      sale.paymentStatus = PaymentStatus.PAID;
       await this.saleRepository.save(sale);
 
       if (user) {
@@ -404,7 +406,7 @@ export class CheckoutService {
       }
 
       const sale = checkout.sale;
-      sale.status = SaleStatus.PAID;
+      sale.paymentStatus = PaymentStatus.PAID;
       await this.saleRepository.save(sale);
 
       // Send email to guest or user
@@ -413,11 +415,11 @@ export class CheckoutService {
 
       if (email) {
         await this.notificationService.sendEmail(
-          "Your payment has been received, your order is already in progress",
+          `Your payment has been received, your order is already in progress. Your Order ID is ${sale.id}. You can track your order anytime using this ID and your email address.`,
           email,
           "Payment Confirmation",
           name,
-          `${process.env.FRONTEND_URL}/track-order/${checkoutId}`,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
           "Track Order",
           "Track Order",
         );
@@ -476,7 +478,8 @@ export class CheckoutService {
     page: number = 1,
     limit: number = 10,
     searchTerm: string = "",
-    saleStatus: SaleStatus,
+    orderStatus?: OrderStatus,
+    paymentStatus?: PaymentStatus,
   ): Promise<ordersPagination> {
     const skip = (page - 1) * limit;
     const queryBuilder = this.checkoutRepository.createQueryBuilder("checkout");
@@ -492,10 +495,19 @@ export class CheckoutService {
       });
     }
 
-    if (saleStatus) {
-      queryBuilder.andWhere("LOWER(sale.status) = LOWER(:saleStatus)", {
-        saleStatus,
+    if (orderStatus) {
+      queryBuilder.andWhere("LOWER(sale.orderStatus) = LOWER(:orderStatus)", {
+        orderStatus,
       });
+    }
+
+    if (paymentStatus) {
+      queryBuilder.andWhere(
+        "LOWER(sale.paymentStatus) = LOWER(:paymentStatus)",
+        {
+          paymentStatus,
+        },
+      );
     }
 
     queryBuilder.orderBy("checkout.createdAt", "DESC");
@@ -513,7 +525,11 @@ export class CheckoutService {
     };
   }
 
-  public async updateSaleStatus(id: string, status: SaleStatus): Promise<Sale> {
+  public async updateSaleStatus(
+    id: string,
+    orderStatus?: OrderStatus,
+    paymentStatus?: PaymentStatus,
+  ): Promise<Sale> {
     const checkout = await this.checkoutRepository.findOne({
       where: { id },
       relations: ["sale", "sale.customer", "sale.customer.user"],
@@ -530,18 +546,28 @@ export class CheckoutService {
     }
 
     const sale = checkout.sale;
-    sale.status = status;
+
+    if (orderStatus) {
+      sale.orderStatus = orderStatus;
+    }
+
+    if (paymentStatus) {
+      sale.paymentStatus = paymentStatus;
+    }
 
     const customer = sale.customer;
     const user = customer.user;
 
     if (user) {
-      await this.notificationService.sendSms(
-        user.phoneNumber,
-        `Your order status has been updated to: ${status}`,
-      );
+      const statusMessage = [];
+      if (orderStatus) statusMessage.push(`Order Status: ${orderStatus}`);
+      if (paymentStatus) statusMessage.push(`Payment Status: ${paymentStatus}`);
+
+      const message = `Your order has been updated. ${statusMessage.join(", ")}`;
+
+      await this.notificationService.sendSms(user.phoneNumber, message);
       await this.notificationService.sendEmail(
-        `Your order status has been updated to: ${status}`,
+        message,
         user.email,
         "Order Status Update",
         user.name,
@@ -580,13 +606,13 @@ export class CheckoutService {
     }
 
     if (
-      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
-      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot update delivery cost for order with status: ${checkout.sale.status}`,
+          error: `Cannot update delivery cost for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -640,7 +666,7 @@ export class CheckoutService {
     const customer = sale.customer;
     const user = customer.user;
 
-    if (sale.status === SaleStatus.CANCELLED) {
+    if (sale.orderStatus === OrderStatus.CANCELLED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -650,7 +676,7 @@ export class CheckoutService {
       );
     }
 
-    if (sale.status === SaleStatus.DELIVERED) {
+    if (sale.orderStatus === OrderStatus.DELIVERED) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -660,7 +686,7 @@ export class CheckoutService {
       );
     }
 
-    if (sale.status === SaleStatus.IN_TRANSIT) {
+    if (sale.orderStatus === OrderStatus.IN_TRANSIT) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -671,8 +697,8 @@ export class CheckoutService {
     }
 
     if (
-      sale.status === SaleStatus.PAID ||
-      sale.status === SaleStatus.PACKAGING
+      sale.paymentStatus === PaymentStatus.PAID ||
+      sale.orderStatus === OrderStatus.PACKAGING
     ) {
       try {
         await axios.post(
@@ -684,7 +710,8 @@ export class CheckoutService {
             },
           },
         );
-        sale.status = SaleStatus.CANCELLED;
+        sale.orderStatus = OrderStatus.CANCELLED;
+        sale.paymentStatus = PaymentStatus.REFUNDED;
       } catch (error) {
         throw new HttpException(
           {
@@ -696,7 +723,7 @@ export class CheckoutService {
       }
     }
 
-    sale.status = SaleStatus.CANCELLED;
+    sale.orderStatus = OrderStatus.CANCELLED;
     sale.deletedAt = new Date();
     await this.saleRepository.save(sale);
 
@@ -769,7 +796,8 @@ export class CheckoutService {
   ): Promise<Sale> {
     const sale = new Sale();
     sale.customer = customer;
-    sale.status = SaleStatus.PENDING_PAYMENT;
+    sale.orderStatus = OrderStatus.PENDING;
+    sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
     sale.lineItems = carts.map(cart => ({
       productId: cart.product.id,
       batchAllocations: [],
@@ -931,7 +959,7 @@ export class CheckoutService {
       await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
 
       const response = await this.initializeGuestPaystack(
-        checkout,
+        sale,
         data.email,
         totalAmount,
       );
@@ -995,7 +1023,8 @@ export class CheckoutService {
         deliverCost === -1 ? productTotal : productTotal + deliverCost;
 
       const sale = await this.createSale(customer, cartsToUpdate, queryRunner);
-      sale.status = SaleStatus.INVOICE_REQUESTED;
+      sale.orderStatus = OrderStatus.PENDING;
+      sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
       await queryRunner.manager.save(sale);
 
       const checkout = await this.createCheckout(
@@ -1117,13 +1146,13 @@ export class CheckoutService {
     }
 
     if (
-      checkout.sale.status !== SaleStatus.INVOICE_REQUESTED &&
-      checkout.sale.status !== SaleStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot pay for order with status: ${checkout.sale.status}`,
+          error: `Cannot pay for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -1132,13 +1161,13 @@ export class CheckoutService {
     try {
       const useEmail = guestEmail || customerEmail;
       const response = await this.initializeGuestPaystack(
-        checkout,
+        checkout.sale,
         useEmail,
         Number(checkout.amount),
       );
 
       checkout.paystackReference = response.data.data.reference;
-      checkout.sale.status = SaleStatus.PENDING_PAYMENT;
+      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
       await this.saleRepository.save(checkout.sale);
       await this.checkoutRepository.save(checkout);
 
@@ -1185,7 +1214,7 @@ export class CheckoutService {
   }
 
   private async initializeGuestPaystack(
-    checkout: Checkout,
+    sale: Sale,
     email: string,
     totalAmount: number,
   ): Promise<{
@@ -1196,8 +1225,8 @@ export class CheckoutService {
       {
         amount: Math.round(totalAmount * 100),
         email: email,
-        reference: `guest=${checkout.id}`,
-        callback_url: `${process.env.FRONTEND_URL}/guest/confirm-payment/${checkout.id}`,
+        reference: `guest=${sale.id}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${sale.id}`,
       },
       {
         headers: {

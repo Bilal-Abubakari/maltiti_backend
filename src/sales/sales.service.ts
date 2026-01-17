@@ -2,13 +2,18 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  HttpException,
+  HttpStatus,
+  Logger,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import axios from "axios";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
+import { Checkout } from "../entities/Checkout.entity";
 import { CreateSaleDto } from "../dto/sales/createSale.dto";
 import { UpdateSaleDto } from "../dto/sales/updateSale.dto";
 import { UpdateSaleStatusDto } from "../dto/sales/updateSaleStatus.dto";
@@ -18,8 +23,14 @@ import { ListSalesDto } from "../dto/listSales.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
+import {
+  IInitalizeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/general";
 import { BatchesService } from "../products/batches/batches.service";
 import { InvoiceService } from "./invoice.service";
 import { ReceiptService } from "./receipt.service";
@@ -28,6 +39,7 @@ import { IPagination } from "../interfaces/general";
 
 @Injectable()
 export class SalesService {
+  private logger = new Logger(SalesService.name);
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
@@ -37,16 +49,21 @@ export class SalesService {
     private readonly batchRepository: Repository<Batch>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(Checkout)
+    private readonly checkoutRepository: Repository<Checkout>,
     private readonly batchesService: BatchesService,
     private readonly invoiceService: InvoiceService,
     private readonly receiptService: ReceiptService,
     private readonly waybillService: WaybillService,
   ) {}
 
-  public async createSale(createSaleDto: CreateSaleDto): Promise<Sale> {
+  public async createSale(
+    createSaleDto: CreateSaleDto,
+  ): Promise<SaleResponseDto> {
     const {
       customerId,
-      status = SaleStatus.INVOICE_REQUESTED,
+      orderStatus = OrderStatus.PENDING,
+      paymentStatus = PaymentStatus.INVOICE_REQUESTED,
       lineItems,
     } = createSaleDto;
 
@@ -112,17 +129,19 @@ export class SalesService {
 
     const sale = this.saleRepository.create({
       customer,
-      status,
+      orderStatus,
+      paymentStatus,
       lineItems: validatedLineItems,
     });
 
-    return this.saleRepository.save(sale);
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async updateSale(
     saleId: string,
     updateDto: UpdateSaleDto,
-  ): Promise<Sale> {
+  ): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
       relations: ["customer"],
@@ -132,7 +151,9 @@ export class SalesService {
     }
 
     // Prevent editing if already paid or beyond
-    if ([SaleStatus.IN_TRANSIT, SaleStatus.DELIVERED].includes(sale.status)) {
+    if (
+      [OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED].includes(sale.orderStatus)
+    ) {
       throw new BadRequestException(
         "Cannot edit sale that has been delivered or in transit",
       );
@@ -154,8 +175,12 @@ export class SalesService {
       sale.customer = customer;
     }
 
-    if (updateDto.status) {
-      sale.status = updateDto.status;
+    if (updateDto.orderStatus) {
+      sale.orderStatus = updateDto.orderStatus;
+    }
+
+    if (updateDto.paymentStatus) {
+      sale.paymentStatus = updateDto.paymentStatus;
     }
 
     // Update line items if provided
@@ -221,13 +246,14 @@ export class SalesService {
       await this.validateAndDeductStock(validatedLineItems);
     }
 
-    return this.saleRepository.save(sale);
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async updateSaleStatus(
     saleId: string,
     updateDto: UpdateSaleStatusDto,
-  ): Promise<Sale> {
+  ): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
       relations: ["customer"],
@@ -236,35 +262,54 @@ export class SalesService {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
     }
 
-    const { status } = updateDto;
+    const { orderStatus, paymentStatus } = updateDto;
 
-    // Validation based on status - require batches to be assigned for PAID and beyond
+    // Validation based on orderStatus - require batches to be assigned for PACKAGING and beyond
     if (
+      orderStatus &&
       [
-        SaleStatus.PAID,
-        SaleStatus.PACKAGING,
-        SaleStatus.IN_TRANSIT,
-        SaleStatus.DELIVERED,
-      ].includes(status)
+        OrderStatus.PACKAGING,
+        OrderStatus.IN_TRANSIT,
+        OrderStatus.DELIVERED,
+      ].includes(orderStatus)
     ) {
       // Ensure batches are assigned (stock is already deducted when batches were assigned)
       for (const item of sale.lineItems) {
         if (item.batchAllocations.length === 0) {
           throw new BadRequestException(
-            "Batches must be assigned for this status",
+            "Batches must be assigned before changing order status to packaging or beyond",
           );
         }
       }
     }
 
-    sale.status = status;
-    return this.saleRepository.save(sale);
+    // Validation for payment status - require batches to be assigned for PAID status
+    if (paymentStatus && paymentStatus === PaymentStatus.PAID) {
+      for (const item of sale.lineItems) {
+        if (item.batchAllocations.length === 0) {
+          throw new BadRequestException(
+            "Batches must be assigned before marking as paid",
+          );
+        }
+      }
+    }
+
+    if (orderStatus) {
+      sale.orderStatus = orderStatus;
+    }
+
+    if (paymentStatus) {
+      sale.paymentStatus = paymentStatus;
+    }
+
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async addLineItem(
     saleId: string,
     addDto: AddLineItemDto,
-  ): Promise<Sale> {
+  ): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
     });
@@ -273,14 +318,7 @@ export class SalesService {
     }
 
     // Prevent adding if after paid
-    if (
-      [
-        SaleStatus.PAID,
-        SaleStatus.PACKAGING,
-        SaleStatus.IN_TRANSIT,
-        SaleStatus.DELIVERED,
-      ].includes(sale.status)
-    ) {
+    if (sale.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestException("Cannot add line items after payment");
     }
 
@@ -300,13 +338,14 @@ export class SalesService {
     };
 
     sale.lineItems.push(newItem);
-    return this.saleRepository.save(sale);
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async assignBatches(
     saleId: string,
     assignDto: AssignBatchesDto,
-  ): Promise<Sale> {
+  ): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
     });
@@ -315,14 +354,7 @@ export class SalesService {
     }
 
     // Prevent assigning if after paid
-    if (
-      [
-        SaleStatus.PAID,
-        SaleStatus.PACKAGING,
-        SaleStatus.IN_TRANSIT,
-        SaleStatus.DELIVERED,
-      ].includes(sale.status)
-    ) {
+    if (sale.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestException("Cannot modify batches after payment");
     }
 
@@ -393,14 +425,22 @@ export class SalesService {
       );
     }
 
-    return this.saleRepository.save(sale);
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async listSales(query: ListSalesDto): Promise<IPagination<Sale>> {
-    const { status, customerId, page = 1, limit = 10 } = query;
+    const {
+      orderStatus,
+      paymentStatus,
+      customerId,
+      page = 1,
+      limit = 10,
+    } = query;
 
     const where: Record<string, unknown> = { deletedAt: IsNull() };
-    if (status) where.status = status;
+    if (orderStatus) where.orderStatus = orderStatus;
+    if (paymentStatus) where.paymentStatus = paymentStatus;
     if (customerId) where.customer = { id: customerId };
 
     const [items, totalItems] = await this.saleRepository.findAndCount({
@@ -421,7 +461,7 @@ export class SalesService {
     };
   }
 
-  public async getSaleDetails(saleId: string): Promise<Sale> {
+  public async getSaleDetails(saleId: string): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
       relations: ["customer"],
@@ -429,10 +469,10 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
     }
-    return sale;
+    return this.transformSaleToResponseDto(sale);
   }
 
-  public async cancelSale(saleId: string): Promise<Sale> {
+  public async cancelSale(saleId: string): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
     });
@@ -444,7 +484,8 @@ export class SalesService {
     await this.returnStock(sale.lineItems);
 
     sale.deletedAt = new Date();
-    return this.saleRepository.save(sale);
+    const savedSale = await this.saleRepository.save(sale);
+    return this.transformSaleToResponseDto(savedSale);
   }
 
   public async generateInvoice(
@@ -504,5 +545,200 @@ export class SalesService {
         }
       }
     }
+  }
+
+  public async trackOrder(
+    saleId: string,
+    email: string,
+  ): Promise<SaleResponseDto> {
+    try {
+      const sale = await this.saleRepository.findOne({
+        where: { id: saleId, deletedAt: IsNull() },
+        relations: [
+          "customer",
+          "checkout",
+          "checkout.carts",
+          "checkout.carts.product",
+        ],
+      });
+
+      if (!sale) {
+        throw new NotFoundException("Order not found");
+      }
+
+      // Check if the email matches customer email or guest email (from checkout)
+      const customerEmail = sale.customer.email;
+      const guestEmail = sale.checkout?.guestEmail;
+
+      if (
+        email.toLowerCase() !== customerEmail?.toLowerCase() &&
+        email.toLowerCase() !== guestEmail?.toLowerCase()
+      ) {
+        throw new BadRequestException("Email does not match order records");
+      }
+
+      // Transform the sale entity into the response DTO
+      return this.transformSaleToResponseDto(sale);
+    } catch (e) {
+      this.logger.error(e);
+    }
+  }
+
+  public async payForOrder(
+    saleId: string,
+    email: string,
+  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+    const sale = await this.saleRepository.findOne({
+      where: { id: saleId, deletedAt: IsNull() },
+      relations: ["customer", "checkout"],
+    });
+
+    if (!sale) {
+      throw new NotFoundException("Order not found");
+    }
+
+    // Check if the email matches customer email or guest email (from checkout)
+    const customerEmail = sale.customer.email;
+    const guestEmail = sale.checkout?.guestEmail;
+
+    if (
+      email.toLowerCase() !== customerEmail?.toLowerCase() &&
+      email.toLowerCase() !== guestEmail?.toLowerCase()
+    ) {
+      throw new BadRequestException("Email does not match order records");
+    }
+
+    // Check payment status
+    if (
+      sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
+    ) {
+      throw new BadRequestException(
+        `Cannot pay for order with payment status: ${sale.paymentStatus}`,
+      );
+    }
+
+    // If there's no checkout, we can't process payment via Paystack
+    if (!sale.checkout) {
+      throw new BadRequestException(
+        "This order does not have payment information. Please contact support.",
+      );
+    }
+
+    try {
+      const useEmail = guestEmail || customerEmail;
+      const response = await this.initializePaystack(
+        sale.id,
+        useEmail,
+        Number(sale.checkout.amount),
+      );
+
+      sale.checkout.paystackReference = response.data.data.reference;
+      sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+      await this.saleRepository.save(sale);
+      await this.checkoutRepository.save(sale.checkout);
+
+      return response.data;
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  private async initializePaystack(
+    saleId: string,
+    email: string,
+    totalAmount: number,
+  ): Promise<{
+    data: IInitializeTransactionResponse<IInitalizeTransactionData>;
+  }> {
+    return await axios.post(
+      `${process.env.PAYSTACK_BASE_URL}/transaction/initialize`,
+      {
+        amount: Math.round(totalAmount * 100),
+        email: email,
+        reference: `sale=${saleId}`,
+        callback_url: `${process.env.FRONTEND_URL}/track-order/${saleId}`,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        },
+      },
+    );
+  }
+
+  private transformSaleToResponseDto(sale: Sale): SaleResponseDto {
+    console.log("Transforming sale to response DTO", sale.checkout);
+    // Transform line items with enhanced product information
+    const transformedLineItems = sale.lineItems.map(item => {
+      // Find product information from checkout carts if available
+      const cartItem = sale.checkout?.carts?.find(
+        cart => cart.product.id === item.productId,
+      );
+      const product = cartItem?.product;
+
+      return {
+        productId: item.productId,
+        productName: product?.name,
+        category: product?.category,
+        batchAllocations: item.batchAllocations.map(alloc => ({
+          batchId: alloc.batchId,
+          quantity: alloc.quantity,
+        })),
+        requestedQuantity: item.requestedQuantity,
+        customPrice: item.customPrice,
+        finalPrice: item.finalPrice,
+        totalAmount: item.finalPrice * item.requestedQuantity,
+      };
+    });
+
+    // Transform customer information
+    const customer: Omit<Customer, "sales" | "user"> = {
+      id: sale.customer.id,
+      name: sale.customer.name,
+      phone: sale.customer.phone,
+      email: sale.customer.email,
+      address: sale.customer.address,
+      country: sale.customer.country,
+      region: sale.customer.region,
+      city: sale.customer.city,
+      phoneNumber: sale.customer.phoneNumber,
+      extraInfo: sale.customer.extraInfo,
+      createdAt: sale.customer.createdAt,
+      updatedAt: sale.customer.updatedAt,
+      deletedAt: sale.customer.deletedAt,
+    };
+
+    // Transform checkout information (if exists)
+    let checkout = undefined;
+    if (sale.checkout) {
+      checkout = {
+        id: sale.checkout.id,
+        amount: sale.checkout.amount,
+        paystackReference: sale.checkout.paystackReference,
+        guestEmail: sale.checkout.guestEmail,
+        createdAt: sale.checkout.createdAt,
+        updatedAt: sale.checkout.updatedAt,
+        deletedAt: sale.checkout.deletedAt,
+      };
+    }
+
+    return {
+      id: sale.id,
+      customer,
+      checkout,
+      orderStatus: sale.orderStatus,
+      paymentStatus: sale.paymentStatus,
+      lineItems: transformedLineItems,
+      createdAt: sale.createdAt,
+      updatedAt: sale.updatedAt,
+      deletedAt: sale.deletedAt,
+    };
   }
 }

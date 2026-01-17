@@ -8,7 +8,8 @@ import {
   IsEmail,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { SaleStatus } from "../enum/sale-status.enum";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 
 export class InitializeTransaction {
   @ApiProperty({
@@ -103,14 +104,27 @@ export class PlaceOrderDto {
 }
 
 export class UpdateSaleStatusDto {
-  @ApiProperty({
-    description: "Sale status",
-    enum: SaleStatus,
-    enumName: "SaleStatus",
-    example: SaleStatus.PAID,
+  @ApiPropertyOptional({
+    description: "Order status",
+    enum: OrderStatus,
+    enumName: "OrderStatus",
+    example: OrderStatus.PACKAGING,
   })
-  @IsEnum(SaleStatus, { message: "Status must be a valid sale status" })
-  public status: SaleStatus;
+  @IsOptional()
+  @IsEnum(OrderStatus, { message: "Order status must be a valid order status" })
+  public orderStatus?: OrderStatus;
+
+  @ApiPropertyOptional({
+    description: "Payment status",
+    enum: PaymentStatus,
+    enumName: "PaymentStatus",
+    example: PaymentStatus.PAID,
+  })
+  @IsOptional()
+  @IsEnum(PaymentStatus, {
+    message: "Payment status must be a valid payment status",
+  })
+  public paymentStatus?: PaymentStatus;
 }
 
 export class UpdateDeliveryCostDto {
