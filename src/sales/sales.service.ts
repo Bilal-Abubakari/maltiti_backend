@@ -20,6 +20,7 @@ import { UpdateSaleStatusDto } from "../dto/sales/updateSaleStatus.dto";
 import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
+import { ListSalesByEmailDto } from "../dto/sales/listSalesByEmail.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
@@ -429,7 +430,9 @@ export class SalesService {
     return this.transformSaleToResponseDto(savedSale);
   }
 
-  public async listSales(query: ListSalesDto): Promise<IPagination<Sale>> {
+  public async listSales(
+    query: ListSalesDto,
+  ): Promise<IPagination<SaleResponseDto>> {
     const {
       orderStatus,
       paymentStatus,
@@ -445,6 +448,51 @@ export class SalesService {
 
     const [items, totalItems] = await this.saleRepository.findAndCount({
       where,
+      relations: [
+        "customer",
+        "checkout",
+        "checkout.carts",
+        "checkout.carts.product",
+      ],
+      order: { createdAt: "DESC" },
+      take: limit,
+      skip: (page - 1) * limit,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      items: items.map(sale => this.transformSaleToResponseDto(sale)),
+      totalItems,
+      currentPage: page,
+      totalPages,
+    };
+  }
+
+  public async listSalesByEmail(
+    query: ListSalesByEmailDto,
+  ): Promise<IPagination<SaleResponseDto>> {
+    const { email, orderStatus, paymentStatus, page = 1, limit = 10 } = query;
+
+    // First, find the customer by email
+    const customer = await this.customerRepository.findOne({
+      where: { email, deletedAt: IsNull() },
+    });
+
+    if (!customer) {
+      throw new NotFoundException(`No customer found with email "${email}"`);
+    }
+
+    // Build the query filters
+    const where: Record<string, unknown> = {
+      deletedAt: IsNull(),
+      customer: { id: customer.id },
+    };
+    if (orderStatus) where.orderStatus = orderStatus;
+    if (paymentStatus) where.paymentStatus = paymentStatus;
+
+    const [items, totalItems] = await this.saleRepository.findAndCount({
+      where,
       relations: ["customer"],
       order: { createdAt: "DESC" },
       take: limit,
@@ -454,7 +502,7 @@ export class SalesService {
     const totalPages = Math.ceil(totalItems / limit);
 
     return {
-      items,
+      items: items.map(sale => this.transformSaleToResponseDto(sale)),
       totalItems,
       currentPage: page,
       totalPages,

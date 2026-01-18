@@ -26,12 +26,14 @@ import { UpdateSaleStatusDto } from "../dto/sales/updateSaleStatus.dto";
 import { AddLineItemDto } from "../dto/addLineItem.dto";
 import { AssignBatchesDto } from "../dto/assignBatches.dto";
 import { ListSalesDto } from "../dto/listSales.dto";
+import { ListSalesByEmailDto } from "../dto/sales/listSalesByEmail.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
 import { TrackOrderDto } from "../dto/sales/trackOrder.dto";
 import { TrackOrderResponseDto } from "../dto/sales/trackOrderResponse.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
+import { PaginatedSaleResponseDto } from "../dto/sales/paginatedSaleResponse.dto";
 import {
   IPaginatedResponse,
   IResponse,
@@ -41,11 +43,12 @@ import {
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
-import { Sale } from "../entities/Sale.entity";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
+import { OrderStatus } from "../enum/order-status.enum";
+import { PaymentStatus } from "../enum/payment-status.enum";
 
 @ApiTags("Sales")
 @Controller("sales")
@@ -176,8 +179,61 @@ export class SalesController {
   @ApiResponse({ status: 200, type: Object })
   public async listSales(
     @Query() query: ListSalesDto,
-  ): Promise<IPaginatedResponse<Sale>> {
+  ): Promise<IPaginatedResponse<SaleResponseDto>> {
     const sales = await this.salesService.listSales(query);
+
+    return {
+      message: "Sales loaded successfully",
+      data: sales,
+    };
+  }
+
+  @Get("by-email")
+  @ApiOperation({
+    summary: "List sales by customer email (no authentication required)",
+    description:
+      "Retrieve all sales associated with a specific customer email address. " +
+      "Supports filtering by order status and payment status with pagination.",
+  })
+  @ApiQuery({
+    name: "email",
+    description: "Email address of the customer",
+    required: true,
+    type: String,
+  })
+  @ApiQuery({
+    name: "orderStatus",
+    description: "Filter by order status",
+    required: false,
+    enum: OrderStatus,
+  })
+  @ApiQuery({
+    name: "paymentStatus",
+    description: "Filter by payment status",
+    required: false,
+    enum: PaymentStatus,
+  })
+  @ApiQuery({
+    name: "page",
+    description: "Page number for pagination",
+    required: false,
+    type: Number,
+  })
+  @ApiQuery({
+    name: "limit",
+    description: "Number of items per page",
+    required: false,
+    type: Number,
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Sales retrieved successfully",
+    type: PaginatedSaleResponseDto,
+  })
+  public async listSalesByEmail(
+    @Query() query: ListSalesByEmailDto,
+  ): Promise<PaginatedSaleResponseDto> {
+    const sales = await this.salesService.listSalesByEmail(query);
 
     return {
       message: "Sales loaded successfully",
