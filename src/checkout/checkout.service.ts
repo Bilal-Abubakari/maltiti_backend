@@ -152,9 +152,9 @@ export class CheckoutService {
       checkout.paystackReference = response.data.data.reference;
       await queryRunner.manager.save(checkout);
 
-      await queryRunner.commitTransaction();
-
       await this.sendOrderNotifications(user);
+
+      await queryRunner.commitTransaction();
 
       return response.data;
     } catch (error) {
@@ -303,10 +303,22 @@ export class CheckoutService {
         Number(checkout.amount),
       );
 
-      checkout.paystackReference = response.data.data.reference;
-      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
-      await this.saleRepository.save(checkout.sale);
-      await this.checkoutRepository.save(checkout);
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        checkout.paystackReference = response.data.data.reference;
+        checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+        await queryRunner.manager.save(checkout.sale);
+        await queryRunner.manager.save(checkout);
+        await queryRunner.commitTransaction();
+      } catch (saveError) {
+        await queryRunner.rollbackTransaction();
+        throw saveError;
+      } finally {
+        await queryRunner.release();
+      }
 
       return response.data;
     } catch (error) {
@@ -427,6 +439,7 @@ export class CheckoutService {
 
       return this.checkoutRepository.save(checkout);
     } catch (error) {
+      console.log("Error confirming guest payment:", error);
       this.logger.error("Error confirming guest payment", error);
       throw new HttpException(
         {
@@ -959,7 +972,7 @@ export class CheckoutService {
       await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
 
       const response = await this.initializeGuestPaystack(
-        sale,
+        checkout.id,
         data.email,
         totalAmount,
       );
@@ -967,9 +980,9 @@ export class CheckoutService {
       checkout.paystackReference = response.data.data.reference;
       await queryRunner.manager.save(checkout);
 
-      await queryRunner.commitTransaction();
-
       await this.sendGuestOrderNotifications(data.name);
+
+      await queryRunner.commitTransaction();
 
       return response.data;
     } catch (error) {
@@ -1161,15 +1174,27 @@ export class CheckoutService {
     try {
       const useEmail = guestEmail || customerEmail;
       const response = await this.initializeGuestPaystack(
-        checkout.sale,
+        checkout.id,
         useEmail,
         Number(checkout.amount),
       );
 
-      checkout.paystackReference = response.data.data.reference;
-      checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
-      await this.saleRepository.save(checkout.sale);
-      await this.checkoutRepository.save(checkout);
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        checkout.paystackReference = response.data.data.reference;
+        checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+        await queryRunner.manager.save(checkout.sale);
+        await queryRunner.manager.save(checkout);
+        await queryRunner.commitTransaction();
+      } catch (saveError) {
+        await queryRunner.rollbackTransaction();
+        throw saveError;
+      } finally {
+        await queryRunner.release();
+      }
 
       return response.data;
     } catch (error) {
@@ -1214,7 +1239,7 @@ export class CheckoutService {
   }
 
   private async initializeGuestPaystack(
-    sale: Sale,
+    checkoutId: string,
     email: string,
     totalAmount: number,
   ): Promise<{
@@ -1225,8 +1250,8 @@ export class CheckoutService {
       {
         amount: Math.round(totalAmount * 100),
         email: email,
-        reference: `guest=${sale.id}`,
-        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${sale.id}`,
+        reference: `guest=${checkoutId}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkoutId}`,
       },
       {
         headers: {
