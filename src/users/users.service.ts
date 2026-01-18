@@ -73,16 +73,27 @@ export class UsersService {
         HttpStatus.BAD_REQUEST,
       );
     } else {
-      const verification = new Verification();
-      verification.user = user;
-      verification.type = "email";
-      const token = generateRandomToken();
-      verification.token = token;
-      const userResponse = await this.userRepository.save(user);
-      await this.verificationRepository.save(verification);
-      const idToken = `auth/verify/${user.id}/${token}`;
-      await this.sendVerificationEmail(user.email, user.name, idToken);
-      return userResponse;
+      return await this.userRepository.manager.transaction(
+        async transactionalEntityManager => {
+          const userResponse = await transactionalEntityManager.save(
+            User,
+            user,
+          );
+          const verification = new Verification();
+          verification.user = userResponse;
+          verification.type = "email";
+          const token = generateRandomToken();
+          verification.token = token;
+          await transactionalEntityManager.save(Verification, verification);
+          const idToken = `auth/verify/${userResponse.id}/${token}`;
+          await this.sendVerificationEmail(
+            userResponse.email,
+            userResponse.name,
+            idToken,
+          );
+          return userResponse;
+        },
+      );
     }
   }
 

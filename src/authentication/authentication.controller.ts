@@ -1,16 +1,17 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   Param,
   Post,
+  Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
   UsePipes,
   ValidationPipe,
-  UnauthorizedException,
-  Query,
 } from "@nestjs/common";
 import { IResponse } from "../interfaces/general";
 import { UsersService } from "../users/users.service";
@@ -28,12 +29,12 @@ import { CreateAdminDto } from "../dto/createAdmin.dto";
 import { ChangePasswordDto } from "../dto/changePassword.dto";
 import { Role } from "../enum/role.enum";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBody,
-  ApiParam,
   ApiCookieAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger";
 import {
   AdminCreationResponseDto,
@@ -171,6 +172,9 @@ export class AuthenticationController {
   public async customerSignup(
     @Body() userInfo: RegisterUserDto,
   ): Promise<IResponse<User>> {
+    if (userInfo.userType !== Role.User) {
+      throw new BadRequestException("User type must be User");
+    }
     const user = await this.usersService.create(userInfo);
     delete user.password;
     return {

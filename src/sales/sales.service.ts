@@ -722,8 +722,6 @@ export class SalesService {
   }
 
   private transformSaleToResponseDto(sale: Sale): SaleResponseDto {
-    console.log("Transforming sale to response DTO", sale.checkout);
-    // Transform line items with enhanced product information
     const transformedLineItems = sale.lineItems.map(item => {
       // Find product information from checkout carts if available
       const cartItem = sale.checkout?.carts?.find(
