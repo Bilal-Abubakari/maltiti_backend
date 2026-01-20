@@ -56,7 +56,7 @@ export class UsersService {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error: "User with email already exists",
+          error: "User with email already exists. Please login",
         },
         HttpStatus.CONFLICT,
       );
@@ -320,7 +320,7 @@ export class UsersService {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
-          error: "User with email already exists",
+          error: "User with email already exists. Please login",
         },
         HttpStatus.CONFLICT,
       );
