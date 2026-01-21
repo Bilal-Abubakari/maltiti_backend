@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -24,6 +26,12 @@ import {
   ApiQuery,
   ApiBody,
 } from "@nestjs/swagger";
+import { CustomerResponseDto } from "../dto/customerResponse.dto";
+import { CurrentUser } from "../authentication/decorators/current-user.decorator";
+import { User } from "../entities/User.entity";
+import { CustomerMeResponseDto } from "../dto/customerMeResponse.dto";
+import { Roles } from "../authentication/guards/roles/roles.decorator";
+import { Role } from "../enum/role.enum";
 
 @UseGuards(CookieAuthGuard)
 @ApiTags("customers")
@@ -55,6 +63,38 @@ export class CustomerController {
     return {
       message: "Customers loaded successfully",
       data: customers,
+    };
+  }
+
+  @Get("me")
+  @Roles([Role.User])
+  @ApiOperation({
+    summary: "Get the customer information for the logged-in user",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Customer information retrieved successfully",
+    type: CustomerMeResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Customer not found for the user" })
+  public async getMyCustomer(
+    @CurrentUser() user: User,
+  ): Promise<IResponse<CustomerResponseDto>> {
+    const customer = await this.customerService.findCustomerByUser(user);
+
+    if (!customer) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Customer not found for the user",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return {
+      message: "Customer information loaded successfully",
+      data: customer as CustomerResponseDto,
     };
   }
 
