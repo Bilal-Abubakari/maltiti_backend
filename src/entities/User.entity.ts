@@ -1,20 +1,12 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Column, Entity, Unique } from "typeorm";
 import { Exclude } from "class-transformer";
-import { v4 as uuidv4 } from "uuid";
 import { IsEmail } from "class-validator";
 import { Role } from "../enum/role.enum";
 import { Status } from "../enum/status.enum";
+import { Audit } from "./Audit.entity";
 
 @Entity({ name: "users" })
-export class User {
-  constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
-  }
-
-  @PrimaryGeneratedColumn("uuid")
-  public id: string;
-
+export class User extends Audit {
   @Column()
   @IsEmail()
   @Unique(["email"])
@@ -52,12 +44,6 @@ export class User {
   @Column({ nullable: true })
   public dob: Date;
 
-  @Column({ default: new Date() })
-  public createdAt: Date;
-
   @Column({ nullable: true })
   public emailVerifiedAt: Date;
-
-  @Column({ default: new Date() })
-  public updatedAt: Date;
 }
