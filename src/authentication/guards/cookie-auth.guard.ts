@@ -29,10 +29,12 @@ export class CookieAuthGuard implements CanActivate {
       return true;
     }
     const request = context.switchToHttp().getRequest<Request>();
-    const token = request.cookies?.accessToken;
+    const token = request.headers.authorization?.split(" ")[1];
     if (!token) {
-      this.logger.error("No access token found in cookies");
-      throw new UnauthorizedException("No access token found in cookies");
+      this.logger.error("No access token found in Authorization header");
+      throw new UnauthorizedException(
+        "No access token found in Authorization header",
+      );
     }
 
     try {

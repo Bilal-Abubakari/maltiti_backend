@@ -48,7 +48,6 @@ import {
   PasswordResetResponseDto,
   PhoneVerificationResponseDto,
   ResendVerificationResponseDto,
-  TokenRefreshResponseDto,
   ValidationErrorResponseDto,
 } from "../dto/authResponse.dto";
 import { ResendVerificationDto } from "../dto/resendVerification.dto";
@@ -186,19 +185,19 @@ export class AuthenticationController {
   @ApiOperation({
     summary: "User login",
     description:
-      "Authenticates user and returns access token and refresh token in HTTP-only cookies. Also logs the login event in audit logs. If sessionId is provided, guest cart items will be synced with user cart.",
+      "Authenticates user credentials and returns a success message with user data and access token in the response body. Sets a refresh token in an HTTP-only cookie for session persistence. Logs the login event for audit purposes. If sessionId is provided, synchronizes guest cart items with the user's cart.",
   })
   @ApiBody({ type: SignInDto })
   @ApiResponse({
     status: 200,
     description:
-      "Login successful, tokens set in cookies (accessToken: 15min, refreshToken: 1day)",
+      "Login successful. Returns user data and access token in response body. Refresh token is set in HTTP-only cookie.",
     type: LoginResponseDto,
   })
   @ApiResponse({
     status: 201,
     description:
-      "Login successful, tokens set in cookies (accessToken: 15min, refreshToken: 1day)",
+      "Login successful. Returns user data and access token in response body. Refresh token is set in HTTP-only cookie.",
     type: LoginResponseDto,
   })
   @ApiResponse({
@@ -220,31 +219,24 @@ export class AuthenticationController {
   public async signIn(
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<IResponse<User>> {
-    const { user, accessToken, refreshToken } = await this.authService.signIn(
+  ): Promise<LoginResponseDto> {
+    const { accessToken, refreshToken, user } = await this.authService.signIn(
       signInDto,
       signInDto.sessionId,
     );
-
-    // Set access token in HTTP-only cookie (15 minutes expiry)
-    response.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
 
     // Set refresh token in HTTP-only cookie (1 day expiry)
     response.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "none",
+      sameSite: "lax",
+      path: "/auth/refresh",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     return {
       message: "You have successfully logged in",
-      data: user,
+      data: { user, accessToken },
     };
   }
 
@@ -331,7 +323,7 @@ export class AuthenticationController {
   @ApiOperation({
     summary: "Verify email address",
     description:
-      "Verifies user email using the verification token from email and logs the user in. Sets authentication cookies (accessToken: 15min, refreshToken: 1day). If sessionId is provided, guest cart items will be synced with user cart.",
+      "Verifies user email using the verification token from email and logs the user in. Returns user data and access token in response body, and sets refresh token in HTTP-only cookie. If sessionId is provided, guest cart items will be synced with user cart.",
   })
   @ApiParam({
     name: "id",
@@ -345,7 +337,8 @@ export class AuthenticationController {
   })
   @ApiResponse({
     status: 200,
-    description: "Email verification successful and user logged in",
+    description:
+      "Email verification successful. Returns user data and access token in response body. Refresh token is set in HTTP-only cookie.",
     type: LoginResponseDto,
   })
   @ApiResponse({
@@ -364,42 +357,36 @@ export class AuthenticationController {
     @Param("token") token: string,
     @Query("sessionId") sessionId: string,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<IResponse<User>> {
+  ): Promise<LoginResponseDto> {
     const { user, accessToken, refreshToken } =
       await this.authService.emailVerification(id, token, sessionId);
 
-    // Set authentication cookies to log the user in
-    response.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
+    // Set refresh token in HTTP-only cookie (1 day expiry)
     response.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/refresh",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
     return {
       message: "Email verified successfully. You are now logged in.",
-      data: user,
+      data: { user, accessToken },
     };
   }
 
   @ApiOperation({
     summary: "Refresh access token",
     description:
-      "Generates new access and refresh tokens using the refresh token from cookies. Implements token rotation for security.",
+      "Generates new access token in response body and refresh token in HTTP-only cookie using the refresh token from cookies. Implements token rotation for security.",
   })
   @ApiCookieAuth()
   @ApiResponse({
     status: 200,
     description:
-      "Tokens refreshed successfully, new tokens set in cookies (accessToken: 15min, refreshToken: 1day)",
-    type: TokenRefreshResponseDto,
+      "Tokens refreshed successfully, accessToken returned in body, refreshToken set in cookie (1day)",
+    type: String,
   })
   @ApiResponse({
     status: 401,
@@ -415,7 +402,7 @@ export class AuthenticationController {
   public async refreshToken(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<{ message: string }> {
+  ): Promise<string> {
     const refreshToken = request.cookies?.refreshToken;
 
     if (!refreshToken) {
@@ -425,23 +412,16 @@ export class AuthenticationController {
     const { accessToken, refreshToken: newRefreshToken } =
       await this.authService.refreshAccessToken(refreshToken);
 
-    // Set new access token in HTTP-only cookie
-    response.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
-    });
-
     // Set new refresh token in HTTP-only cookie (token rotation)
     response.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: "lax",
+      path: "/auth/refresh",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
-    return { message: "Tokens refreshed successfully" };
+    return accessToken;
   }
 
   @ApiOperation({

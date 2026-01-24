@@ -1,7 +1,6 @@
 import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { PassportStrategy } from "@nestjs/passport";
 import { Strategy, ExtractJwt } from "passport-jwt";
-import { Request } from "express";
 import { UsersService } from "../../users/users.service";
 import { JwtRefreshTokenStrategy } from "./jwt-refresh-token.strategy";
 import { IJwtPayload } from "../../interfaces/jwt.interface";
@@ -12,14 +11,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtRefreshTokenStrategy.name);
   constructor(private readonly usersService: UsersService) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        // Try to extract from cookie first
-        (request: Request): string | undefined => {
-          return request?.cookies?.accessToken;
-        },
-        // Fallback to Authorization header for backward compatibility
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || "secret",
     });
