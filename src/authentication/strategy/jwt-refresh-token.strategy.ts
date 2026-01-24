@@ -21,12 +21,10 @@ export class JwtRefreshTokenStrategy extends PassportStrategy(
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        // Try to extract from cookie first
+        // Extract refresh token only from cookie
         (request: Request): string | undefined => {
           return request?.cookies?.refreshToken;
         },
-        // Fallback to Authorization header for backward compatibility
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || "secret",

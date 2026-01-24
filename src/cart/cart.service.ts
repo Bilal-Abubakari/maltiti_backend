@@ -57,7 +57,7 @@ export class CartService {
   public async getCustomerCart(id: string): Promise<CartDataDto> {
     const user = await this.userService.findOne(id);
     const cartAndCount = await this.cartRepository.findAndCountBy({
-      user: user,
+      user: { id: user.id },
       checkout: IsNull(),
     });
     let total = 0;

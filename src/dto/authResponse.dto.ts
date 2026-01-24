@@ -29,10 +29,12 @@ export class LoginResponseDto {
   public message: string;
 
   @ApiProperty({
-    description: "User data (password excluded)",
-    type: UserResponseDto,
+    description: "User data and access token",
   })
-  public data: UserResponseDto;
+  public data: {
+    user: UserResponseDto;
+    accessToken: string;
+  };
 }
 
 /**
@@ -61,6 +63,12 @@ export class TokenRefreshResponseDto {
     example: "Tokens refreshed successfully",
   })
   public message: string;
+
+  @ApiProperty({
+    description: "New access token for authentication",
+    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  })
+  public accessToken: string;
 }
 
 /**
