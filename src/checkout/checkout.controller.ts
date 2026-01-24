@@ -113,33 +113,33 @@ export class CheckoutController {
     };
   }
 
-  @Get("guest/confirm-payment/:checkoutId")
+  @Get("guest/confirm-payment/:saleId")
   @ApiOperation({
     summary: "Confirm payment for a guest order (no authentication required)",
     description:
       "Public endpoint to confirm payment after Paystack redirect for guest users",
   })
-  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiParam({ name: "saleId", description: "Sale ID" })
   @ApiResponse({
     status: 200,
     description: "Payment confirmed successfully",
     type: CheckoutResponseDto,
   })
   public async confirmGuestPayment(
-    @Param("checkoutId") checkoutId: string,
+    @Param("saleId") saleId: string,
   ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.confirmGuestPayment(checkoutId);
+    const response = await this.checkoutService.confirmGuestPayment(saleId);
     return {
       message: "Payment confirmed successfully",
       data: response,
     };
   }
 
-  @Get("confirm-payment/:checkoutId")
+  @Get("confirm-payment/:saleId")
   @UseGuards(CookieAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({ summary: "Confirm payment for an order" })
-  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiParam({ name: "saleId", description: "Sale ID" })
   @ApiResponse({
     status: 200,
     description: "Payment confirmed successfully",
@@ -147,12 +147,9 @@ export class CheckoutController {
   })
   public async confirmPayment(
     @CurrentUser() user: User,
-    @Param("checkoutId") checkoutId: string,
+    @Param("saleId") saleId: string,
   ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.confirmPayment(
-      user.id,
-      checkoutId,
-    );
+    const response = await this.checkoutService.confirmPayment(user.id, saleId);
     return {
       message: "Payment confirmed successfully",
       data: response,
@@ -261,14 +258,14 @@ export class CheckoutController {
     };
   }
 
-  @Post("pay-for-order/:checkoutId")
+  @Post("pay-for-order/:saleId")
   @UseGuards(CookieAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({
     summary:
       "Initialize payment for a previously placed order (invoice requested or pending payment)",
   })
-  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiParam({ name: "saleId", description: "Sale ID" })
   @ApiResponse({
     status: 200,
     description: "Payment initialized successfully",
@@ -276,12 +273,9 @@ export class CheckoutController {
   })
   public async payForOrder(
     @CurrentUser() user: User,
-    @Param("checkoutId") checkoutId: string,
+    @Param("saleId") saleId: string,
   ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
-    const response = await this.checkoutService.payForOrder(
-      user.id,
-      checkoutId,
-    );
+    const response = await this.checkoutService.payForOrder(user.id, saleId);
     return {
       message: "Payment initialized successfully",
       ...response,
@@ -452,14 +446,14 @@ export class CheckoutController {
     };
   }
 
-  @Post("guest/pay-for-order/:checkoutId")
+  @Post("guest/pay-for-order/:saleId")
   @ApiOperation({
     summary:
       "Initialize payment for any order without authentication (invoice requested or pending payment)",
     description:
       "Initialize payment for any order using checkout ID and email. Works for orders placed by guests, registered users, or created by admins.",
   })
-  @ApiParam({ name: "checkoutId", description: "Checkout ID" })
+  @ApiParam({ name: "saleId", description: "Sale ID" })
   @ApiQuery({
     name: "email",
     description: "Email address associated with the order",
@@ -471,11 +465,11 @@ export class CheckoutController {
     type: InitializeTransactionResponseDto,
   })
   public async payForGuestOrder(
-    @Param("checkoutId") checkoutId: string,
+    @Param("saleId") saleId: string,
     @Query() query: GetOrderStatusDto,
   ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
     const response = await this.checkoutService.payForGuestOrder(
-      checkoutId,
+      saleId,
       query.email,
     );
     return {

@@ -251,7 +251,10 @@ export class UsersService {
     verification.user = user;
     verification.type = "email";
     await this.verificationRepository.save(verification);
-    const resetLink = `reset-password/${token}`;
+    const resetLink =
+      user.userType === Role.Admin
+        ? `auth/reset-password/${token}`
+        : `reset-password/${token}`;
     await this.notificationService.sendEmail(
       "You have requested a password reset. Please click the link below to reset your password. If you did not authorize this please ignore. Someone might have entered your email mistakenly",
       user.email,

@@ -5,6 +5,7 @@ import { DeleteResult, Repository } from "typeorm";
 import { CreateCustomerDto } from "../dto/createCustomer.dto";
 import { UpdateCustomerDto } from "../dto/updateCustomer.dto";
 import { IPagination } from "../interfaces/general";
+import { User } from "../entities/User.entity";
 
 @Injectable()
 export class CustomerService {
@@ -57,6 +58,7 @@ export class CustomerService {
   }
 
   public async findOneCustomer(id: string): Promise<Customer> {
+    console.log("Id here", id);
     const customer = await this.customerRepository.findOne({
       where: { id },
       relations: ["sales", "user"],
@@ -109,6 +111,14 @@ export class CustomerService {
     await this.customerRepository.save(customer);
 
     return { affected: 1, raw: [] };
+  }
+
+  public async findCustomerByUser(user: User): Promise<Customer | null> {
+    console.log("User here", user);
+    return this.customerRepository.findOne({
+      where: { user: { id: user.id } },
+      relations: ["user"],
+    });
   }
 
   private async findCustomerByEmailOrPhone(

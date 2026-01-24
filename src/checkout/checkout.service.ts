@@ -335,19 +335,11 @@ export class CheckoutService {
 
   public async confirmPayment(
     userId: string,
-    checkoutId: string,
+    saleId: string,
   ): Promise<Checkout> {
     try {
-      await axios.get(
-        `${process.env.PAYSTACK_BASE_URL}/transaction/verify/${userId}=${checkoutId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          },
-        },
-      );
       const checkout = await this.checkoutRepository.findOne({
-        where: { id: checkoutId },
+        where: { sale: { id: saleId } },
         relations: ["sale", "sale.customer", "sale.customer.user"],
       });
 
@@ -360,6 +352,25 @@ export class CheckoutService {
           HttpStatus.NOT_FOUND,
         );
       }
+
+      if (checkout.sale.customer.user.id !== userId) {
+        throw new HttpException(
+          {
+            status: HttpStatus.FORBIDDEN,
+            error: "You are not authorized to confirm this payment",
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
+
+      await axios.get(
+        `${process.env.PAYSTACK_BASE_URL}/transaction/verify/${checkout.sale.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
+      );
 
       const sale = checkout.sale;
       const user = sale.customer.user;
@@ -390,20 +401,10 @@ export class CheckoutService {
     }
   }
 
-  public async confirmGuestPayment(checkoutId: string): Promise<Checkout> {
+  public async confirmGuestPayment(saleId: string): Promise<Checkout> {
     try {
-      // For guest payments, the reference is "guest={checkoutId}"
-      await axios.get(
-        `${process.env.PAYSTACK_BASE_URL}/transaction/verify/guest=${checkoutId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-          },
-        },
-      );
-
       const checkout = await this.checkoutRepository.findOne({
-        where: { id: checkoutId },
+        where: { sale: { id: saleId } },
         relations: ["sale", "sale.customer", "sale.customer.user"],
       });
 
@@ -416,6 +417,15 @@ export class CheckoutService {
           HttpStatus.NOT_FOUND,
         );
       }
+
+      await axios.get(
+        `${process.env.PAYSTACK_BASE_URL}/transaction/verify/${checkout.sale.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
+      );
 
       const sale = checkout.sale;
       sale.paymentStatus = PaymentStatus.PAID;
@@ -858,8 +868,8 @@ export class CheckoutService {
       {
         amount: Math.round(totalAmount * 100),
         email: user.email,
-        reference: `${user.id}=${checkout.id}`,
-        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkout.id}`,
+        reference: `${checkout.sale.id}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkout.sale.id}`,
       },
       {
         headers: {
@@ -972,7 +982,7 @@ export class CheckoutService {
       await this.linkCartsToCheckout(cartsToUpdate, checkout, queryRunner);
 
       const response = await this.initializeGuestPaystack(
-        checkout.id,
+        checkout,
         data.email,
         totalAmount,
       );
@@ -1059,7 +1069,7 @@ export class CheckoutService {
         data.email,
         "Order Placed",
         data.name,
-        `${process.env.FRONTEND_URL}/track-order/${checkout.id}`,
+        `${process.env.FRONTEND_URL}/track-order/${checkout.sale.id}`,
         "Track Order",
         "Track Order",
       );
@@ -1174,7 +1184,7 @@ export class CheckoutService {
     try {
       const useEmail = guestEmail || customerEmail;
       const response = await this.initializeGuestPaystack(
-        checkout.id,
+        checkout,
         useEmail,
         Number(checkout.amount),
       );
@@ -1239,7 +1249,7 @@ export class CheckoutService {
   }
 
   private async initializeGuestPaystack(
-    checkoutId: string,
+    checkout: Checkout,
     email: string,
     totalAmount: number,
   ): Promise<{
@@ -1250,8 +1260,8 @@ export class CheckoutService {
       {
         amount: Math.round(totalAmount * 100),
         email: email,
-        reference: `guest=${checkoutId}`,
-        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkoutId}`,
+        reference: `${checkout.sale.id}`,
+        callback_url: `${process.env.FRONTEND_URL}/confirm-payment/${checkout.sale.id}`,
       },
       {
         headers: {
