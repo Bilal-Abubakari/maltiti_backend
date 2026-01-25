@@ -230,7 +230,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
-      path: "/auth/refresh",
+      path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -366,7 +366,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
-      path: "/auth/refresh",
+      path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -417,7 +417,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
-      path: "/auth/refresh",
+      path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 

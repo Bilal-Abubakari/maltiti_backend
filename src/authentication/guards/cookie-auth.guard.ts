@@ -13,6 +13,7 @@ import { IJwtPayload } from "../../interfaces/jwt.interface";
 import { User } from "../../entities/User.entity";
 import { Roles } from "./roles/roles.decorator";
 import { Reflector } from "@nestjs/core";
+import { TokenExpiredError } from "jsonwebtoken";
 
 @Injectable()
 export class CookieAuthGuard implements CanActivate {
@@ -37,20 +38,25 @@ export class CookieAuthGuard implements CanActivate {
       );
     }
 
+    let payload: IJwtPayload;
     try {
-      const payload: IJwtPayload = this.jwtService.verify(token);
-      const user = await this.usersService.findOne(payload.sub);
-
-      if (!user) {
-        this.logger.error(`User not found: ${payload.sub}`);
-        throw new UnauthorizedException("User not found");
-      }
-
-      (request as Request & { user: User }).user = user;
-      return roles.includes(user.userType);
+      payload = this.jwtService.verify(token);
     } catch (error) {
       this.logger.error(`Error: ${error.message}`);
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedException("Token has expired");
+      }
       throw new ForbiddenException("Invalid token");
     }
+
+    const user = await this.usersService.findOne(payload.sub);
+
+    if (!user) {
+      this.logger.error(`User not found: ${payload.sub}`);
+      throw new UnauthorizedException("User not found");
+    }
+
+    (request as Request & { user: User }).user = user;
+    return roles.includes(user.userType);
   }
 }
