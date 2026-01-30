@@ -229,7 +229,7 @@ export class AuthenticationController {
     response.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none",
       path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
@@ -365,7 +365,7 @@ export class AuthenticationController {
     response.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none",
       path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
@@ -416,7 +416,7 @@ export class AuthenticationController {
     response.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none",
       path: "/authentication/refresh-token",
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
@@ -462,13 +462,13 @@ export class AuthenticationController {
     response.clearCookie("accessToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
     });
 
     response.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "none",
     });
 
     return { message: "Logged out successfully" };
