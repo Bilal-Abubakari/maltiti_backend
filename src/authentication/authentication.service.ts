@@ -129,6 +129,8 @@ export class AuthenticationService {
       await this.refreshTokenIdsStorage.invalidate(decoded.sub);
       await this.refreshTokenIdsStorage.insert(decoded.sub, newRefreshToken);
 
+      this.logger.log("Refresh token rotated successfully");
+
       return { accessToken, refreshToken: newRefreshToken };
     } catch (error) {
       this.logger.error(`Error: ${error.message}`);
