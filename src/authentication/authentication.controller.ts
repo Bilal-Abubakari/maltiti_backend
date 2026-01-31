@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   Post,
   Query,
@@ -55,6 +56,7 @@ import { ResendVerificationDto } from "../dto/resendVerification.dto";
 @ApiTags("Authentication")
 @Controller("authentication")
 export class AuthenticationController {
+  private logger = new Logger(AuthenticationController.name);
   constructor(
     private usersService: UsersService,
     private authService: AuthenticationService,
@@ -406,6 +408,7 @@ export class AuthenticationController {
     const refreshToken = request.cookies?.refreshToken;
 
     if (!refreshToken) {
+      this.logger.error("Refresh token not found in cookies");
       throw new UnauthorizedException("Refresh token not found");
     }
 
