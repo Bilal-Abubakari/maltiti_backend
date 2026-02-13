@@ -52,6 +52,7 @@ import {
   ValidationErrorResponseDto,
 } from "../dto/authResponse.dto";
 import { ResendVerificationDto } from "../dto/resendVerification.dto";
+import { MALTITI_DOMAIN } from "../utils/constants";
 
 @ApiTags("Authentication")
 @Controller("authentication")
@@ -232,7 +233,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      path: "/authentication/refresh-token",
+      domain: MALTITI_DOMAIN,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -368,7 +369,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      path: "/authentication/refresh-token",
+      domain: MALTITI_DOMAIN,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -420,7 +421,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      path: "/authentication/refresh-token",
+      domain: MALTITI_DOMAIN,
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 

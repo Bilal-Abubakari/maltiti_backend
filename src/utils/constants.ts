@@ -1,5 +1,7 @@
 import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
 
+export const MALTITI_DOMAIN = ".maltitiaenterprise.com";
+
 export enum userTypes {
   customer = "customer",
   admin = "admin",
