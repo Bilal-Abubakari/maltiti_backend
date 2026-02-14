@@ -23,6 +23,7 @@ import { ContactModule } from "./contact/contact.module";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { NotificationModule } from "./notification/notification.module";
+import { ReviewModule } from "./review/review.module";
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { NotificationModule } from "./notification/notification.module";
     ProfileModule,
     ContactModule,
     NotificationModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [

@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   OneToMany,
   OneToOne,
@@ -28,6 +29,7 @@ export class Customer {
   public phone: string;
 
   @Column({ nullable: true })
+  @Index("IDX_customer_email", { unique: true })
   public email: string;
 
   @Column({ type: "text", nullable: true })

@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class AddConfirmedDeliveryToSale1771069151217
   implements MigrationInterface
 {
-  name = "AddConfirmedDeliveryToSale1771069151217";
+  public name = "AddConfirmedDeliveryToSale1771069151217";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

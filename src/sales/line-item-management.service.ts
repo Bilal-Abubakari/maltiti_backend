@@ -59,7 +59,7 @@ export class LineItemManagementService {
         batchAllocations: batchAllocations,
         requestedQuantity: item.requestedQuantity,
         customPrice: item.customPrice,
-        finalPrice: finalPrice,
+        finalPrice,
       });
     }
     sale.lineItems = validatedLineItems;
@@ -104,7 +104,7 @@ export class LineItemManagementService {
       const finalPrice = item.customPrice ?? product.retail;
       validatedLineItems.push({
         ...item,
-        finalPrice: finalPrice,
+        finalPrice,
       });
     }
     return validatedLineItems;
