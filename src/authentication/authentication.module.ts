@@ -5,7 +5,7 @@ import { PassportModule } from "@nestjs/passport";
 import { JwtModule } from "@nestjs/jwt";
 import { UsersService } from "../users/users.service";
 import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
-import * as process from "process";
+import * as process from "node:process";
 import { ConfigModule } from "@nestjs/config";
 import { LocalStrategy } from "./strategy/local.strategy";
 import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
@@ -40,7 +40,7 @@ import { Customer } from "../entities/Customer.entity";
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || "secret",
-      signOptions: { expiresIn: "1h" },
+      signOptions: { expiresIn: "15m" },
     }),
   ],
   controllers: [AuthenticationController],

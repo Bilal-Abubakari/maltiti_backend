@@ -13,6 +13,10 @@ import { Checkout } from "../entities/Checkout.entity";
 import { BatchesService } from "../products/batches/batches.service";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { AuditInterceptor } from "../interceptors/audit.interceptor";
+import { DocumentGenerationService } from "./document-generation.service";
+import { OrderTrackingService } from "./order-tracking.service";
+import { SaleQueryService } from "./sale-query.service";
+import { LineItemManagementService } from "./line-item-management.service";
 
 @Module({
   imports: [
@@ -24,6 +28,10 @@ import { AuditInterceptor } from "../interceptors/audit.interceptor";
     ReceiptService,
     WaybillService,
     BatchesService,
+    DocumentGenerationService,
+    OrderTrackingService,
+    SaleQueryService,
+    LineItemManagementService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,

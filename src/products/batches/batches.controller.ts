@@ -2,20 +2,20 @@ import {
   Body,
   Controller,
   Get,
-  Param,
-  Post,
-  UseGuards,
   HttpCode,
   HttpStatus,
+  Param,
+  Post,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger";
 import { CookieAuthGuard } from "../../authentication/guards/cookie-auth.guard";
 import { Roles } from "../../authentication/guards/roles/roles.decorator";
@@ -33,7 +33,7 @@ export class BatchesController {
   constructor(private readonly batchesService: BatchesService) {}
 
   @UseGuards(CookieAuthGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @Post("")
   @ApiBearerAuth()
   @ApiOperation({

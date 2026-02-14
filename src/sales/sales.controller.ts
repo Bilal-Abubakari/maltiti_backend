@@ -1,22 +1,22 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  Patch,
   Post,
   Put,
-  Patch,
-  Delete,
-  Body,
-  Param,
   Query,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import {
-  ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger";
 import { Response } from "express";
 import { SalesService } from "./sales.service";
@@ -35,10 +35,10 @@ import { TrackOrderResponseDto } from "../dto/sales/trackOrderResponse.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { PaginatedSaleResponseDto } from "../dto/sales/paginatedSaleResponse.dto";
 import {
+  IInitalizeTransactionData,
+  IInitializeTransactionResponse,
   IPaginatedResponse,
   IResponse,
-  IInitializeTransactionResponse,
-  IInitalizeTransactionData,
 } from "../interfaces/general";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
@@ -56,6 +56,8 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Create a new sale" })
   @ApiResponse({ status: 201, type: SaleResponseDto })
   public async createSale(
@@ -65,6 +67,8 @@ export class SalesController {
   }
 
   @Patch(":id")
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Edit sale details" })
   @ApiResponse({ status: 200, type: SaleResponseDto })
   @AuditLog({
@@ -174,7 +178,7 @@ export class SalesController {
 
   @Get()
   @UseGuards(CookieAuthGuard, RolesGuard)
-  @Roles([Role.Admin])
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "List sales" })
   @ApiResponse({ status: 200, type: Object })
   public async listSales(

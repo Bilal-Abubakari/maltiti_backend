@@ -57,10 +57,10 @@ import { MALTITI_DOMAIN } from "../utils/constants";
 @ApiTags("Authentication")
 @Controller("authentication")
 export class AuthenticationController {
-  private logger = new Logger(AuthenticationController.name);
+  private readonly logger = new Logger(AuthenticationController.name);
   constructor(
-    private usersService: UsersService,
-    private authService: AuthenticationService,
+    private readonly usersService: UsersService,
+    private readonly authService: AuthenticationService,
   ) {}
 
   @ApiOperation({
@@ -248,8 +248,11 @@ export class AuthenticationController {
       (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       (request.headers["x-real-ip"] as string) ||
       request.ip ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (request as any).connection?.remoteAddress ||
+      (
+        request as unknown as {
+          connection?: { remoteAddress?: string };
+        }
+      ).connection?.remoteAddress ||
       "unknown"
     );
   }
