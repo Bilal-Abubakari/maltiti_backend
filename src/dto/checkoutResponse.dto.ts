@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SaleDto } from "./sales/sale.dto";
 
 export class UserDto {
@@ -92,9 +92,6 @@ export class CheckoutDto {
 
   @ApiProperty({ type: () => [CartDto] })
   public carts: CartDto[];
-
-  @ApiProperty()
-  public amount: number;
 
   @ApiProperty()
   public paystackReference: string;

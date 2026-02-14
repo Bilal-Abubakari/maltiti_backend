@@ -45,6 +45,15 @@ export class Sale {
   })
   public paymentStatus: PaymentStatus;
 
+  @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
+  public amount: number;
+
+  @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
+  public deliveryFee: number;
+
+  @Column({ type: "boolean", nullable: true, default: null })
+  public confirmedDelivery: boolean;
+
   @Column({ type: "json" })
   public lineItems: SaleLineItem[];
 

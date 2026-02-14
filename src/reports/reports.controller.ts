@@ -20,6 +20,7 @@ import {
   RevenueDistributionResponse,
   BatchAgingResponse,
   DashboardSummaryResponse,
+  DeliveryReportResponse,
 } from "../interfaces/reports.interface";
 
 @ApiTags("Reports")
@@ -245,6 +246,28 @@ export class ReportsController {
     @Query() queryDto: ComparativeReportQueryDto,
   ): Promise<ComparativeMetrics> {
     return await this.reportsService.getComparativeReport(queryDto);
+  }
+
+  /**
+   * GET /reports/delivery
+   * Delivery fees report
+   * Use cases: Track delivery revenue, analyze shipping costs by location
+   */
+  @Get("delivery")
+  @ApiOperation({
+    summary: "Get delivery fees report",
+    description:
+      "Returns delivery fee metrics including total delivery revenue, average fees, " +
+      "and breakdown by location. Shows orders awaiting delivery calculation.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Delivery report generated successfully",
+  })
+  public async getDeliveryReport(
+    @Query() queryDto: BaseReportQueryDto,
+  ): Promise<DeliveryReportResponse> {
+    return await this.reportsService.getDeliveryReport(queryDto);
   }
 
   /**

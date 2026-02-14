@@ -29,9 +29,6 @@ export class Checkout {
   @OneToMany(() => Cart, cart => cart.checkout)
   public carts: Cart[];
 
-  @Column({ type: "decimal", precision: 10, scale: 2 })
-  public amount: number;
-
   @Column({ nullable: true })
   public paystackReference: string;
 
