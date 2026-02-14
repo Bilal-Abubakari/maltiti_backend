@@ -20,7 +20,7 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
       requestedQuantity: item.requestedQuantity,
       customPrice: item.customPrice,
       finalPrice: item.finalPrice,
-      totalAmount: item.finalPrice * item.requestedQuantity,
+      totalAmount: item.finalPrice,
     };
   });
   // Transform customer information

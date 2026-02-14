@@ -17,6 +17,7 @@ export class SaleQueryService {
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
   ) {}
+
   public async listSales(
     query: ListSalesDto,
   ): Promise<IPagination<SaleResponseDto>> {
@@ -56,6 +57,7 @@ export class SaleQueryService {
       totalPages,
     };
   }
+
   public async listSalesByEmail(
     query: ListSalesByEmailDto,
   ): Promise<IPagination<SaleResponseDto>> {
@@ -81,6 +83,7 @@ export class SaleQueryService {
       take: limit,
       skip: (page - 1) * limit,
     });
+
     const totalPages = Math.ceil(totalItems / limit);
     return {
       items: items.map(sale => transformSaleToResponseDto(sale)),
@@ -89,6 +92,7 @@ export class SaleQueryService {
       totalPages,
     };
   }
+
   public async getSaleDetails(saleId: string): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },

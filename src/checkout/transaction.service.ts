@@ -426,7 +426,7 @@ export class TransactionService {
       batchAllocations: [],
       requestedQuantity: cart.quantity,
       customPrice: undefined,
-      finalPrice: cart.product.retail * cart.quantity,
+      finalPrice: cart.product.retail,
     }));
     return await queryRunner.manager.save(sale);
   }
