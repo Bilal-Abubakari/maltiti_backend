@@ -89,11 +89,15 @@ export class OrderTrackingService {
         "This order does not have payment information. Please contact support.",
       );
     }
+
+    // Calculate total from Sale fields
+    const totalAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+
     const useEmail = guestEmail || customerEmail;
     const response = await this.initializePaystack(
       sale.id,
       useEmail,
-      Number(sale.checkout.amount),
+      totalAmount,
     );
     sale.checkout.paystackReference = response.data.data.reference;
     sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;

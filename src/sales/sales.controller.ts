@@ -30,6 +30,7 @@ import { ListSalesByEmailDto } from "../dto/sales/listSalesByEmail.dto";
 import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
+import { ConfirmDeliveryDto } from "../dto/sales/confirmDelivery.dto";
 import { TrackOrderDto } from "../dto/sales/trackOrder.dto";
 import { TrackOrderResponseDto } from "../dto/sales/trackOrderResponse.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
@@ -324,6 +325,20 @@ export class SalesController {
       `attachment; filename=waybill-${saleId}.pdf`,
     );
     res.send(pdfBuffer);
+  }
+
+  @Patch(":id/confirm-delivery")
+  @ApiOperation({ summary: "Confirm delivery by customer" })
+  @ApiResponse({
+    status: 200,
+    type: SaleResponseDto,
+    description: "Delivery confirmation updated successfully",
+  })
+  public async confirmDelivery(
+    @Param("id") saleId: string,
+    @Body() confirmDto: ConfirmDeliveryDto,
+  ): Promise<SaleResponseDto> {
+    return this.salesService.confirmDelivery(saleId, confirmDto.confirmed);
   }
 
   @Delete(":id")

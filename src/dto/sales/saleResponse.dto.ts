@@ -63,13 +63,13 @@ export class SaleLineItemResponseDto {
 
   @ApiProperty({
     description: "Final price per unit used for calculation",
-    example: 50.0,
+    example: 50,
   })
   public finalPrice: number;
 
   @ApiProperty({
     description: "Total amount for this line item",
-    example: 500.0,
+    example: 500,
   })
   public totalAmount?: number;
 }
@@ -167,13 +167,6 @@ export class SaleCheckoutDto {
   })
   public id: string;
 
-  @ApiProperty({
-    description: "Total checkout amount",
-    example: 500.0,
-    minimum: 0,
-  })
-  public amount: number;
-
   @ApiPropertyOptional({
     description: "Paystack payment reference",
     example: "ref_xyz123",
@@ -241,6 +234,34 @@ export class SaleResponseDto {
     example: PaymentStatus.PAID,
   })
   public paymentStatus: PaymentStatus;
+
+  @ApiPropertyOptional({
+    description: "Product total (excluding delivery)",
+    example: 450,
+    minimum: 0,
+  })
+  public amount?: number;
+
+  @ApiPropertyOptional({
+    description: "Delivery/shipping fee",
+    example: 50,
+    minimum: 0,
+  })
+  public deliveryFee?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Customer confirmation of delivery (null for walk-in customers)",
+    example: true,
+  })
+  public confirmedDelivery?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Total payable amount (amount + deliveryFee)",
+    example: 500,
+    minimum: 0,
+  })
+  public total?: number;
 
   @ApiProperty({
     description: "Line items in the sale",

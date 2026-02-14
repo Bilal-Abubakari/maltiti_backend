@@ -191,12 +191,13 @@ export class TransactionService {
     }
     if (
       checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
-      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT &&
+      checkout.sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot pay for order with payment status: ${checkout.sale.paymentStatus}`,
+          error: `Cannot initialize payment for order with payment status: ${checkout.sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -359,7 +360,8 @@ export class TransactionService {
     }
     if (
       checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
-      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
+      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT &&
+      checkout.sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
     ) {
       throw new HttpException(
         {
@@ -400,11 +402,25 @@ export class TransactionService {
     customer: Customer,
     carts: Cart[],
     queryRunner: QueryRunner,
+    deliveryCost: number,
+    productTotal: number,
   ): Promise<Sale> {
     const sale = new Sale();
     sale.customer = customer;
     sale.orderStatus = OrderStatus.PENDING;
-    sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+
+    // Determine payment status based on delivery calculation
+    // If deliveryCost is -1, it means delivery cannot be calculated (international order)
+    if (deliveryCost === -1) {
+      sale.paymentStatus = PaymentStatus.AWAITING_DELIVERY;
+      sale.amount = productTotal;
+      sale.deliveryFee = null;
+    } else {
+      sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+      sale.amount = productTotal;
+      sale.deliveryFee = deliveryCost > 0 ? deliveryCost : null;
+    }
+
     sale.lineItems = carts.map(cart => ({
       productId: cart.product.id,
       batchAllocations: [],
@@ -417,12 +433,11 @@ export class TransactionService {
 
   private async createCheckout(
     sale: Sale,
-    totalAmount: number,
     queryRunner: QueryRunner,
   ): Promise<Checkout> {
     const checkout = new Checkout();
     checkout.sale = sale;
-    checkout.amount = totalAmount;
+    // Note: All monetary values are in Sale entity (amount + deliveryFee)
     return await queryRunner.manager.save(checkout);
   }
 
@@ -501,39 +516,67 @@ export class TransactionService {
     guestEmail?: string,
   ): Promise<{ checkout: Checkout; response?: unknown }> {
     const productTotal = await this.calculateCartAmount(carts);
-    const totalAmount =
-      deliveryCost === -1 ? productTotal : productTotal + deliveryCost;
-    const sale = await this.createSale(customer, carts, queryRunner);
+
+    const sale = await this.createSale(
+      customer,
+      carts,
+      queryRunner,
+      deliveryCost,
+      productTotal,
+    );
+
     if (isPlaceOrder) {
       sale.orderStatus = OrderStatus.PENDING;
       sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
       await queryRunner.manager.save(sale);
     }
-    const checkout = await this.createCheckout(sale, totalAmount, queryRunner);
+
+    const checkout = await this.createCheckout(sale, queryRunner);
     if (guestEmail) {
       checkout.guestEmail = guestEmail;
       await queryRunner.manager.save(checkout);
     }
+
     await this.linkCartsToCheckout(carts, checkout, queryRunner);
+
     let response: unknown;
-    if (!isPlaceOrder && paymentInitData) {
+    // Only initialize payment if not placing order and payment status is not AWAITING_DELIVERY
+    if (
+      !isPlaceOrder &&
+      paymentInitData &&
+      sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
+    ) {
+      const paymentAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+
       if (paymentInitData.user) {
         response = await this.paymentService.initializePaystack(
           checkout,
           paymentInitData.user,
-          totalAmount,
+          paymentAmount,
         );
       } else {
         response = await this.paymentService.initializeGuestPaystack(
           checkout,
           paymentInitData.email,
-          totalAmount,
+          paymentAmount,
         );
       }
       const paystackResponse = response as PaystackApiResponse;
       checkout.paystackReference = paystackResponse.data.data.reference;
       await queryRunner.manager.save(checkout);
+    } else if (sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY) {
+      // For international orders, we need to inform the user
+      response = {
+        status: true,
+        message:
+          "Order created successfully. Delivery fee will be calculated and you will be notified via email.",
+        data: {
+          saleId: sale.id,
+          awaitingDelivery: true,
+        },
+      };
     }
+
     return {
       checkout,
       response: response ? (response as PaystackApiResponse).data : undefined,
@@ -544,16 +587,31 @@ export class TransactionService {
     checkout: Checkout,
     paymentInitData: { user?: User; email?: string },
   ): Promise<unknown> {
+    // Block payment if status is AWAITING_DELIVERY
+    if (checkout.sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error:
+            "Cannot process payment while awaiting delivery fee calculation. Please wait for admin to update the delivery cost.",
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const paymentAmount =
+      (checkout.sale.amount ?? 0) + (checkout.sale.deliveryFee ?? 0);
+
     const response = paymentInitData.user
       ? await this.paymentService.initializePaystack(
           checkout,
           paymentInitData.user,
-          Number(checkout.amount),
+          paymentAmount,
         )
       : await this.paymentService.initializeGuestPaystack(
           checkout,
           paymentInitData.email,
-          Number(checkout.amount),
+          paymentAmount,
         );
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -609,7 +667,7 @@ export class TransactionService {
       orderDate: sale.createdAt.toLocaleDateString(),
       orderStatus: sale.orderStatus,
       paymentStatus: sale.paymentStatus,
-      totalAmount: checkout.amount.toFixed(2),
+      totalAmount: ((sale.amount ?? 0) + (sale.deliveryFee ?? 0)).toFixed(2),
       customerName: customer.name,
       customerEmail: customer.email || checkout.guestEmail || "",
       customerPhone: customer.phone || customer.phoneNumber,

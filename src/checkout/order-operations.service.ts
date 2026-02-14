@@ -193,36 +193,73 @@ export class OrderOperationsService {
         HttpStatus.NOT_FOUND,
       );
     }
+
+    const sale = checkout.sale;
+
+    // Allow updating delivery cost for AWAITING_DELIVERY, INVOICE_REQUESTED, and PENDING_PAYMENT
     if (
-      checkout.sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
-      checkout.sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT
+      sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT &&
+      sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
     ) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          error: `Cannot update delivery cost for order with payment status: ${checkout.sale.paymentStatus}`,
+          error: `Cannot update delivery cost for order with payment status: ${sale.paymentStatus}`,
         },
         HttpStatus.BAD_REQUEST,
       );
     }
-    const carts = await checkout.carts;
-    const productTotal = await this.calculateCartAmount(carts);
-    const newTotalAmount = productTotal + dto.deliveryCost;
-    checkout.amount = newTotalAmount;
-    await this.checkoutRepository.save(checkout);
-    const customer = checkout.sale.customer;
-    const user = customer.user;
-    if (user) {
-      await this.notificationService.sendEmail(
-        `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
-        user.email,
-        "Delivery Cost Updated",
-        user.name,
-        process.env.APP_URL,
-        "View Order",
-        "View Order",
-      );
+
+    // Update Sale with delivery fee
+    sale.deliveryFee = dto.deliveryCost;
+
+    // Auto-transition from AWAITING_DELIVERY to PENDING_PAYMENT when delivery fee is set
+    const wasAwaitingDelivery =
+      sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY;
+    if (wasAwaitingDelivery) {
+      sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
     }
+
+    await this.saleRepository.save(sale);
+
+    // Calculate total for email notification
+    const productTotal = sale.amount ?? 0;
+    const newTotalAmount = productTotal + dto.deliveryCost;
+
+    // Send notification email
+    const customer = sale.customer;
+    const user = customer.user;
+    const email = user?.email || checkout.guestEmail || customer.email;
+    const name = customer.name;
+
+    if (email) {
+      if (wasAwaitingDelivery) {
+        // Special email for international orders
+        await this.notificationService.sendEmail(
+          `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${dto.deliveryCost.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`,
+          email,
+          "Delivery Fee Calculated - Ready for Payment",
+          name,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "Pay Now",
+          "Pay Now",
+        );
+      } else {
+        await this.notificationService.sendEmail(
+          `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
+          email,
+          "Delivery Cost Updated",
+          name,
+          user
+            ? process.env.APP_URL
+            : `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "View Order",
+          "View Order",
+        );
+      }
+    }
+
     return await this.checkoutRepository.findOne({
       where: { id: checkout.id },
       relations: ["sale", "sale.customer", "carts", "carts.product"],

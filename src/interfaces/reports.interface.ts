@@ -219,3 +219,26 @@ export interface DashboardSummaryResponse {
   topProducts: TopProduct[];
   timestamp: string;
 }
+
+export interface DeliveryFeeData {
+  country: string;
+  region?: string;
+  totalOrders: number;
+  totalDeliveryFees: number;
+  averageDeliveryFee: number;
+  ordersWithDelivery: number;
+  ordersWithoutDelivery: number;
+}
+
+export interface DeliveryReportResponse {
+  summary: {
+    totalOrders: number;
+    totalDeliveryRevenue: number;
+    averageDeliveryFee: number;
+    ordersAwaitingDeliveryCalc: number;
+    ordersWithDelivery: number;
+    ordersWithoutDelivery: number;
+  };
+  byLocation: DeliveryFeeData[];
+  timeSeries?: TimeSeriesDataPoint[];
+}

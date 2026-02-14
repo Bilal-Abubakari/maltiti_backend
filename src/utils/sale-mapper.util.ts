@@ -44,7 +44,6 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
   if (sale.checkout) {
     checkout = {
       id: sale.checkout.id,
-      amount: sale.checkout.amount,
       paystackReference: sale.checkout.paystackReference,
       guestEmail: sale.checkout.guestEmail,
       createdAt: sale.checkout.createdAt,
@@ -58,6 +57,13 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
     checkout,
     orderStatus: sale.orderStatus,
     paymentStatus: sale.paymentStatus,
+    amount: sale.amount,
+    deliveryFee: sale.deliveryFee,
+    confirmedDelivery: sale.confirmedDelivery,
+    total:
+      (sale.amount ?? 0) + (sale.deliveryFee ?? 0) > 0
+        ? (sale.amount ?? 0) + (sale.deliveryFee ?? 0)
+        : undefined,
     lineItems: transformedLineItems,
     createdAt: sale.createdAt,
     updatedAt: sale.updatedAt,

@@ -33,6 +33,7 @@ import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
 import { SaleQueryService } from "./sale-query.service";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
+import { formatStatus } from "../utils/status-formatter.util";
 import { LineItemManagementService } from "./line-item-management.service";
 import { NotificationService } from "../notification/notification.service";
 
@@ -173,8 +174,10 @@ export class SalesService {
             savedSale.customer.email,
             savedSale.customer.name,
             savedSale.id,
-            savedSale.orderStatus,
-            savedSale.paymentStatus,
+            formatStatus(savedSale.orderStatus),
+            savedSale.paymentStatus
+              ? formatStatus(savedSale.paymentStatus)
+              : undefined,
           );
         } catch (error) {
           // Log error but don't fail the operation
@@ -225,8 +228,10 @@ export class SalesService {
         savedSale.customer.email,
         savedSale.customer.name,
         savedSale.id,
-        savedSale.orderStatus,
-        savedSale.paymentStatus,
+        formatStatus(savedSale.orderStatus),
+        savedSale.paymentStatus
+          ? formatStatus(savedSale.paymentStatus)
+          : undefined,
       );
     } catch (error) {
       // Log error but don't fail the operation
@@ -422,5 +427,24 @@ export class SalesService {
     email: string,
   ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
     return this.orderTrackingService.payForOrder(saleId, email);
+  }
+
+  public async confirmDelivery(
+    saleId: string,
+    confirmed: boolean,
+  ): Promise<SaleResponseDto> {
+    const sale = await this.saleRepository.findOne({
+      where: { id: saleId, deletedAt: IsNull() },
+      relations: ["customer", "checkout"],
+    });
+
+    if (!sale) {
+      throw new NotFoundException(`Sale with ID "${saleId}" not found`);
+    }
+
+    sale.confirmedDelivery = confirmed;
+    const savedSale = await this.saleRepository.save(sale);
+
+    return transformSaleToResponseDto(savedSale);
   }
 }
