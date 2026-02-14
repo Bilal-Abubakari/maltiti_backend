@@ -19,6 +19,11 @@ export class ListSalesDto {
   @IsString()
   public customerId?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  public customerName?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   public page?: number = 1;

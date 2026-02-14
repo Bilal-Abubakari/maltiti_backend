@@ -22,7 +22,7 @@ class BatchAllocationDto {
   public quantity: number;
 }
 
-class UpdateSaleLineItemDto {
+export class UpdateSaleLineItemDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()

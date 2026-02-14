@@ -6,8 +6,8 @@ import { MailerService } from "@nestjs-modules/mailer";
 @Injectable()
 export class NotificationService {
   constructor(
-    private mailerService: MailerService,
-    private configService: ConfigService,
+    private readonly mailerService: MailerService,
+    private readonly configService: ConfigService,
   ) {}
 
   public async sendSms(to: string, message: string): Promise<unknown> {
@@ -58,6 +58,70 @@ export class NotificationService {
         body,
         link,
         action,
+      },
+    });
+  }
+
+  public async sendAdminOrderNotification(
+    orderData: {
+      orderId: string;
+      orderDate: string;
+      orderStatus: string;
+      paymentStatus: string;
+      totalAmount: string;
+      customerName: string;
+      customerEmail: string;
+      customerPhone?: string;
+      deliveryAddress?: string;
+      customerType: string;
+      orderItems: Array<{
+        name: string;
+        quantity: number;
+        unitPrice: string;
+        total: string;
+      }>;
+    },
+    subject: string,
+  ): Promise<unknown> {
+    return await this.mailerService.sendMail({
+      to: [
+        "bilal.abubakari@maltitiaenterprise.com",
+        "mohammed.abubakari@maltitiaenterprise.com",
+      ],
+      from: "info@maltitiaenterprise.com",
+      subject,
+      template: "./admin-order-notification",
+      context: {
+        ...orderData,
+        url: process.env.FRONTEND_URL_ADMIN,
+        action: "View Order",
+      },
+    });
+  }
+
+  public async sendOrderStatusUpdateEmail(
+    customerEmail: string,
+    customerName: string,
+    orderId: string,
+    orderStatus: string,
+    paymentStatus?: string,
+  ): Promise<unknown> {
+    const subject = `Order Status Update - ${orderId}`;
+    const body = `Your order status has been updated. Please find the details below.`;
+
+    return await this.mailerService.sendMail({
+      to: customerEmail,
+      from: "info@maltitiaenterprise.com",
+      subject,
+      template: "./order-status-update",
+      context: {
+        name: customerName,
+        subject,
+        body,
+        orderStatus,
+        paymentStatus,
+        url: `${process.env.FRONTEND_URL}/track-order/${orderId}`,
+        action: "Track Your Order",
       },
     });
   }

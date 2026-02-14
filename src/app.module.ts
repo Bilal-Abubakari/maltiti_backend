@@ -5,13 +5,12 @@ import { AuthenticationModule } from "./authentication/authentication.module";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { UsersModule } from "./users/users.module";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { join } from "path";
+import { join } from "node:path";
 import { HandlebarsAdapter } from "@nestjs-modules/mailer/dist/adapters/handlebars.adapter";
 import { CooperativeModule } from "./cooperative/cooperative.module";
 import { ProductsModule } from "./products/products.module";
 import { CartModule } from "./cart/cart.module";
 import { CheckoutModule } from "./checkout/checkout.module";
-import { NotificationService } from "./notification/notification.service";
 import { DatabaseModule } from "./database/database.module";
 import { UploadModule } from "./upload/upload.module";
 import { SalesModule } from "./sales/sales.module";
@@ -23,6 +22,7 @@ import { ProfileModule } from "./profile/profile.module";
 import { ContactModule } from "./contact/contact.module";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
+import { NotificationModule } from "./notification/notification.module";
 
 @Module({
   imports: [
@@ -87,11 +87,11 @@ import { APP_GUARD } from "@nestjs/core";
     DashboardModule,
     ProfileModule,
     ContactModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    NotificationService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

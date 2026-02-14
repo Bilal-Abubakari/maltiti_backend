@@ -10,7 +10,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { SignInDto } from "../dto/signIn.dto";
 import { UsersService } from "../users/users.service";
 import { JwtService } from "@nestjs/jwt";
-import { MailerService } from "@nestjs-modules/mailer";
 import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
 import { Repository } from "typeorm";
 import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
@@ -28,13 +27,12 @@ export class AuthenticationService {
   constructor(
     @InjectRepository(Verification)
     private readonly verificationRepository: Repository<Verification>,
-    private usersService: UsersService,
-    private jwtService: JwtService,
-    private mailService: MailerService,
-    private refreshTokenIdsStorage: RefreshTokenIdsStorage,
-    private auditService: AuditService,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+    private readonly refreshTokenIdsStorage: RefreshTokenIdsStorage,
+    private readonly auditService: AuditService,
     @Inject(forwardRef(() => CartService))
-    private cartService: CartService,
+    private readonly cartService: CartService,
   ) {}
 
   public async signIn(
@@ -84,7 +82,7 @@ export class AuthenticationService {
     const payload = { sub: user.id, email: user.email };
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: "1d",
+      expiresIn: "30d",
     });
 
     // Store the refresh token in redis
@@ -163,6 +161,7 @@ export class AuthenticationService {
         });
       }
     } catch (error) {
+      this.logger.error("Error invalidating token: ", error);
       throw new UnauthorizedException("Invalid access token");
     }
   }
@@ -185,8 +184,7 @@ export class AuthenticationService {
     });
 
     if (
-      !userVerification ||
-      user.id !== userVerification.user.id ||
+      user.id !== userVerification?.user.id ||
       this.isVerificationExpired(userVerification.createdAt)
     ) {
       throw new UnauthorizedException("Token does not exist or has expired");
@@ -226,7 +224,7 @@ export class AuthenticationService {
   }
 
   private isVerificationExpired(date: Date): boolean {
-    const dateNow = new Date().getTime();
+    const dateNow = Date.now();
     const difference = dateNow - date.getTime();
     const differenceInSeconds = difference / 1000;
     const differenceInMinutes = differenceInSeconds / 60;

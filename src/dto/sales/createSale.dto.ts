@@ -13,7 +13,7 @@ import { Type } from "class-transformer";
 import { OrderStatus } from "../../enum/order-status.enum";
 import { PaymentStatus } from "../../enum/payment-status.enum";
 
-class BatchAllocationDto {
+export class BatchAllocationDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -24,7 +24,7 @@ class BatchAllocationDto {
   public quantity: number;
 }
 
-class SaleLineItemDto {
+export class SaleLineItemDto {
   @ApiProperty()
   @IsUUID()
   public productId: string;

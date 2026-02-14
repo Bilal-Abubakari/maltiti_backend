@@ -10,15 +10,32 @@ import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { NotificationService } from "../notification/notification.service";
 import { AuthenticationModule } from "../authentication/authentication.module";
+import { DeliveryCostService } from "./delivery-cost.service";
+import { PaymentService } from "./payment.service";
+import { OrderOperationsService } from "./order-operations.service";
+import { OrderQueriesService } from "./order-queries.service";
+import { CustomerManagementService } from "./customer-management.service";
+import { TransactionService } from "./transaction.service";
+import { Cart } from "../entities/Cart.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Checkout, Sale, Customer]),
+    TypeOrmModule.forFeature([Checkout, Sale, Customer, Cart]),
     UsersModule,
     CartModule,
     AuthenticationModule,
   ],
   controllers: [CheckoutController],
-  providers: [CheckoutService, UsersService, NotificationService],
+  providers: [
+    CheckoutService,
+    UsersService,
+    NotificationService,
+    DeliveryCostService,
+    PaymentService,
+    OrderOperationsService,
+    OrderQueriesService,
+    CustomerManagementService,
+    TransactionService,
+  ],
 })
 export class CheckoutModule {}
