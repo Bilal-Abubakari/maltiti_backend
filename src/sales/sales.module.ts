@@ -20,6 +20,9 @@ import { LineItemManagementService } from "./line-item-management.service";
 import { NotificationService } from "../notification/notification.service";
 import { StockManagementService } from "./stock-management.service";
 import { CheckoutModule } from "../checkout/checkout.module";
+import { SaleCreationService } from "./sale-creation.service";
+import { SaleUpdateService } from "./sale-update.service";
+import { SaleCancellationService } from "./sale-cancellation.service";
 
 @Module({
   imports: [
@@ -38,6 +41,9 @@ import { CheckoutModule } from "../checkout/checkout.module";
     LineItemManagementService,
     StockManagementService,
     NotificationService,
+    SaleCreationService,
+    SaleUpdateService,
+    SaleCancellationService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,

@@ -4,6 +4,7 @@ export interface PaystackWebhookEvent {
     id: number;
     domain: string;
     status: string;
+    transaction_reference: string;
     reference: string;
     amount: number;
     message: string;
