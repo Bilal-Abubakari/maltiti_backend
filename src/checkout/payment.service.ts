@@ -85,16 +85,36 @@ export class PaymentService {
     }
   }
 
-  public async refundPayment(reference: string): Promise<void> {
-    await axios.post(
-      `${process.env.PAYSTACK_BASE_URL}/refund/`,
-      { transaction: reference },
-      {
+  public async refundPayment(
+    reference: string,
+    amount?: number,
+  ): Promise<void> {
+    const refundData: { transaction: string; amount?: number } = {
+      transaction: reference,
+    };
+
+    if (amount !== undefined) {
+      refundData.amount = Math.round(amount * 100);
+    }
+
+    try {
+      await axios.post(`${process.env.PAYSTACK_BASE_URL}/refund`, refundData, {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
         },
-      },
-    );
+      });
+      const refundAmount = amount ? ` for amount ${amount}` : "";
+      this.logger.log(
+        `Refund initiated for reference ${reference}${refundAmount}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to process refund for reference ${reference}: ${error.message}`,
+      );
+      throw new BadRequestException(
+        `Refund failed: ${error.response?.data?.message || error.message}`,
+      );
+    }
   }
 
   public async verifyAndMarkPaid(reference: string): Promise<void> {
@@ -172,6 +192,72 @@ export class PaymentService {
       );
       throw new BadRequestException(
         `Failed to verify payment: ${error.response?.data?.message || error.message}`,
+      );
+    }
+  }
+
+  public async handleRefund(transactionReference: string): Promise<void> {
+    try {
+      this.logger.log(
+        `Processing refund for reference: ${transactionReference}`,
+      );
+
+      // Find the sale by payment reference (which is the transaction reference in this context)
+      const sale = await this.saleRepository.findOne({
+        where: { paymentReference: transactionReference },
+        relations: ["customer", "customer.user", "checkout"],
+      });
+
+      if (!sale) {
+        this.logger.warn(
+          `Sale not found for transaction reference: ${transactionReference}. Ignoring refund webhook.`,
+        );
+        return;
+      }
+
+      // Check if payment is already marked as refunded (idempotency)
+      if (sale.paymentStatus === PaymentStatus.REFUNDED) {
+        this.logger.log(
+          `Payment already marked as refunded for reference: ${transactionReference}. Skipping.`,
+        );
+        return;
+      }
+
+      // Mark the sale as refunded
+      sale.paymentStatus = PaymentStatus.REFUNDED;
+      await this.saleRepository.save(sale);
+
+      this.logger.log(
+        `Payment marked as refunded for sale: ${sale.id} (reference: ${transactionReference})`,
+      );
+
+      // Send refund notification email
+      const checkout = sale.checkout;
+      const email =
+        checkout?.guestEmail ||
+        sale.customer?.email ||
+        sale.customer?.user?.email;
+      const name =
+        sale.customer?.name || sale.customer?.user?.name || "Customer";
+
+      if (email) {
+        await this.notificationService.sendEmail(
+          `Your refund for order ${sale.id} has been processed successfully. The funds should appear in your account within 7-12 business days depending on your bank.`,
+          email,
+          "Refund Processed",
+          name,
+          process.env.APP_URL,
+          "Go to Dashboard",
+          "Go to Dashboard",
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to process refund for reference ${transactionReference}: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException(
+        `Failed to process refund: ${error.message}`,
       );
     }
   }

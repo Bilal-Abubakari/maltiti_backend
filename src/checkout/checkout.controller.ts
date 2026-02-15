@@ -318,7 +318,7 @@ export class CheckoutController {
   @ApiResponse({
     status: 200,
     description:
-      "Order has been successfully cancelled. If you have paid, you will receive refund in 3 working days",
+      "Order has been successfully cancelled. If you have paid, you will receive refund in 7-12 business days",
     type: CheckoutResponseDto,
   })
   public async cancelOrder(
@@ -327,7 +327,7 @@ export class CheckoutController {
     const response = await this.checkoutService.cancelOrder(id);
     return {
       message:
-        "Order has been successfully cancelled. If you have paid, you will receive refund in 3 working days",
+        "Order has been successfully cancelled. If you have paid, you will receive refund in 7-12 business days",
       data: response,
     };
   }
@@ -509,6 +509,12 @@ export class CheckoutController {
       const reference = event.data.reference;
 
       await this.checkoutService.verifyAndMarkPaid(reference);
+    } else if (event.event === "refund.processed") {
+      const transactionReference = event.data.transaction_reference;
+
+      if (transactionReference) {
+        await this.checkoutService.handleRefund(transactionReference);
+      }
     }
 
     return { status: "ok" };

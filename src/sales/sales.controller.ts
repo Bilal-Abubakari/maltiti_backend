@@ -36,6 +36,11 @@ import { TrackOrderDto } from "../dto/sales/trackOrder.dto";
 import { TrackOrderResponseDto } from "../dto/sales/trackOrderResponse.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { PaginatedSaleResponseDto } from "../dto/sales/paginatedSaleResponse.dto";
+import {
+  CancelSaleByCustomerDto,
+  CancelSaleByAdminDto,
+  CancelSaleResponseDto,
+} from "../dto/sales/cancelSale.dto";
 import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
@@ -56,7 +61,11 @@ import {
   IInitializeTransactionResponse,
 } from "../interfaces/payment.interface";
 
-@ApiExtraModels(InitializeTransactionDataDto, InitializeTransactionResponseDto)
+@ApiExtraModels(
+  InitializeTransactionDataDto,
+  InitializeTransactionResponseDto,
+  CancelSaleResponseDto,
+)
 @ApiTags("Sales")
 @Controller("sales")
 export class SalesController {
@@ -353,16 +362,107 @@ export class SalesController {
     return this.salesService.confirmDelivery(saleId, confirmDto.confirmed);
   }
 
+  @Post(":id/cancel")
+  @ApiOperation({
+    summary: "Cancel sale by customer",
+    description:
+      "Cancel an order with business rules: " +
+      "Pending + Paid = Full refund. " +
+      "Processing/Packaging + Paid = 10% penalty. " +
+      "In Transit/Delivered = Cannot cancel, contact support.",
+  })
+  @ApiParam({ name: "id", description: "Sale ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Order cancelled successfully",
+    type: CancelSaleResponseDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Order cancelled successfully",
+    type: CancelSaleResponseDto,
+  })
+  @AuditLog({
+    actionType: AuditActionType.SALE_CANCELLED,
+    entityType: AuditEntityType.SALE,
+    description: "Customer cancelled sale",
+    getEntityId: result => result?.sale?.id,
+  })
+  public async cancelSaleByCustomer(
+    @Param("id") saleId: string,
+    @Body() cancelDto: CancelSaleByCustomerDto,
+  ): Promise<{
+    message: string;
+    sale: SaleResponseDto;
+    refundAmount?: number;
+    penaltyAmount?: number;
+    refundProcessed?: boolean;
+  }> {
+    return this.salesService.cancelSaleByCustomer(
+      saleId,
+      cancelDto.email,
+      cancelDto.reason,
+    );
+  }
+
+  @Post(":id/cancel-by-admin")
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
+  @ApiOperation({
+    summary: "Cancel sale by admin",
+    description:
+      "Admin can cancel any order at any stage with option to waive the 10% penalty.",
+  })
+  @ApiParam({ name: "id", description: "Sale ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Order cancelled successfully by admin",
+    type: CancelSaleResponseDto,
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Order cancelled successfully by admin",
+    type: CancelSaleResponseDto,
+  })
+  @AuditLog({
+    actionType: AuditActionType.SALE_CANCELLED,
+    entityType: AuditEntityType.SALE,
+    description: "Admin cancelled sale",
+    getEntityId: result => result?.sale?.id,
+  })
+  public async cancelSaleByAdmin(
+    @Param("id") saleId: string,
+    @Body() cancelDto: CancelSaleByAdminDto,
+  ): Promise<{
+    message: string;
+    sale: SaleResponseDto;
+    refundAmount?: number;
+    penaltyAmount?: number;
+    refundProcessed?: boolean;
+  }> {
+    return this.salesService.cancelSaleByAdmin(
+      saleId,
+      cancelDto.waivePenalty,
+      cancelDto.reason,
+    );
+  }
+
   @Delete(":id")
-  @ApiOperation({ summary: "Cancel sale" })
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
+  @ApiOperation({
+    summary: "Soft delete sale (legacy)",
+    description:
+      "Legacy endpoint for soft deleting a sale. Use cancel endpoints instead.",
+  })
   @ApiResponse({ status: 200, type: SaleResponseDto })
   @AuditLog({
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
-    description: "Cancelled sale",
+    description: "Soft deleted sale",
     getEntityId: result => result?.id,
   })
-  public async cancelSale(
+  public async deleteSale(
     @Param("id") saleId: string,
   ): Promise<SaleResponseDto> {
     return this.salesService.cancelSale(saleId);

@@ -2,6 +2,10 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import axios from "axios";
 import { ConfigService } from "@nestjs/config";
 import { MailerService } from "@nestjs-modules/mailer";
+import {
+  ADMIN_EMAILS,
+  ADMIN_FROM_EMAIL,
+} from "../constants/admin-emails.constant";
 
 @Injectable()
 export class NotificationService {
@@ -48,7 +52,7 @@ export class NotificationService {
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
       to,
-      from: "info@maltitiaenterprise.com",
+      from: ADMIN_FROM_EMAIL,
       subject,
       template: "./welcome",
       context: {
@@ -84,11 +88,8 @@ export class NotificationService {
     subject: string,
   ): Promise<unknown> {
     return await this.mailerService.sendMail({
-      to: [
-        "bilal.abubakari@maltitiaenterprise.com",
-        "mohammed.abubakari@maltitiaenterprise.com",
-      ],
-      from: "info@maltitiaenterprise.com",
+      to: ADMIN_EMAILS,
+      from: ADMIN_FROM_EMAIL,
       subject,
       template: "./admin-order-notification",
       context: {
@@ -112,7 +113,7 @@ export class NotificationService {
 
     return await this.mailerService.sendMail({
       to: customerEmail,
-      from: "info@maltitiaenterprise.com",
+      from: ADMIN_FROM_EMAIL,
       subject,
       template: "./order-status-update",
       context: {
@@ -123,6 +124,32 @@ export class NotificationService {
         paymentStatus,
         url: `${process.env.FRONTEND_URL}/track-order/${orderId}`,
         action: "Track Your Order",
+      },
+    });
+  }
+
+  public async sendAdminOrderCancellationNotification(cancellationData: {
+    orderId: string;
+    customerName: string;
+    customerEmail: string;
+    cancellationReason?: string;
+    refundAmount?: number;
+    penaltyAmount?: number;
+    refundProcessed?: boolean;
+    cancelledBy: "customer" | "admin";
+  }): Promise<unknown> {
+    const subject = `Order Cancelled - ${cancellationData.orderId}`;
+
+    return await this.mailerService.sendMail({
+      to: ADMIN_EMAILS,
+      from: ADMIN_FROM_EMAIL,
+      subject,
+      template: "./admin-order-cancellation",
+      context: {
+        ...cancellationData,
+        subject,
+        url: process.env.FRONTEND_URL_ADMIN,
+        action: "View Order Details",
       },
     });
   }

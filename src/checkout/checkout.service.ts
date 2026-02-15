@@ -144,4 +144,9 @@ export class CheckoutService {
     this.logger.log(`Verifying payment for reference: ${reference}`);
     return this.paymentService.verifyAndMarkPaid(reference);
   }
+
+  public async handleRefund(transactionReference: string): Promise<void> {
+    this.logger.log(`Processing refund for reference: ${transactionReference}`);
+    return this.paymentService.handleRefund(transactionReference);
+  }
 }
