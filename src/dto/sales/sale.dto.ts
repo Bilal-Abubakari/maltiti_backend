@@ -11,6 +11,9 @@ export class SaleDto {
   @ApiProperty()
   public id: string;
 
+  @ApiProperty()
+  public paymentReference?: string;
+
   @ApiProperty({ type: () => CustomerDto })
   public customer: CustomerDto;
 
