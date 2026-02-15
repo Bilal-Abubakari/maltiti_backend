@@ -93,6 +93,7 @@ export class NotificationService {
       template: "./admin-order-notification",
       context: {
         ...orderData,
+        subject,
         url: process.env.FRONTEND_URL_ADMIN,
         action: "View Order",
       },

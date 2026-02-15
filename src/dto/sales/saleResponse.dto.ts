@@ -168,10 +168,10 @@ export class SaleCheckoutDto {
   public id: string;
 
   @ApiPropertyOptional({
-    description: "Paystack payment reference",
+    description: "Payment reference",
     example: "ref_xyz123",
   })
-  public paystackReference?: string;
+  public paymentReference?: string;
 
   @ApiPropertyOptional({
     description: "Guest email (for guest checkouts)",

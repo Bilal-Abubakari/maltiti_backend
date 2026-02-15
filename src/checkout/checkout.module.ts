@@ -37,5 +37,6 @@ import { Cart } from "../entities/Cart.entity";
     CustomerManagementService,
     TransactionService,
   ],
+  exports: [PaymentService],
 })
 export class CheckoutModule {}

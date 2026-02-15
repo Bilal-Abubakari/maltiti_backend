@@ -2,21 +2,15 @@ import { Cooperative } from "../entities/Cooperative.entity";
 import { CooperativeMember } from "../entities/CooperativeMember.entity";
 import { User } from "../entities/User.entity";
 import { Checkout } from "../entities/Checkout.entity";
+import { Cart } from "../entities/Cart.entity";
+import { Customer } from "../entities/Customer.entity";
+import { QueryRunner } from "typeorm";
 import { CartItemDto } from "../dto/cartResponse.dto";
+import { PaymentData } from "./payment.interface";
 
 export interface IResponse<T> {
   message: string;
   data: T;
-}
-
-export interface IInitializeTransactionResponse<T> extends IResponse<T> {
-  status: boolean;
-}
-
-export interface IInitalizeTransactionData {
-  authorization_url: string;
-  access_code: string;
-  reference: string;
 }
 
 export interface IPagination<T> {
@@ -92,4 +86,26 @@ export interface ICartData {
   items: CartItemDto[];
   count: number;
   total: number;
+}
+
+export interface CheckoutOptions {
+  carts: Cart[];
+  customer: Customer;
+  deliveryCost: number;
+  isPlaceOrder: boolean;
+  queryRunner: QueryRunner;
+  paymentInitData?: { user?: User; email?: string };
+  guestEmail?: string;
+}
+
+export interface CheckoutResponse {
+  status: boolean;
+  message: string;
+  data: { saleId: string; awaitingDelivery: boolean };
+}
+
+export interface ProcessCheckoutResult {
+  checkout: Checkout;
+  response?: CheckoutResponse;
+  paymentData?: PaymentData;
 }

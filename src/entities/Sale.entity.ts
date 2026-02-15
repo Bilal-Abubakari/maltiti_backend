@@ -1,29 +1,13 @@
-import { v4 as uuid } from "uuid";
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  ManyToOne,
-  JoinColumn,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity, ManyToOne, JoinColumn, OneToOne } from "typeorm";
 import { Customer } from "./Customer.entity";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { Checkout } from "./Checkout.entity";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
+import { Audit } from "./Audit.entity";
 
 @Entity({ name: "Sales" })
-export class Sale {
-  constructor() {
-    this.id = uuid();
-  }
-
-  @PrimaryGeneratedColumn("uuid")
-  public id: string;
-
+export class Sale extends Audit {
   @ManyToOne(() => Customer, customer => customer.sales, { nullable: false })
   @JoinColumn({ name: "customerId" })
   public customer: Customer;
@@ -45,6 +29,9 @@ export class Sale {
   })
   public paymentStatus: PaymentStatus;
 
+  @Column({ nullable: true })
+  public paymentReference: string;
+
   @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
   public amount: number;
 
@@ -56,13 +43,4 @@ export class Sale {
 
   @Column({ type: "json" })
   public lineItems: SaleLineItem[];
-
-  @CreateDateColumn()
-  public createdAt: Date;
-
-  @UpdateDateColumn()
-  public updatedAt: Date;
-
-  @Column({ nullable: true, type: "timestamp" })
-  public deletedAt: Date;
 }

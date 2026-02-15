@@ -4,9 +4,12 @@ import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import * as process from "process";
 import * as cookieParser from "cookie-parser";
+import * as express from "express";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+  });
 
   // Enable global validation pipe
   app.useGlobalPipes(
@@ -22,6 +25,17 @@ async function bootstrap(): Promise<void> {
 
   // Enable cookie parser
   app.use(cookieParser());
+
+  // Configure body parsing with raw body for webhooks
+  app.use(
+    express.json({
+      verify: (req: express.Request & { rawBody?: Buffer }, res, buf) => {
+        if (req.url === "/checkout/webhook") {
+          req.rawBody = buf;
+        }
+      },
+    }),
+  );
 
   // Enable CORS with credentials support for cookies
   app.enableCors({

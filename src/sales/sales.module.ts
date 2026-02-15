@@ -17,10 +17,14 @@ import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
 import { SaleQueryService } from "./sale-query.service";
 import { LineItemManagementService } from "./line-item-management.service";
+import { NotificationService } from "../notification/notification.service";
+import { StockManagementService } from "./stock-management.service";
+import { CheckoutModule } from "../checkout/checkout.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Sale, Customer, Batch, Product, Checkout]),
+    CheckoutModule,
   ],
   providers: [
     SalesService,
@@ -32,6 +36,8 @@ import { LineItemManagementService } from "./line-item-management.service";
     OrderTrackingService,
     SaleQueryService,
     LineItemManagementService,
+    StockManagementService,
+    NotificationService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
