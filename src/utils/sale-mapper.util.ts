@@ -44,7 +44,7 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
   if (sale.checkout) {
     checkout = {
       id: sale.checkout.id,
-      paystackReference: sale.checkout.paystackReference,
+      paymentReference: sale.paymentReference,
       guestEmail: sale.checkout.guestEmail,
       createdAt: sale.checkout.createdAt,
       updatedAt: sale.checkout.updatedAt,

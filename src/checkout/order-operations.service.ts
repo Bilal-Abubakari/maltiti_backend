@@ -3,10 +3,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Checkout } from "../entities/Checkout.entity";
 import { Sale } from "../entities/Sale.entity";
-import { Cart } from "../entities/Cart.entity";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
-import { UpdateDeliveryCostDto } from "../dto/checkout.dto";
 import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "./payment.service";
 
@@ -50,7 +48,27 @@ export class OrderOperationsService {
           HttpStatus.FORBIDDEN,
         );
       }
-      await this.paymentService.verifyPayment(saleId);
+
+      // Check if payment is already marked as paid (idempotency)
+      if (checkout.sale.paymentStatus === PaymentStatus.PAID) {
+        this.logger.log(
+          `Payment already confirmed for sale: ${saleId}. Returning existing checkout.`,
+        );
+        return checkout;
+      }
+
+      // Verify payment using the payment reference from the sale
+      if (!checkout.sale.paymentReference) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            error: "Payment reference not found for this sale",
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      await this.paymentService.verifyPayment(checkout.sale.paymentReference);
       const sale = checkout.sale;
       const user = sale.customer.user;
       sale.paymentStatus = PaymentStatus.PAID;
@@ -94,7 +112,27 @@ export class OrderOperationsService {
           HttpStatus.NOT_FOUND,
         );
       }
-      await this.paymentService.verifyPayment(saleId);
+
+      // Check if payment is already marked as paid (idempotency)
+      if (checkout.sale.paymentStatus === PaymentStatus.PAID) {
+        this.logger.log(
+          `Payment already confirmed for guest sale: ${saleId}. Returning existing checkout.`,
+        );
+        return checkout;
+      }
+
+      // Verify payment using the payment reference from the sale
+      if (!checkout.sale.paymentReference) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            error: "Payment reference not found for this sale",
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      await this.paymentService.verifyPayment(checkout.sale.paymentReference);
       const sale = checkout.sale;
       sale.paymentStatus = PaymentStatus.PAID;
       await this.saleRepository.save(sale);
@@ -170,101 +208,7 @@ export class OrderOperationsService {
     }
     return await this.saleRepository.save(sale);
   }
-  public async updateDeliveryCost(
-    id: string,
-    dto: UpdateDeliveryCostDto,
-  ): Promise<Checkout> {
-    const checkout = await this.checkoutRepository.findOne({
-      where: { id },
-      relations: [
-        "sale",
-        "sale.customer",
-        "sale.customer.user",
-        "carts",
-        "carts.product",
-      ],
-    });
-    if (!checkout) {
-      throw new HttpException(
-        {
-          status: HttpStatus.NOT_FOUND,
-          error: "Checkout not found",
-        },
-        HttpStatus.NOT_FOUND,
-      );
-    }
 
-    const sale = checkout.sale;
-
-    // Allow updating delivery cost for AWAITING_DELIVERY, INVOICE_REQUESTED, and PENDING_PAYMENT
-    if (
-      sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
-      sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT &&
-      sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
-    ) {
-      throw new HttpException(
-        {
-          status: HttpStatus.BAD_REQUEST,
-          error: `Cannot update delivery cost for order with payment status: ${sale.paymentStatus}`,
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Update Sale with delivery fee
-    sale.deliveryFee = dto.deliveryCost;
-
-    // Auto-transition from AWAITING_DELIVERY to PENDING_PAYMENT when delivery fee is set
-    const wasAwaitingDelivery =
-      sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY;
-    if (wasAwaitingDelivery) {
-      sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
-    }
-
-    await this.saleRepository.save(sale);
-
-    // Calculate total for email notification
-    const productTotal = sale.amount ?? 0;
-    const newTotalAmount = productTotal + dto.deliveryCost;
-
-    // Send notification email
-    const customer = sale.customer;
-    const user = customer.user;
-    const email = user?.email || checkout.guestEmail || customer.email;
-    const name = customer.name;
-
-    if (email) {
-      if (wasAwaitingDelivery) {
-        // Special email for international orders
-        await this.notificationService.sendEmail(
-          `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${dto.deliveryCost.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`,
-          email,
-          "Delivery Fee Calculated - Ready for Payment",
-          name,
-          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
-          "Pay Now",
-          "Pay Now",
-        );
-      } else {
-        await this.notificationService.sendEmail(
-          `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
-          email,
-          "Delivery Cost Updated",
-          name,
-          user
-            ? process.env.APP_URL
-            : `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
-          "View Order",
-          "View Order",
-        );
-      }
-    }
-
-    return await this.checkoutRepository.findOne({
-      where: { id: checkout.id },
-      relations: ["sale", "sale.customer", "carts", "carts.product"],
-    });
-  }
   public async cancelOrder(id: string): Promise<Checkout> {
     const order = await this.checkoutRepository.findOne({
       where: { id },
@@ -314,9 +258,7 @@ export class OrderOperationsService {
       sale.orderStatus === OrderStatus.PACKAGING
     ) {
       try {
-        await this.paymentService.refundPayment(
-          order.paystackReference || `${user?.id}=${id}`,
-        );
+        await this.paymentService.refundPayment(sale.paymentReference);
         sale.orderStatus = OrderStatus.CANCELLED;
         sale.paymentStatus = PaymentStatus.REFUNDED;
       } catch (error) {
@@ -356,14 +298,5 @@ export class OrderOperationsService {
       );
     }
     return await this.checkoutRepository.save(order);
-  }
-  private async calculateCartAmount(carts: Cart[]): Promise<number> {
-    let totalAmount = 0;
-    for (const cart of carts) {
-      const product = cart.product;
-      const itemTotal = product.retail * cart.quantity;
-      totalAmount += itemTotal;
-    }
-    return Number(totalAmount.toFixed(2));
   }
 }

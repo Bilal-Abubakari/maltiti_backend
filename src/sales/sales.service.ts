@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -8,7 +10,6 @@ import { IsNull, Repository, DataSource } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Product } from "../entities/Product.entity";
-import { Checkout } from "../entities/Checkout.entity";
 import { CreateSaleDto } from "../dto/sales/createSale.dto";
 import { UpdateSaleDto } from "../dto/sales/updateSale.dto";
 import { UpdateSaleStatusDto } from "../dto/sales/updateSaleStatus.dto";
@@ -20,14 +21,11 @@ import { GenerateInvoiceDto } from "../dto/generateInvoice.dto";
 import { GenerateReceiptDto } from "../dto/generateReceipt.dto";
 import { GenerateWaybillDto } from "../dto/generateWaybill.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
+import { UpdateDeliveryCostDto } from "../dto/checkout.dto";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
-import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
-  IPagination,
-} from "../interfaces/general";
+import { IPagination } from "../interfaces/general";
 import { StockManagementService } from "./stock-management.service";
 import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
@@ -36,6 +34,10 @@ import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { formatStatus } from "../utils/status-formatter.util";
 import { LineItemManagementService } from "./line-item-management.service";
 import { NotificationService } from "../notification/notification.service";
+import {
+  IInitializeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/payment.interface";
 
 @Injectable()
 export class SalesService {
@@ -46,7 +48,6 @@ export class SalesService {
     private readonly customerRepository: Repository<Customer>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(Checkout)
     private readonly stockManagementService: StockManagementService,
     private readonly documentGenerationService: DocumentGenerationService,
     private readonly orderTrackingService: OrderTrackingService,
@@ -97,9 +98,8 @@ export class SalesService {
   ): Promise<SaleResponseDto> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
-    await queryRunner.startTransaction();
-
     try {
+      await queryRunner.startTransaction();
       const sale = await queryRunner.manager.findOne(Sale, {
         where: { id: saleId, deletedAt: IsNull() },
         relations: ["customer"],
@@ -188,7 +188,8 @@ export class SalesService {
       return transformSaleToResponseDto(savedSale);
     } catch (error) {
       // Rollback the transaction on error
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive)
+        await queryRunner.rollbackTransaction();
       throw error;
     } finally {
       // Release the query runner
@@ -425,7 +426,7 @@ export class SalesService {
   public async payForOrder(
     saleId: string,
     email: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     return this.orderTrackingService.payForOrder(saleId, email);
   }
 
@@ -446,5 +447,90 @@ export class SalesService {
     const savedSale = await this.saleRepository.save(sale);
 
     return transformSaleToResponseDto(savedSale);
+  }
+
+  public async updateDeliveryCost(
+    saleId: string,
+    dto: UpdateDeliveryCostDto,
+  ): Promise<SaleResponseDto> {
+    const sale = await this.saleRepository.findOne({
+      where: { id: saleId, deletedAt: IsNull() },
+      relations: ["customer", "customer.user", "checkout"],
+    });
+    if (!sale) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: "Sale not found",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Allow updating delivery cost for AWAITING_DELIVERY, INVOICE_REQUESTED, and PENDING_PAYMENT
+    if (
+      sale.paymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      sale.paymentStatus !== PaymentStatus.PENDING_PAYMENT &&
+      sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
+    ) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: `Cannot update delivery cost for order with payment status: ${sale.paymentStatus}`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Update Sale with delivery fee
+    sale.deliveryFee = dto.deliveryCost;
+
+    // Auto-transition from AWAITING_DELIVERY to PENDING_PAYMENT when delivery fee is set
+    const wasAwaitingDelivery =
+      sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY;
+    if (wasAwaitingDelivery) {
+      sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
+    }
+
+    await this.saleRepository.save(sale);
+
+    // Calculate total for email notification
+    const productTotal = Number(sale.amount ?? 0);
+    const newTotalAmount = productTotal + dto.deliveryCost;
+
+    // Send notification email
+    const customer = sale.customer;
+    const user = customer?.user;
+    const email = user?.email || sale.checkout?.guestEmail || customer?.email;
+    const name = customer?.name || "Valued Customer";
+
+    if (email) {
+      if (wasAwaitingDelivery) {
+        // Special email for international orders
+        await this.notificationService.sendEmail(
+          `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${dto.deliveryCost.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`,
+          email,
+          "Delivery Fee Calculated - Ready for Payment",
+          name,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "Pay Now",
+          "Pay Now",
+        );
+      } else {
+        await this.notificationService.sendEmail(
+          `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
+          email,
+          "Delivery Cost Updated",
+          name,
+          user
+            ? process.env.APP_URL
+            : `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "View Order",
+          "View Order",
+        );
+      }
+    }
+
+    return transformSaleToResponseDto(sale);
   }
 }

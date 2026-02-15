@@ -5,24 +5,23 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
-import axios from "axios";
 import { Sale } from "../entities/Sale.entity";
-import { Checkout } from "../entities/Checkout.entity";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
-import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
-} from "../interfaces/general";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
+import { PaymentService } from "../checkout/payment.service";
+import {
+  IInitializeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/payment.interface";
+import { generatePaymentReference } from "../utils/payment.utils";
 
 @Injectable()
 export class OrderTrackingService {
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
-    @InjectRepository(Checkout)
-    private readonly checkoutRepository: Repository<Checkout>,
+    private readonly paymentService: PaymentService, // Inject PaymentService
   ) {}
 
   public async trackOrder(
@@ -57,7 +56,7 @@ export class OrderTrackingService {
   public async payForOrder(
     saleId: string,
     email: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
       relations: ["customer", "checkout"],
@@ -91,40 +90,21 @@ export class OrderTrackingService {
     }
 
     // Calculate total from Sale fields
-    const totalAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+    const totalAmount =
+      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
 
     const useEmail = guestEmail || customerEmail;
-    const response = await this.initializePaystack(
+    const reference = generatePaymentReference(sale.id);
+    sale.paymentReference = reference;
+    await this.saleRepository.save(sale);
+    const response = await this.paymentService.initializePayment(
       sale.id,
+      reference,
       useEmail,
       totalAmount,
     );
-    sale.checkout.paystackReference = response.data.data.reference;
     sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
     await this.saleRepository.save(sale);
-    await this.checkoutRepository.save(sale.checkout);
-    return response.data;
-  }
-  private async initializePaystack(
-    saleId: string,
-    email: string,
-    totalAmount: number,
-  ): Promise<{
-    data: IInitializeTransactionResponse<IInitalizeTransactionData>;
-  }> {
-    return await axios.post(
-      `${process.env.PAYSTACK_BASE_URL}/transaction/initialize`,
-      {
-        amount: Math.round(totalAmount * 100),
-        email: email,
-        reference: `sale=${saleId}`,
-        callback_url: `${process.env.FRONTEND_URL}/track-order/${saleId}`,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
-      },
-    );
+    return response;
   }
 }

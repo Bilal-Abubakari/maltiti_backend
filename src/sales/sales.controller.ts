@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  ApiExtraModels,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -35,12 +36,7 @@ import { TrackOrderDto } from "../dto/sales/trackOrder.dto";
 import { TrackOrderResponseDto } from "../dto/sales/trackOrderResponse.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { PaginatedSaleResponseDto } from "../dto/sales/paginatedSaleResponse.dto";
-import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
-  IPaginatedResponse,
-  IResponse,
-} from "../interfaces/general";
+import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
@@ -50,7 +46,17 @@ import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
+import { UpdateDeliveryCostDto } from "../dto/checkout.dto";
+import {
+  InitializeTransactionDataDto,
+  InitializeTransactionResponseDto,
+} from "../dto/checkoutResponse.dto";
+import {
+  IInitializeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/payment.interface";
 
+@ApiExtraModels(InitializeTransactionDataDto, InitializeTransactionResponseDto)
 @ApiTags("Sales")
 @Controller("sales")
 export class SalesController {
@@ -161,11 +167,17 @@ export class SalesController {
   @ApiResponse({
     status: 200,
     description: "Payment initialized successfully",
+    type: InitializeTransactionResponseDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Payment initialized successfully",
+    type: InitializeTransactionResponseDto,
   })
   public async payForOrder(
     @Param("saleId") saleId: string,
     @Query() query: TrackOrderDto,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const paymentData = await this.salesService.payForOrder(
       saleId,
       query.email,
@@ -354,5 +366,29 @@ export class SalesController {
     @Param("id") saleId: string,
   ): Promise<SaleResponseDto> {
     return this.salesService.cancelSale(saleId);
+  }
+
+  @Patch(":id/delivery-cost")
+  @UseGuards(CookieAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
+  @ApiOperation({
+    summary: "Update delivery cost for a sale (e.g., for international orders)",
+  })
+  @ApiParam({ name: "id", description: "Sale ID" })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Delivery cost updated successfully. Customer will be notified.",
+    type: SaleResponseDto,
+  })
+  public async updateDeliveryCost(
+    @Param("id") id: string,
+    @Body() data: UpdateDeliveryCostDto,
+  ): Promise<IResponse<SaleResponseDto>> {
+    const response = await this.salesService.updateDeliveryCost(id, data);
+    return {
+      message: "Delivery cost updated successfully. Customer will be notified.",
+      data: response,
+    };
   }
 }

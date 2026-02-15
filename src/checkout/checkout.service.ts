@@ -2,17 +2,12 @@ import { Injectable, Logger } from "@nestjs/common";
 import {
   InitializeTransaction,
   PlaceOrderDto,
-  UpdateDeliveryCostDto,
   GuestInitializeTransactionDto,
   GuestPlaceOrderDto,
   GuestGetDeliveryCostDto,
 } from "../dto/checkout.dto";
 import { Checkout } from "../entities/Checkout.entity";
-import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
-  ordersPagination,
-} from "../interfaces/general";
+import { ordersPagination } from "../interfaces/general";
 import { Sale } from "../entities/Sale.entity";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
@@ -21,6 +16,11 @@ import { DeliveryCostService } from "./delivery-cost.service";
 import { OrderOperationsService } from "./order-operations.service";
 import { OrderQueriesService } from "./order-queries.service";
 import { TransactionService } from "./transaction.service";
+import { PaymentService } from "./payment.service";
+import {
+  IInitializeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/payment.interface";
 
 @Injectable()
 export class CheckoutService {
@@ -30,6 +30,7 @@ export class CheckoutService {
     private readonly orderOperationsService: OrderOperationsService,
     private readonly orderQueriesService: OrderQueriesService,
     private readonly transactionService: TransactionService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   public async getDeliveryCost(
@@ -42,7 +43,7 @@ export class CheckoutService {
   public async initializeTransaction(
     id: string,
     data: InitializeTransaction,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     return this.transactionService.initializeTransaction(id, data);
   }
 
@@ -53,7 +54,7 @@ export class CheckoutService {
   public async payForOrder(
     userId: string,
     checkoutId: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     return this.transactionService.payForOrder(userId, checkoutId);
   }
 
@@ -80,13 +81,6 @@ export class CheckoutService {
     );
   }
 
-  public async updateDeliveryCost(
-    id: string,
-    dto: UpdateDeliveryCostDto,
-  ): Promise<Checkout> {
-    return this.orderOperationsService.updateDeliveryCost(id, dto);
-  }
-
   public async cancelOrder(id: string): Promise<Checkout> {
     return this.orderOperationsService.cancelOrder(id);
   }
@@ -100,7 +94,7 @@ export class CheckoutService {
 
   public async guestInitializeTransaction(
     data: GuestInitializeTransactionDto,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     return this.transactionService.guestInitializeTransaction(data);
   }
 
@@ -111,7 +105,7 @@ export class CheckoutService {
   public async payForGuestOrder(
     checkoutId: string,
     email: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     return this.transactionService.payForGuestOrder(checkoutId, email);
   }
 
@@ -144,5 +138,10 @@ export class CheckoutService {
     email: string,
   ): Promise<Checkout> {
     return this.orderQueriesService.getOrderStatus(checkoutId, email);
+  }
+
+  public async verifyAndMarkPaid(reference: string): Promise<void> {
+    this.logger.log(`Verifying payment for reference: ${reference}`);
+    return this.paymentService.verifyAndMarkPaid(reference);
   }
 }

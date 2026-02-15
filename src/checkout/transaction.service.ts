@@ -1,4 +1,10 @@
-import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, IsNull, QueryRunner, Repository } from "typeorm";
 import { Cart } from "../entities/Cart.entity";
@@ -10,19 +16,25 @@ import { UsersService } from "../users/users.service";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import {
-  InitializeTransaction,
-  PlaceOrderDto,
   GuestInitializeTransactionDto,
   GuestPlaceOrderDto,
+  InitializeTransaction,
+  PlaceOrderDto,
 } from "../dto/checkout.dto";
 import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
+  CheckoutOptions,
+  CheckoutResponse,
+  ProcessCheckoutResult,
 } from "../interfaces/general";
 import { NotificationService } from "../notification/notification.service";
 import { DeliveryCostService } from "./delivery-cost.service";
 import { PaymentService } from "./payment.service";
 import { CustomerManagementService } from "./customer-management.service";
+import {
+  IInitializeTransactionData,
+  IInitializeTransactionResponse,
+} from "../interfaces/payment.interface";
+import { generatePaymentReference } from "../utils/payment.utils";
 
 type CheckoutData =
   | InitializeTransaction
@@ -35,18 +47,19 @@ interface DeliveryLocation {
   city: string;
   region: string;
 }
-interface PaystackApiResponse {
-  data: IInitializeTransactionResponse<IInitalizeTransactionData>;
-}
+
 @Injectable()
 export class TransactionService {
   private readonly logger = new Logger("TransactionService");
+
   constructor(
     private readonly userService: UsersService,
     @InjectRepository(Cart)
     private readonly cartRepository: Repository<Cart>,
     @InjectRepository(Checkout)
     private readonly checkoutRepository: Repository<Checkout>,
+    @InjectRepository(Sale)
+    private readonly saleRepository: Repository<Sale>,
     private readonly notificationService: NotificationService,
     private readonly deliveryCostService: DeliveryCostService,
     private readonly paymentService: PaymentService,
@@ -57,51 +70,9 @@ export class TransactionService {
   public async initializeTransaction(
     id: string,
     data: InitializeTransaction,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const user = await this.userService.findOne(id);
-    const carts = await this.getCartsForCheckout(id);
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      const customer = await this.createCustomerForCheckout(
-        user,
-        data,
-        queryRunner,
-      );
-      const deliveryCost = await this.getDeliveryCostForCheckout(
-        id,
-        undefined,
-        {
-          country: data.country,
-          city: data.city,
-          region: data.region,
-        },
-      );
-      const { checkout, response } = await this.processCheckout(
-        carts,
-        customer,
-        deliveryCost,
-        false,
-        queryRunner,
-        { user },
-      );
-      await this.sendOrderNotifications(checkout);
-      await queryRunner.commitTransaction();
-      return response as IInitializeTransactionResponse<IInitalizeTransactionData>;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      this.logger.error("Error initializing transaction", error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.response?.data?.message || "Internal Server Error",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    } finally {
-      await queryRunner.release();
-    }
+    return this.initializeTransactionCommon(user, undefined, data);
   }
 
   public async placeOrder(id: string, data: PlaceOrderDto): Promise<Checkout> {
@@ -109,8 +80,8 @@ export class TransactionService {
     const carts = await this.getCartsForCheckout(id);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
+      await queryRunner.startTransaction();
       const customer = await this.createCustomerForCheckout(
         user,
         data,
@@ -125,13 +96,13 @@ export class TransactionService {
           region: data.region,
         },
       );
-      const { checkout } = await this.processCheckout(
+      const { checkout } = await this.processCheckout({
         carts,
         customer,
         deliveryCost,
-        true,
+        isPlaceOrder: true,
         queryRunner,
-      );
+      });
       await queryRunner.commitTransaction();
       await this.sendOrderNotifications(checkout);
       await this.notificationService.sendEmail(
@@ -148,7 +119,8 @@ export class TransactionService {
         relations: ["sale", "sale.customer", "carts", "carts.product"],
       });
     } catch (error) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive)
+        await queryRunner.rollbackTransaction();
       this.logger.error("Error placing order", error);
       throw new HttpException(
         {
@@ -165,7 +137,7 @@ export class TransactionService {
   public async payForOrder(
     userId: string,
     checkoutId: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const user = await this.userService.findOne(userId);
     const checkout = await this.checkoutRepository.findOne({
       where: { id: checkoutId },
@@ -205,7 +177,7 @@ export class TransactionService {
     try {
       return (await this.processPaymentForOrder(checkout, {
         user,
-      })) as IInitializeTransactionResponse<IInitalizeTransactionData>;
+      })) as IInitializeTransactionResponse<IInitializeTransactionData>;
     } catch (error) {
       this.logger.error("Error initializing payment for order", error);
       throw new HttpException(
@@ -220,59 +192,21 @@ export class TransactionService {
 
   public async guestInitializeTransaction(
     data: GuestInitializeTransactionDto,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
-    const carts = await this.getCartsForCheckout(undefined, data.sessionId);
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-    try {
-      const customer = await this.createCustomerForCheckout(
-        undefined,
-        data,
-        queryRunner,
-      );
-      const deliveryCost = await this.getDeliveryCostForCheckout(
-        undefined,
-        data.sessionId,
-        {
-          country: data.country,
-          city: data.city,
-          region: data.region,
-        },
-      );
-      const { checkout, response } = await this.processCheckout(
-        carts,
-        customer,
-        deliveryCost,
-        false,
-        queryRunner,
-        { email: data.email },
-        data.email,
-      );
-      await this.sendOrderNotifications(checkout);
-      await queryRunner.commitTransaction();
-      return response as IInitializeTransactionResponse<IInitalizeTransactionData>;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      this.logger.error("Error initializing guest transaction", error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.response?.data?.message || "Internal Server Error",
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    } finally {
-      await queryRunner.release();
-    }
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
+    return this.initializeTransactionCommon(
+      undefined,
+      data.sessionId,
+      data,
+      data.email,
+    );
   }
 
   public async guestPlaceOrder(data: GuestPlaceOrderDto): Promise<Checkout> {
     const carts = await this.getCartsForCheckout(undefined, data.sessionId);
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
-    await queryRunner.startTransaction();
     try {
+      await queryRunner.startTransaction();
       const customer = await this.createCustomerForCheckout(
         undefined,
         data,
@@ -287,15 +221,14 @@ export class TransactionService {
           region: data.region,
         },
       );
-      const { checkout } = await this.processCheckout(
+      const { checkout } = await this.processCheckout({
         carts,
         customer,
         deliveryCost,
-        true,
+        isPlaceOrder: true,
         queryRunner,
-        undefined,
-        data.email,
-      );
+        guestEmail: data.email,
+      });
       await queryRunner.commitTransaction();
       await this.sendOrderNotifications(checkout);
       await this.notificationService.sendEmail(
@@ -312,8 +245,8 @@ export class TransactionService {
         relations: ["sale", "sale.customer", "carts", "carts.product"],
       });
     } catch (error) {
-      await queryRunner.rollbackTransaction();
       this.logger.error("Error placing guest order", error);
+      await queryRunner.rollbackTransaction();
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -329,7 +262,7 @@ export class TransactionService {
   public async payForGuestOrder(
     checkoutId: string,
     email: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const checkout = await this.checkoutRepository.findOne({
       where: { id: checkoutId },
       relations: ["sale", "sale.customer"],
@@ -375,7 +308,7 @@ export class TransactionService {
       const useEmail = guestEmail || customerEmail;
       return (await this.processPaymentForOrder(checkout, {
         email: useEmail,
-      })) as IInitializeTransactionResponse<IInitalizeTransactionData>;
+      })) as IInitializeTransactionResponse<IInitializeTransactionData>;
     } catch (error) {
       this.logger.error("Error initializing payment for guest order", error);
       throw new HttpException(
@@ -507,16 +440,20 @@ export class TransactionService {
   }
 
   private async processCheckout(
-    carts: Cart[],
-    customer: Customer,
-    deliveryCost: number,
-    isPlaceOrder: boolean,
-    queryRunner: QueryRunner,
-    paymentInitData?: { user?: User; email?: string },
-    guestEmail?: string,
-  ): Promise<{ checkout: Checkout; response?: unknown }> {
-    const productTotal = await this.calculateCartAmount(carts);
+    options: CheckoutOptions,
+  ): Promise<ProcessCheckoutResult> {
+    const {
+      carts,
+      customer,
+      deliveryCost,
+      isPlaceOrder,
+      queryRunner,
+      paymentInitData,
+      guestEmail,
+    } = options;
 
+    // 1. Core Data Preparation
+    const productTotal = await this.calculateCartAmount(carts);
     const sale = await this.createSale(
       customer,
       carts,
@@ -525,12 +462,14 @@ export class TransactionService {
       productTotal,
     );
 
+    // 2. State Transition Logic
     if (isPlaceOrder) {
       sale.orderStatus = OrderStatus.PENDING;
-      sale.paymentStatus = PaymentStatus.INVOICE_REQUESTED;
+      sale.paymentStatus = PaymentStatus.AWAITING_DELIVERY;
       await queryRunner.manager.save(sale);
     }
 
+    // 3. Checkout Entity Creation
     const checkout = await this.createCheckout(sale, queryRunner);
     if (guestEmail) {
       checkout.guestEmail = guestEmail;
@@ -539,34 +478,18 @@ export class TransactionService {
 
     await this.linkCartsToCheckout(carts, checkout, queryRunner);
 
-    let response: unknown;
-    // Only initialize payment if not placing order and payment status is not AWAITING_DELIVERY
-    if (
-      !isPlaceOrder &&
-      paymentInitData &&
-      sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY
-    ) {
-      const paymentAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+    // 4. Result Mapping
+    return {
+      checkout,
+      response: this.buildCheckoutResponse(sale),
+      paymentData: this.buildPaymentData(sale, isPlaceOrder, paymentInitData),
+    };
+  }
 
-      if (paymentInitData.user) {
-        response = await this.paymentService.initializePaystack(
-          checkout,
-          paymentInitData.user,
-          paymentAmount,
-        );
-      } else {
-        response = await this.paymentService.initializeGuestPaystack(
-          checkout,
-          paymentInitData.email,
-          paymentAmount,
-        );
-      }
-      const paystackResponse = response as PaystackApiResponse;
-      checkout.paystackReference = paystackResponse.data.data.reference;
-      await queryRunner.manager.save(checkout);
-    } else if (sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY) {
+  private buildCheckoutResponse(sale: Sale): CheckoutResponse | undefined {
+    if (sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY) {
       // For international orders, we need to inform the user
-      response = {
+      return {
         status: true,
         message:
           "Order created successfully. Delivery fee will be calculated and you will be notified via email.",
@@ -576,11 +499,23 @@ export class TransactionService {
         },
       };
     }
+    return undefined;
+  }
 
-    return {
-      checkout,
-      response: response ? (response as PaystackApiResponse).data : undefined,
-    };
+  private buildPaymentData(
+    sale: Sale,
+    isPlaceOrder: boolean,
+    paymentInitData?: { user?: User; email?: string },
+  ): { saleId: string; email: string; totalAmount: number } | undefined {
+    if (!isPlaceOrder && paymentInitData) {
+      // Prepare payment data for initialization after transaction commit
+      const paymentAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+      const email = paymentInitData.user
+        ? paymentInitData.user.email
+        : paymentInitData.email;
+      return { saleId: sale.id, email, totalAmount: paymentAmount };
+    }
+    return undefined;
   }
 
   private async processPaymentForOrder(
@@ -602,23 +537,22 @@ export class TransactionService {
     const paymentAmount =
       (checkout.sale.amount ?? 0) + (checkout.sale.deliveryFee ?? 0);
 
-    const response = paymentInitData.user
-      ? await this.paymentService.initializePaystack(
-          checkout,
-          paymentInitData.user,
-          paymentAmount,
-        )
-      : await this.paymentService.initializeGuestPaystack(
-          checkout,
-          paymentInitData.email,
-          paymentAmount,
-        );
+    const email = paymentInitData.user?.email || paymentInitData.email;
+
+    const reference = generatePaymentReference(checkout.sale.id);
+    checkout.sale.paymentReference = reference;
+    await this.saleRepository.save(checkout.sale);
+
+    const paymentInitResponse = await this.paymentService.initializePayment(
+      checkout.sale.id,
+      reference,
+      email,
+      paymentAmount,
+    );
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const paystackResponse = response as PaystackApiResponse;
-      checkout.paystackReference = paystackResponse.data.data.reference;
       checkout.sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
       await queryRunner.manager.save(checkout.sale);
       await queryRunner.manager.save(checkout);
@@ -629,7 +563,7 @@ export class TransactionService {
     } finally {
       await queryRunner.release();
     }
-    return (response as PaystackApiResponse).data;
+    return paymentInitResponse;
   }
 
   private async sendOrderNotifications(checkout: Checkout): Promise<void> {
@@ -654,20 +588,21 @@ export class TransactionService {
     const orderItems = carts.map(cart => ({
       name: cart.product.name,
       quantity: cart.quantity,
-      unitPrice: cart.product.retail.toFixed(2),
-      total: (cart.product.retail * cart.quantity).toFixed(2),
+      unitPrice: Number(cart.product.retail).toFixed(2),
+      total: (Number(cart.product.retail) * Number(cart.quantity)).toFixed(2),
     }));
 
     const deliveryAddress = customer.address
       ? `${customer.address}, ${customer.city}, ${customer.region}, ${customer.country}`
       : undefined;
-
+    const totalAmount =
+      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
     const orderData = {
       orderId: sale.id,
       orderDate: sale.createdAt.toLocaleDateString(),
       orderStatus: sale.orderStatus,
       paymentStatus: sale.paymentStatus,
-      totalAmount: ((sale.amount ?? 0) + (sale.deliveryFee ?? 0)).toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
       customerName: customer.name,
       customerEmail: customer.email || checkout.guestEmail || "",
       customerPhone: customer.phone || customer.phoneNumber,
@@ -682,5 +617,74 @@ export class TransactionService {
       orderData,
       subject,
     );
+  }
+
+  private async initializeTransactionCommon(
+    user: User | undefined,
+    sessionId: string | undefined,
+    data: InitializeTransaction | GuestInitializeTransactionDto,
+    guestEmail?: string,
+  ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
+    const carts = await this.getCartsForCheckout(user?.id, sessionId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    try {
+      await queryRunner.startTransaction();
+      const customer = await this.createCustomerForCheckout(
+        user,
+        data,
+        queryRunner,
+      );
+      const deliveryCost = await this.getDeliveryCostForCheckout(
+        user?.id,
+        sessionId,
+        {
+          country: data.country,
+          city: data.city,
+          region: data.region,
+        },
+      );
+      const paymentInitData = user
+        ? { user }
+        : { email: (data as GuestInitializeTransactionDto).email };
+      const { checkout, paymentData } = await this.processCheckout({
+        carts,
+        customer,
+        deliveryCost,
+        isPlaceOrder: false,
+        queryRunner,
+        paymentInitData,
+        guestEmail,
+      });
+      await this.sendOrderNotifications(checkout);
+      await queryRunner.commitTransaction();
+
+      const reference = generatePaymentReference(paymentData.saleId);
+      checkout.sale.paymentReference = reference;
+      await this.saleRepository.save(checkout.sale);
+
+      return await this.paymentService.initializePayment(
+        paymentData.saleId,
+        reference,
+        paymentData.email,
+        paymentData.totalAmount,
+      );
+    } catch (error) {
+      if (queryRunner.isTransactionActive)
+        await queryRunner.rollbackTransaction();
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error("Error initializing transaction", error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: error.response?.data?.message || "Internal Server Error",
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

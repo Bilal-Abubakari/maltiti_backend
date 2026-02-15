@@ -94,7 +94,7 @@ export class CheckoutDto {
   public carts: CartDto[];
 
   @ApiProperty()
-  public paystackReference: string;
+  public paymentReference: string;
 
   @ApiProperty()
   public createdAt: Date;

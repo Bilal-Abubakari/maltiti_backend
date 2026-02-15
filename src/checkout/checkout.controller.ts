@@ -1,22 +1,24 @@
 import {
   Body,
-  Controller,
   Get,
   Param,
   Patch,
   Post,
   Query,
   UseGuards,
+  Req,
+  UnauthorizedException,
+  HttpCode,
+  HttpStatus,
+  RawBodyRequest,
+  Controller,
 } from "@nestjs/common";
+import { Request } from "express";
+import * as crypto from "node:crypto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { CurrentUser } from "../authentication/decorators/current-user.decorator";
 import { User } from "../entities/User.entity";
-import {
-  IInitalizeTransactionData,
-  IInitializeTransactionResponse,
-  IResponse,
-  ordersPagination,
-} from "../interfaces/general";
+import { IResponse, ordersPagination } from "../interfaces/general";
 import { CheckoutService } from "./checkout.service";
 import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
@@ -24,7 +26,6 @@ import {
   InitializeTransaction,
   UpdateSaleStatusDto,
   PlaceOrderDto,
-  UpdateDeliveryCostDto,
   GuestInitializeTransactionDto,
   GuestPlaceOrderDto,
   GetOrderStatusDto,
@@ -60,6 +61,8 @@ import {
 } from "../dto/checkoutResponse.dto";
 import { SaleDto } from "../dto/sales/sale.dto";
 import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
+import { PaymentInitializationApiResponse } from "../interfaces/payment.interface";
+import { PaystackWebhookEvent } from "../interfaces/webhook.interface";
 
 @ApiTags("Checkout")
 @Controller("checkout")
@@ -222,7 +225,7 @@ export class CheckoutController {
   public async initializeTransaction(
     @CurrentUser() user: User,
     @Body() data: InitializeTransaction,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<PaymentInitializationApiResponse> {
     const response = await this.checkoutService.initializeTransaction(
       user.id,
       data,
@@ -274,7 +277,7 @@ export class CheckoutController {
   public async payForOrder(
     @CurrentUser() user: User,
     @Param("saleId") saleId: string,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<InitializeTransactionResponseDto> {
     const response = await this.checkoutService.payForOrder(user.id, saleId);
     return {
       message: "Payment initialized successfully",
@@ -303,31 +306,6 @@ export class CheckoutController {
     );
     return {
       message: "Sale status updated successfully",
-      data: response,
-    };
-  }
-
-  @Patch("delivery-cost/:id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
-  @Roles([Role.Admin])
-  @ApiOperation({
-    summary:
-      "Update delivery cost for an order (e.g., for international orders)",
-  })
-  @ApiParam({ name: "id", description: "Checkout ID" })
-  @ApiResponse({
-    status: 200,
-    description:
-      "Delivery cost updated successfully. Customer will be notified.",
-    type: CheckoutResponseDto,
-  })
-  public async updateDeliveryCost(
-    @Param("id") id: string,
-    @Body() data: UpdateDeliveryCostDto,
-  ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.updateDeliveryCost(id, data);
-    return {
-      message: "Delivery cost updated successfully. Customer will be notified.",
       data: response,
     };
   }
@@ -383,7 +361,7 @@ export class CheckoutController {
   })
   public async guestInitializeTransaction(
     @Body() data: GuestInitializeTransactionDto,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<InitializeTransactionResponseDto> {
     const response =
       await this.checkoutService.guestInitializeTransaction(data);
     return {
@@ -467,7 +445,7 @@ export class CheckoutController {
   public async payForGuestOrder(
     @Param("saleId") saleId: string,
     @Query() query: GetOrderStatusDto,
-  ): Promise<IInitializeTransactionResponse<IInitalizeTransactionData>> {
+  ): Promise<InitializeTransactionResponseDto> {
     const response = await this.checkoutService.payForGuestOrder(
       saleId,
       query.email,
@@ -476,5 +454,63 @@ export class CheckoutController {
       message: "Payment initialized successfully",
       ...response,
     };
+  }
+
+  @Post("webhook")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Paystack webhook for payment notifications",
+    description:
+      "Webhook endpoint to receive payment notifications from Paystack. Validates signature and processes successful payments.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Webhook processed successfully",
+    schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          example: "ok",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Invalid signature",
+  })
+  public async handleWebhook(
+    @Req() req: RawBodyRequest<Request>,
+  ): Promise<{ status: string }> {
+    const signature = req.headers["x-paystack-signature"] as string;
+
+    if (!signature) {
+      throw new UnauthorizedException("Missing signature");
+    }
+
+    // Get the raw body for signature verification
+    const rawBody = req.rawBody
+      ? req.rawBody.toString("utf8")
+      : JSON.stringify(req.body);
+
+    const hash = crypto
+      .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
+      .update(rawBody)
+      .digest("hex");
+
+    if (hash !== signature) {
+      throw new UnauthorizedException("Invalid signature");
+    }
+
+    const event = req.body as PaystackWebhookEvent;
+
+    if (event.event === "charge.success") {
+      const reference = event.data.reference;
+
+      await this.checkoutService.verifyAndMarkPaid(reference);
+    }
+
+    return { status: "ok" };
   }
 }

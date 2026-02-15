@@ -32,6 +32,8 @@ export class CustomerManagementService {
       if (customer && !customer.user) {
         // Link the existing customer to the user
         customer.user = user;
+        customer.name = user.name; // Update name to match user
+        customer.phone = user.phoneNumber; // Update phone if needed
       } else if (!customer) {
         // Create new customer
         customer = new Customer();
@@ -73,6 +75,9 @@ export class CustomerManagementService {
       | GuestInitializeTransactionDto
       | GuestPlaceOrderDto,
   ): void {
+    if ("name" in data) {
+      customer.name = data.name;
+    }
     customer.country = data.country;
     customer.region = data.region;
     customer.city = data.city;
