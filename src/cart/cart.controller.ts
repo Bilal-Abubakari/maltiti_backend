@@ -168,6 +168,8 @@ export class CartController {
     @CurrentUser() user: User,
     @Body() addCart: AddCartDto,
   ): Promise<IResponse<CartItemDto>> {
+    console.log("Here your cart", addCart);
+    console.log("Here your user", user);
     const response = await this.cartService.addToCart(user.id, addCart);
     return {
       message: "Product added to cart successfully",

@@ -47,6 +47,7 @@ export class CartService {
 
     return {
       id: cart.id,
+      userId: cart.user ? cart.user.id : null,
       product,
       quantity: cart.quantity,
       createdAt: cart.createdAt,
@@ -60,6 +61,7 @@ export class CartService {
       user: { id: user.id },
       checkout: IsNull(),
     });
+    console.log("cartAndCount", cartAndCount);
     let total = 0;
     cartAndCount[0].forEach(
       cart => (total += cart.quantity * cart.product.retail),
@@ -98,7 +100,7 @@ export class CartService {
       );
     }
 
-    const cartUser = await cartItem.user;
+    const cartUser = cartItem.user;
     if (cartUser.id !== user.id) {
       throw new HttpException(
         {
@@ -123,6 +125,8 @@ export class CartService {
   ): Promise<CartItemDto> {
     const { user, product, existingCart } = await this.findCart(id, addCart.id);
 
+    console.log("existingCart", existingCart);
+
     if (existingCart) {
       existingCart.quantity += addCart.quantity || 1;
       const updatedCart = await this.cartRepository.save(existingCart);
@@ -135,6 +139,7 @@ export class CartService {
     cart.quantity = addCart.quantity || 1;
 
     const savedCart = await this.cartRepository.save(cart);
+    console.log("savedCart", savedCart);
     return this.transformCartToDto(savedCart);
   }
 
@@ -159,7 +164,7 @@ export class CartService {
         HttpStatus.NOT_FOUND,
       );
     }
-    const cartUser = await cart.user;
+    const cartUser = cart.user;
     if (cartUser.id !== user.id) {
       throw new HttpException(
         {

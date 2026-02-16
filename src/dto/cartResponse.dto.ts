@@ -130,6 +130,13 @@ export class CartItemDto {
   public id: string;
 
   @ApiProperty({
+    description: "User ID",
+    example: "660e8400-e29b-41d4-a716-446655440000",
+    nullable: true,
+  })
+  public userId: string | null;
+
+  @ApiProperty({
     description: "Product details",
     type: CartProductDto,
   })
