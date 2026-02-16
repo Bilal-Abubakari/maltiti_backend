@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull } from "typeorm";
+import { Repository, IsNull, Between } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
 import { Product } from "../entities/Product.entity";
 import {
@@ -52,7 +52,6 @@ export class SalesReportsService {
       includeTrends,
     } = queryDto;
 
-    // Build base query
     const queryBuilder = this.saleRepository
       .createQueryBuilder("sale")
       .leftJoinAndSelect("sale.customer", "customer")
@@ -61,7 +60,6 @@ export class SalesReportsService {
         paymentStatus: PaymentStatus.PAID,
       });
 
-    // Apply date filters
     if (fromDate && toDate) {
       queryBuilder.andWhere("sale.createdAt BETWEEN :fromDate AND :toDate", {
         fromDate: new Date(fromDate),
@@ -71,14 +69,12 @@ export class SalesReportsService {
 
     const sales = await queryBuilder.getMany();
 
-    // Calculate metrics
     const metrics = await this.calculateSalesMetrics(
       sales,
       category,
       productId,
     );
 
-    // Generate time series if aggregation specified
     let timeSeries: TimeSeriesDataPoint[] | undefined;
     if (aggregation && fromDate && toDate) {
       timeSeries = await this.generateSalesTimeSeries(
@@ -89,7 +85,6 @@ export class SalesReportsService {
       );
     }
 
-    // Calculate trends if requested
     let trends;
     if (includeTrends && fromDate && toDate) {
       trends = await this.calculateSalesTrends(
@@ -443,7 +438,26 @@ export class SalesReportsService {
     };
   }
 
-  // ============ PRIVATE HELPER METHODS ============
+  /**
+   * Get daily sales summary for a specific date
+   */
+  public async getDailySalesSummary(date: Date): Promise<SalesMetrics> {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const sales = await this.saleRepository.find({
+      where: {
+        createdAt: Between(startOfDay, endOfDay),
+        deletedAt: IsNull(),
+        paymentStatus: PaymentStatus.PAID,
+      },
+      relations: ["checkout"],
+    });
+
+    return this.calculateSalesMetrics(sales);
+  }
 
   /**
    * Calculate sales metrics from sales array

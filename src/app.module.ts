@@ -24,6 +24,7 @@ import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { APP_GUARD } from "@nestjs/core";
 import { NotificationModule } from "./notification/notification.module";
 import { ReviewModule } from "./review/review.module";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { ReviewModule } from "./review/review.module";
     ContactModule,
     NotificationModule,
     ReviewModule,
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [

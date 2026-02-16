@@ -15,6 +15,7 @@ import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
 import { AuditLog } from "../entities/AuditLog.entity";
 import { Review } from "../entities/Review.entity";
+import { DailyReportLog } from "../entities/DailyReportLog.entity";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { Review } from "../entities/Review.entity";
           Customer,
           AuditLog,
           Review,
+          DailyReportLog,
         ],
         synchronize: false,
         autoLoadEntities: false,
