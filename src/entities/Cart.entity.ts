@@ -21,7 +21,7 @@ export class Cart {
   @PrimaryGeneratedColumn("uuid")
   public id: string;
 
-  @ManyToOne(() => User, { lazy: true, onDelete: "CASCADE", nullable: true })
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "userId" })
   public user: User | null;
 
