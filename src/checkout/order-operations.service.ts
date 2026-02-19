@@ -152,7 +152,6 @@ export class OrderOperationsService {
       }
       return this.checkoutRepository.save(checkout);
     } catch (error) {
-      console.log("Error confirming guest payment:", error);
       this.logger.error("Error confirming guest payment", error);
       throw new HttpException(
         {

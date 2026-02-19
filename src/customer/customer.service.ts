@@ -58,7 +58,6 @@ export class CustomerService {
   }
 
   public async findOneCustomer(id: string): Promise<Customer> {
-    console.log("Id here", id);
     const customer = await this.customerRepository.findOne({
       where: { id },
       relations: ["sales", "user"],
@@ -114,7 +113,6 @@ export class CustomerService {
   }
 
   public async findCustomerByUser(user: User): Promise<Customer | null> {
-    console.log("User here", user);
     return this.customerRepository.findOne({
       where: { user: { id: user.id } },
       relations: ["user"],

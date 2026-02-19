@@ -233,7 +233,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: MALTITI_DOMAIN,
+      ...(process.env.NODE_ENV === "production" && { domain: MALTITI_DOMAIN }),
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -372,7 +372,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: MALTITI_DOMAIN,
+      ...(process.env.NODE_ENV === "production" && { domain: MALTITI_DOMAIN }),
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
@@ -424,7 +424,7 @@ export class AuthenticationController {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain: MALTITI_DOMAIN,
+      ...(process.env.NODE_ENV === "production" && { domain: MALTITI_DOMAIN }),
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 

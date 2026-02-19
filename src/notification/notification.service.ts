@@ -30,7 +30,7 @@ export class NotificationService {
         },
       );
     } catch (error) {
-      console.log(error, "error");
+      console.error(error, "error");
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,

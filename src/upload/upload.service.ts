@@ -90,7 +90,6 @@ export class UploadService {
 
       return response.data.url;
     } catch (error) {
-      console.log("Error here:", error);
       this.logger.error(`Error: ${error.message}`);
       throw new InternalServerErrorException("Failed to upload file");
     }
