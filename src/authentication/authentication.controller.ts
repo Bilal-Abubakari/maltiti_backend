@@ -48,6 +48,7 @@ import {
   PasswordResetEmailResponseDto,
   PasswordResetResponseDto,
   PhoneVerificationResponseDto,
+  RefreshTokenResponseDto,
   ResendVerificationResponseDto,
   ValidationErrorResponseDto,
 } from "../dto/authResponse.dto";
@@ -391,8 +392,14 @@ export class AuthenticationController {
   @ApiResponse({
     status: 200,
     description:
-      "Tokens refreshed successfully, accessToken returned in body, refreshToken set in cookie (1day)",
-    type: String,
+      "Tokens refreshed successfully. Returns new access token in response body and sets new refresh token in HTTP-only cookie.",
+    type: RefreshTokenResponseDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      "Tokens refreshed successfully. Returns new access token in response body and sets new refresh token in HTTP-only cookie.",
+    type: RefreshTokenResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -408,7 +415,7 @@ export class AuthenticationController {
   public async refreshToken(
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<string> {
+  ): Promise<IResponse<string>> {
     const refreshToken = request.cookies?.refreshToken;
 
     if (!refreshToken) {
@@ -428,7 +435,10 @@ export class AuthenticationController {
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
-    return accessToken;
+    return {
+      message: "Tokens refreshed successfully",
+      data: accessToken,
+    };
   }
 
   @ApiOperation({
