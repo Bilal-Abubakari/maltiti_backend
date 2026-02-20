@@ -38,6 +38,22 @@ export class LoginResponseDto {
 }
 
 /**
+ * Refresh token response with new access token
+ */
+export class RefreshTokenResponseDto {
+  @ApiProperty({
+    description: "Success message",
+    example: "Tokens refreshed successfully",
+  })
+  public message: string;
+
+  @ApiProperty({
+    description: "New access token for authentication",
+  })
+  public data: string;
+}
+
+/**
  * Email verification response
  */
 export class EmailVerificationResponseDto {

@@ -22,46 +22,17 @@ export class CartService {
     private readonly productsService: ProductsService,
   ) {}
 
-  /**
-   * Transform Cart entity to CartItemDto
-   */
-  private transformCartToDto(cart: Cart): CartItemDto {
-    const product: CartProductDto = {
-      id: cart.product.id,
-      sku: cart.product.sku,
-      name: cart.product.name,
-      category: cart.product.category,
-      description: cart.product.description,
-      status: cart.product.status,
-      images: cart.product.images,
-      image: cart.product.image,
-      wholesale: cart.product.wholesale,
-      retail: cart.product.retail,
-      inBoxPrice: cart.product.inBoxPrice,
-      quantityInBox: cart.product.quantityInBox,
-      favorite: cart.product.favorite,
-      rating: cart.product.rating,
-      reviews: cart.product.reviews,
-      weight: cart.product.weight,
-    };
-
-    return {
-      id: cart.id,
-      userId: cart.user ? cart.user.id : null,
-      product,
-      quantity: cart.quantity,
-      createdAt: cart.createdAt,
-      updatedAt: cart.updatedAt,
-    };
-  }
-
   public async getCustomerCart(id: string): Promise<CartDataDto> {
     const user = await this.userService.findOne(id);
-    const cartAndCount = await this.cartRepository.findAndCountBy({
-      user: { id: user.id },
-      checkout: IsNull(),
+    const cartAndCount = await this.cartRepository.findAndCount({
+      where: {
+        user: { id: user.id },
+        checkout: IsNull(),
+      },
+      order: {
+        updatedAt: "DESC",
+      },
     });
-    console.log("cartAndCount", cartAndCount);
     let total = 0;
     cartAndCount[0].forEach(
       cart => (total += cart.quantity * cart.product.retail),
@@ -125,8 +96,6 @@ export class CartService {
   ): Promise<CartItemDto> {
     const { user, product, existingCart } = await this.findCart(id, addCart.id);
 
-    console.log("existingCart", existingCart);
-
     if (existingCart) {
       existingCart.quantity += addCart.quantity || 1;
       const updatedCart = await this.cartRepository.save(existingCart);
@@ -139,7 +108,6 @@ export class CartService {
     cart.quantity = addCart.quantity || 1;
 
     const savedCart = await this.cartRepository.save(cart);
-    console.log("savedCart", savedCart);
     return this.transformCartToDto(savedCart);
   }
 
@@ -245,9 +213,14 @@ export class CartService {
 
   // Guest cart methods
   public async getGuestCart(sessionId: string): Promise<CartDataDto> {
-    const cartAndCount = await this.cartRepository.findAndCountBy({
-      sessionId: sessionId,
-      checkout: IsNull(),
+    const cartAndCount = await this.cartRepository.findAndCount({
+      where: {
+        sessionId: sessionId,
+        checkout: IsNull(),
+      },
+      order: {
+        updatedAt: "DESC",
+      },
     });
     let total = 0;
     cartAndCount[0].forEach(
@@ -417,7 +390,6 @@ export class CartService {
 
     for (const guestItem of guestCartItems) {
       try {
-        // Check if user already has this product in their cart
         const existingUserCart = await this.cartRepository.findOne({
           where: {
             product: { id: guestItem.product.id },
@@ -444,12 +416,44 @@ export class CartService {
       }
     }
 
-    // Delete any remaining guest cart items for this session
     await this.cartRepository.delete({
       sessionId: sessionId,
       checkout: IsNull(),
     });
 
     return { syncedCount, skippedCount };
+  }
+
+  /**
+   * Transform Cart entity to CartItemDto
+   */
+  private transformCartToDto(cart: Cart): CartItemDto {
+    const product: CartProductDto = {
+      id: cart.product.id,
+      sku: cart.product.sku,
+      name: cart.product.name,
+      category: cart.product.category,
+      description: cart.product.description,
+      status: cart.product.status,
+      images: cart.product.images,
+      image: cart.product.image,
+      wholesale: cart.product.wholesale,
+      retail: cart.product.retail,
+      inBoxPrice: cart.product.inBoxPrice,
+      quantityInBox: cart.product.quantityInBox,
+      favorite: cart.product.favorite,
+      rating: cart.product.rating,
+      reviews: cart.product.reviews,
+      weight: cart.product.weight,
+    };
+
+    return {
+      id: cart.id,
+      userId: cart.user ? cart.user.id : null,
+      product,
+      quantity: cart.quantity,
+      createdAt: cart.createdAt,
+      updatedAt: cart.updatedAt,
+    };
   }
 }

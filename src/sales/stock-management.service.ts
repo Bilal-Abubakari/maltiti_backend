@@ -21,7 +21,6 @@ export class StockManagementService {
   public async validateAndDeductStock(
     lineItems: SaleLineItem[],
   ): Promise<void> {
-    console.log("Validating and deducting stock");
     for (const item of lineItems) {
       let totalDeducted = 0;
       for (const alloc of item.batchAllocations) {

@@ -138,7 +138,6 @@ export class LineItemManagementService {
     lineItems: SaleLineItem[],
     queryRunner?: QueryRunner,
   ): Promise<void> {
-    console.log("Validating and deducting stock");
     for (const item of lineItems) {
       await this.processBatchAllocations(item, queryRunner);
     }

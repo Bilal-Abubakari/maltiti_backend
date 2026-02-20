@@ -229,8 +229,6 @@ export class AuthenticationService {
     const differenceInSeconds = difference / 1000;
     const differenceInMinutes = differenceInSeconds / 60;
 
-    console.log("Difference in minutes: ", differenceInMinutes);
-
     return differenceInMinutes > 60;
   }
 }
