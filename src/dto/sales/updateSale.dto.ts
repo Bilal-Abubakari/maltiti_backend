@@ -68,6 +68,11 @@ export class UpdateSaleDto {
   @IsEnum(PaymentStatus)
   public paymentStatus?: PaymentStatus;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  public deliveryFee?: number;
+
   @ApiPropertyOptional({ type: [UpdateSaleLineItemDto] })
   @IsOptional()
   @IsArray()

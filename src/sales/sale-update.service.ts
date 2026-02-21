@@ -380,6 +380,15 @@ export class SaleUpdateService {
       sale.orderStatus = updateDto.orderStatus;
     }
 
+    if (updateDto.deliveryFee) {
+      if (sale.paymentStatus !== PaymentStatus.AWAITING_DELIVERY) {
+        throw new BadRequestException(
+          "Delivery fee can only be updated if the current payment status is awaiting_delivery",
+        );
+      }
+      sale.deliveryFee = updateDto.deliveryFee;
+    }
+
     if (updateDto.paymentStatus) {
       sale.paymentStatus = updateDto.paymentStatus;
     }
