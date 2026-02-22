@@ -4,7 +4,8 @@
 
 export interface TimeSeriesDataPoint {
   date: string;
-  value: number;
+  revenue: number;
+  salesCount: number;
   label?: string;
 }
 

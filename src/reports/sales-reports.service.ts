@@ -548,10 +548,13 @@ export class SalesReportsService {
     category?: string,
     productId?: string,
   ): Promise<TimeSeriesDataPoint[]> {
-    const dataMap = new Map<string, number>();
+    const dataMap = new Map<string, { revenue: number; count: number }>();
 
     for (const sale of sales) {
       const dateKey = this.getDateKey(sale.createdAt, aggregation);
+
+      let saleRevenue = 0;
+      let hasQualifyingItem = false;
 
       for (const item of sale.lineItems) {
         if (productId && item.productId !== productId) continue;
@@ -563,13 +566,25 @@ export class SalesReportsService {
           if (product?.category !== category) continue;
         }
 
+        hasQualifyingItem = true;
         const revenue = item.finalPrice * item.requestedQuantity;
-        dataMap.set(dateKey, (dataMap.get(dateKey) || 0) + revenue);
+        saleRevenue += revenue;
+      }
+
+      if (hasQualifyingItem) {
+        const existing = dataMap.get(dateKey) || { revenue: 0, count: 0 };
+        existing.revenue += saleRevenue;
+        existing.count += 1;
+        dataMap.set(dateKey, existing);
       }
     }
 
     return Array.from(dataMap.entries())
-      .map(([date, value]) => ({ date, value }))
+      .map(([date, { revenue, count }]) => ({
+        date,
+        revenue,
+        salesCount: count,
+      }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
