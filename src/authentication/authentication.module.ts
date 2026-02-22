@@ -23,6 +23,7 @@ import { Product } from "../entities/Product.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
+import { ProductsModule } from "../products/products.module";
 
 @Global()
 @Module({
@@ -42,6 +43,7 @@ import { Customer } from "../entities/Customer.entity";
       secret: process.env.JWT_SECRET || "secret",
       signOptions: { expiresIn: "30m" },
     }),
+    ProductsModule,
   ],
   controllers: [AuthenticationController],
   providers: [

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Price Update Notification - Maltiti A. Enterprise Ltd</title>
+    <style>
+        /* Reset styles */
+        body, table, td, a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base styles */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333333;
+        }
+
+        /* Container styles */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header styles */
+        .header {
+            background-color: #ffffff;
+            padding: 35px 25px 15px;
+            text-align: center;
+            border-bottom: 3px solid #0F6938;
+        }
+
+        .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+
+        /* Content styles */
+        .content {
+            padding: 40px 30px;
+        }
+
+        .badge {
+            display: inline-block;
+            background-color: #ff9800;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .heading {
+            color: #0F6938;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            line-height: 1.3;
+        }
+
+        .greeting {
+            color: #333333;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 25px 0;
+        }
+
+        .message {
+            color: #555555;
+            font-size: 15px;
+            line-height: 1.7;
+            margin: 0 0 30px 0;
+        }
+
+        /* Product card styles */
+        .product-card {
+            background-color: #f8faf9;
+            border: 2px solid #e8ede8;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .product-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+
+        .product-image-small {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-name {
+            color: #0F6938;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+        }
+
+        .product-category {
+            display: inline-block;
+            background-color: #e8f5ee;
+            color: #0F6938;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        /* Price comparison styles */
+        .price-comparison {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .price-change-row {
+            margin: 20px 0;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .price-change-row:last-child {
+            border-bottom: none;
+        }
+
+        .price-type-label {
+            color: #777777;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 12px 0;
+            font-weight: 600;
+        }
+
+        .price-comparison-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .price-box {
+            flex: 1;
+            text-align: center;
+        }
+
+        .price-label {
+            color: #777777;
+            font-size: 12px;
+            margin: 0 0 8px 0;
+        }
+
+        .old-price {
+            color: #999999;
+            font-size: 18px;
+            text-decoration: line-through;
+            font-weight: 600;
+        }
+
+        .new-price {
+            color: #0F6938;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .price-increase {
+            color: #d32f2f;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .price-arrow {
+            color: #0F6938;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .price-arrow-up {
+            color: #d32f2f;
+        }
+
+        .price-difference {
+            margin-top: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .price-decrease-badge {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .price-increase-badge {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        /* Alert box styles */
+        .alert-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ff9800;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .alert-box p {
+            margin: 0;
+            color: #555555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .alert-box strong {
+            color: #d68000;
+        }
+
+        /* Success box for price decrease */
+        .success-box {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .success-box p {
+            margin: 0;
+            color: #555555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .success-box strong {
+            color: #2e7d32;
+        }
+
+        /* Button styles */
+        .button-container {
+            margin: 35px 0;
+            text-align: center;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 16px 48px;
+            background-color: #0F6938;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(15, 105, 56, 0.2);
+        }
+
+        .cta-button:hover {
+            background-color: #0a4d28;
+        }
+
+        /* Footer styles */
+        .footer {
+            background-color: #f8faf9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-text {
+            color: #777777;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 10px 0;
+        }
+
+        .footer-link {
+            color: #0F6938;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive styles */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+            }
+
+            .header, .content, .footer {
+                padding: 25px 20px !important;
+            }
+
+            .heading {
+                font-size: 24px !important;
+            }
+
+            .product-name {
+                font-size: 18px !important;
+            }
+
+            .logo {
+                max-width: 150px !important;
+            }
+
+            .cta-button {
+                padding: 14px 36px !important;
+                font-size: 15px !important;
+            }
+
+            .product-card {
+                padding: 20px !important;
+            }
+
+            .product-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .product-image-small {
+                margin: 0 0 15px 0;
+            }
+
+            .price-comparison-box {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .price-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="email-container">
+                    <!-- Header -->
+                    <tr>
+                        <td class="header">
+                            <img src="https://res.cloudinary.com/deyszqsgf/image/upload/v1764454227/maltiti-logo_xusduy.png"
+                                 alt="Maltiti A. Enterprise Ltd Logo"
+                                 class="logo"
+                                 width="100">
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td class="content">
+                            <div style="text-align: center;">
+                                <span class="badge">📢 Price Update</span>
+                            </div>
+
+                            <h1 class="heading">Price Change Notification</h1>
+
+                            <p class="greeting">Hello <strong>{{customerName}}</strong>,</p>
+
+                            <p class="message">
+                                We wanted to inform you about a price update for one of our products.
+                                As a valued customer, transparency is important to us, and we're committed to keeping you informed
+                                about any changes that may affect your purchasing decisions.
+                            </p>
+
+                            <!-- Product Card -->
+                            <div class="product-card">
+                                <div class="product-header">
+                                    {{#if productImage}}
+                                    <img src="{{productImage}}"
+                                         alt="{{productName}}"
+                                         class="product-image-small">
+                                    {{/if}}
+                                    <div class="product-info">
+                                        <h2 class="product-name">{{productName}}</h2>
+                                        {{#if productCategory}}
+                                        <span class="product-category">{{productCategory}}</span>
+                                        {{/if}}
+                                    </div>
+                                </div>
+
+                                <!-- Price Comparisons -->
+                                <div class="price-comparison">
+                                    {{#if wholesalePriceChanged}}
+                                    <div class="price-change-row">
+                                        <p class="price-type-label">Wholesale Price</p>
+                                        <div class="price-comparison-box">
+                                            <div class="price-box">
+                                                <p class="price-label">Previous Price</p>
+                                                <p class="old-price">GHS {{oldWholesalePrice}}</p>
+                                            </div>
+                                            <div class="price-arrow {{#if wholesalePriceIncreased}}price-arrow-up{{/if}}">
+                                                {{#if wholesalePriceIncreased}}↑{{else}}↓{{/if}}
+                                            </div>
+                                            <div class="price-box">
+                                                <p class="price-label">New Price</p>
+                                                <p class="{{#if wholesalePriceIncreased}}price-increase{{else}}new-price{{/if}}">
+                                                    GHS {{newWholesalePrice}}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {{#if wholesaleDifference}}
+                                        <div class="price-difference {{#if wholesalePriceIncreased}}price-increase-badge{{else}}price-decrease-badge{{/if}}">
+                                            {{#if wholesalePriceIncreased}}+{{/if}}GHS {{wholesaleDifference}}
+                                            ({{#if wholesalePriceIncreased}}+{{/if}}{{wholesalePercentage}}%)
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                    {{/if}}
+
+                                    {{#if retailPriceChanged}}
+                                    <div class="price-change-row">
+                                        <p class="price-type-label">Retail Price</p>
+                                        <div class="price-comparison-box">
+                                            <div class="price-box">
+                                                <p class="price-label">Previous Price</p>
+                                                <p class="old-price">GHS {{oldRetailPrice}}</p>
+                                            </div>
+                                            <div class="price-arrow {{#if retailPriceIncreased}}price-arrow-up{{/if}}">
+                                                {{#if retailPriceIncreased}}↑{{else}}↓{{/if}}
+                                            </div>
+                                            <div class="price-box">
+                                                <p class="price-label">New Price</p>
+                                                <p class="{{#if retailPriceIncreased}}price-increase{{else}}new-price{{/if}}">
+                                                    GHS {{newRetailPrice}}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {{#if retailDifference}}
+                                        <div class="price-difference {{#if retailPriceIncreased}}price-increase-badge{{else}}price-decrease-badge{{/if}}">
+                                            {{#if retailPriceIncreased}}+{{/if}}GHS {{retailDifference}}
+                                            ({{#if retailPriceIncreased}}+{{/if}}{{retailPercentage}}%)
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                    {{/if}}
+
+                                    {{#if inBoxPriceChanged}}
+                                    <div class="price-change-row">
+                                        <p class="price-type-label">Box Price ({{quantityInBox}} units)</p>
+                                        <div class="price-comparison-box">
+                                            <div class="price-box">
+                                                <p class="price-label">Previous Price</p>
+                                                <p class="old-price">GHS {{oldInBoxPrice}}</p>
+                                            </div>
+                                            <div class="price-arrow {{#if inBoxPriceIncreased}}price-arrow-up{{/if}}">
+                                                {{#if inBoxPriceIncreased}}↑{{else}}↓{{/if}}
+                                            </div>
+                                            <div class="price-box">
+                                                <p class="price-label">New Price</p>
+                                                <p class="{{#if inBoxPriceIncreased}}price-increase{{else}}new-price{{/if}}">
+                                                    GHS {{newInBoxPrice}}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {{#if inBoxDifference}}
+                                        <div class="price-difference {{#if inBoxPriceIncreased}}price-increase-badge{{else}}price-decrease-badge{{/if}}">
+                                            {{#if inBoxPriceIncreased}}+{{/if}}GHS {{inBoxDifference}}
+                                            ({{#if inBoxPriceIncreased}}+{{/if}}{{inBoxPercentage}}%)
+                                        </div>
+                                        {{/if}}
+                                    </div>
+                                    {{/if}}
+                                </div>
+                            </div>
+
+                            {{#if priceDecreased}}
+                            <!-- Success box for price decrease -->
+                            <div class="success-box">
+                                <p>
+                                    <strong>🎉 Great News!</strong><br>
+                                    We're excited to offer you this product at a lower price! This is a great opportunity to stock up
+                                    and save on your favorite products.
+                                </p>
+                            </div>
+                            {{else}}
+                            <!-- Alert box for price increase -->
+                            <div class="alert-box">
+                                <p>
+                                    <strong>📋 Important Information:</strong><br>
+                                    This price adjustment reflects changes in market conditions and production costs.
+                                    We remain committed to providing you with the highest quality products at competitive prices.
+                                </p>
+                            </div>
+                            {{/if}}
+
+                            <p class="message">
+                                {{#if effectiveDate}}
+                                These new prices are effective from <strong>{{effectiveDate}}</strong>.
+                                {{else}}
+                                These new prices are now in effect.
+                                {{/if}}
+                                We encourage you to review the changes and place your orders accordingly.
+                            </p>
+
+                            <!-- CTA Button -->
+                            <div class="button-container">
+                                <a href="{{productUrl}}"
+                                   class="cta-button"
+                                   target="_blank"
+                                   role="button"
+                                   aria-label="View product details">
+                                    View Product Details
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <p class="footer-text">
+                                Have questions about this price change? Our team is here to help!
+                            </p>
+                          <p class="footer-text">
+                            Contact us at
+                            <a href="mailto:support@maltitiaenterprise.com" class="footer-link">support@maltitiaenterprise.com</a>
+                            or call us at <a href="tel: +233557309018" class="footer-link">+233 557 309 018</a>
+                          </p>
+
+                            <p class="footer-text" style="margin-top: 20px;">
+                                &copy; {{currentYear}} Maltiti A. Enterprise Ltd. All rights reserved.
+                            </p>
+
+                            <p class="footer-text" style="font-size: 11px; color: #999999; margin-top: 15px;">
+                                You're receiving this email because you're a valued customer of Maltiti A. Enterprise Ltd.
+                                <br>
+                                <a href="{{unsubscribeUrl}}" style="color: #999999; text-decoration: underline;">Unsubscribe from price updates</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
