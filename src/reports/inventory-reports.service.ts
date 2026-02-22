@@ -382,7 +382,7 @@ export class InventoryReportsService {
 
     for (const sale of sales) {
       for (const item of sale.lineItems) {
-        for (const allocation of item.batchAllocations) {
+        for (const allocation of item.batchAllocations ?? []) {
           if (allocation.batchId === batchId) {
             totalSold += allocation.quantity;
           }
