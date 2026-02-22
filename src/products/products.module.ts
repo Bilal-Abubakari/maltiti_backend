@@ -14,6 +14,13 @@ import { AuditInterceptor } from "../interceptors/audit.interceptor";
 import { Sale } from "../entities/Sale.entity";
 import { Cart } from "../entities/Cart.entity";
 import { Customer } from "../entities/Customer.entity";
+import { User } from "../entities/User.entity";
+import { NotificationModule } from "../notification/notification.module";
+import { ProductCrudService } from "./product-crud.service";
+import { ProductRecommendationService } from "./product-recommendation.service";
+import { ProductExportService } from "./product-export.service";
+import { ProductNotificationService } from "./product-notification.service";
+import { ProductSearchService } from "./product-search.service";
 
 @Module({
   imports: [
@@ -24,12 +31,27 @@ import { Customer } from "../entities/Customer.entity";
       Sale,
       Cart,
       Customer,
+      User,
     ]),
     IngredientsModule,
+    NotificationModule,
   ],
-  exports: [TypeOrmModule, ProductsService],
+  exports: [
+    TypeOrmModule,
+    ProductsService,
+    ProductCrudService,
+    ProductRecommendationService,
+    ProductExportService,
+    ProductNotificationService,
+    ProductSearchService,
+  ],
   providers: [
     ProductsService,
+    ProductCrudService,
+    ProductRecommendationService,
+    ProductExportService,
+    ProductNotificationService,
+    ProductSearchService,
     IngredientsService,
     BatchesService,
     {
