@@ -250,11 +250,10 @@ export class SaleResponseDto {
   public deliveryFee?: number;
 
   @ApiPropertyOptional({
-    description:
-      "Customer confirmation of delivery (null for walk-in customers)",
-    example: true,
+    description: "Date when delivery was confirmed (null if not confirmed)",
+    example: "2023-10-01T12:00:00Z",
   })
-  public confirmedDelivery?: boolean;
+  public confirmedDeliveryDate?: Date;
 
   @ApiPropertyOptional({
     description: "Total payable amount (amount + deliveryFee)",

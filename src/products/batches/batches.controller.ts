@@ -26,6 +26,7 @@ import { CreateBatchDto } from "../../dto/createBatch.dto";
 import { BatchQueryDto } from "../../dto/batchQuery.dto";
 import { BatchResponseDto } from "../../dto/batchResponse.dto";
 import { Batch } from "../../entities/Batch.entity";
+import { GetBatchesByProductsDto } from "../../dto/getBatchesByProducts.dto";
 
 @ApiTags("Batches")
 @Controller("products/batches")
@@ -96,6 +97,36 @@ export class BatchesController {
     return {
       message: "Batches loaded successfully",
       data: result,
+    };
+  }
+
+  @Get("products")
+  @ApiOperation({
+    summary: "Get batches for multiple products",
+    description:
+      "Retrieve all batches associated with the provided product IDs",
+  })
+  @ApiQuery({ type: GetBatchesByProductsDto })
+  @ApiResponse({
+    status: 200,
+    description: "Batches retrieved successfully",
+    type: [BatchResponseDto],
+  })
+  @ApiResponse({
+    status: 404,
+    description: "No products found for the provided IDs",
+  })
+  @ApiResponse({ status: 400, description: "Invalid product IDs" })
+  public async getBatchesByProducts(
+    @Query() query: GetBatchesByProductsDto,
+  ): Promise<IResponse<Batch[]>> {
+    const batches = await this.batchesService.getBatchesByProducts(
+      query.productIds,
+    );
+
+    return {
+      message: "Batches for products loaded successfully",
+      data: batches,
     };
   }
 

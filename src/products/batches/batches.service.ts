@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { FindOptionsWhere, IsNull, Repository } from "typeorm";
+import { FindOptionsWhere, IsNull, Repository, In } from "typeorm";
 import { Batch } from "../../entities/Batch.entity";
 import { CreateBatchDto } from "../../dto/createBatch.dto";
 import { BatchQueryDto } from "../../dto/batchQuery.dto";
@@ -194,6 +194,28 @@ export class BatchesService {
 
     return this.batchRepository.find({
       where: { product: { id: productId }, deletedAt: IsNull() },
+      relations: ["product"],
+      select: {
+        product: {
+          id: true,
+          name: true,
+        },
+      },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  public async getBatchesByProducts(productIds: string[]): Promise<Batch[]> {
+    const products = await this.productRepository.find({
+      where: { id: In(productIds) },
+    });
+
+    if (products.length === 0) {
+      throw new NotFoundException(`No products found for the provided IDs`);
+    }
+
+    return this.batchRepository.find({
+      where: { product: { id: In(productIds) }, deletedAt: IsNull() },
       relations: ["product"],
       select: {
         product: {

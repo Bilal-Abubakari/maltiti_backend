@@ -225,7 +225,7 @@ export class SaleUpdateService {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
     }
 
-    sale.confirmedDelivery = confirmed;
+    sale.confirmedDeliveryDate = confirmed ? new Date() : null;
     const savedSale = await this.saleRepository.save(sale);
 
     return transformSaleToResponseDto(savedSale);
