@@ -38,8 +38,8 @@ export class Sale extends Audit {
   @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
   public deliveryFee: number;
 
-  @Column({ type: "boolean", nullable: true, default: null })
-  public confirmedDelivery: boolean;
+  @Column({ type: "timestamp", nullable: true, default: null })
+  public confirmedDeliveryDate: Date;
 
   @Column({ type: "json" })
   public lineItems: SaleLineItem[];

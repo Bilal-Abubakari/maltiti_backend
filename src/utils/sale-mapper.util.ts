@@ -59,7 +59,7 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
     paymentStatus: sale.paymentStatus,
     amount: sale.amount,
     deliveryFee: sale.deliveryFee,
-    confirmedDelivery: sale.confirmedDelivery,
+    confirmedDeliveryDate: sale.confirmedDeliveryDate,
     total:
       (sale.amount ?? 0) + (sale.deliveryFee ?? 0) > 0
         ? (sale.amount ?? 0) + (sale.deliveryFee ?? 0)
