@@ -32,7 +32,6 @@ export class NotificationController {
     @CurrentUser() user: User,
     @Query() query: GetNotificationsDto,
   ): Promise<PaginatedNotificationsResponseDto> {
-    console.log("user here", user);
     return this.notificationService.getUserNotifications(
       user.id,
       query.page,
