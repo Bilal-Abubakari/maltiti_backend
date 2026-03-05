@@ -20,6 +20,7 @@ import { VerifyPhoneDto } from "../dto/UserInfo.dto";
 import axios from "axios";
 import { ForgotPasswordDto, ResetPasswordDto } from "../dto/forgotPassword.dto";
 import { NotificationService } from "../notification/notification.service";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
 import { Role } from "../enum/role.enum";
 import { CreateAdminDto } from "../dto/createAdmin.dto";
 import { generateRandomPassword } from "../utils/passwordGenerator";
@@ -38,6 +39,7 @@ export class UsersService {
     private readonly verificationRepository: Repository<Verification>,
     private readonly mailService: MailerService,
     private readonly notificationService: NotificationService,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
     private readonly configService: ConfigService,
     private readonly uploadService: UploadService,
   ) {}
@@ -264,6 +266,23 @@ export class UsersService {
       `${this.configService.get<string>("APP_URL")}/${resetLink}`,
       "Reset Password",
     );
+
+    // // Send in-app notification
+    try {
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 30); // 30 minutes expiry
+      await this.notificationIntegrationService.notifyPasswordResetRequested(
+        user.id,
+        token,
+        expiresAt.toISOString(),
+      );
+    } catch (error) {
+      console.error(
+        "Failed to send password reset in-app notification:",
+        error,
+      );
+    }
+
     return user;
   }
 
@@ -543,5 +562,24 @@ export class UsersService {
     await this.sendVerificationEmail(user.email, user.name, idToken);
 
     return user;
+  }
+
+  /**
+   * Find all admin users
+   */
+  public async findAdminUsers(): Promise<User[]> {
+    return this.userRepository.find({
+      where: { userType: Role.Admin },
+    });
+  }
+
+  /**
+   * Find users by emails
+   */
+  public async findUsersByEmails(emails: string[]): Promise<User[]> {
+    return this.userRepository
+      .createQueryBuilder("user")
+      .where("user.email IN (:...emails)", { emails })
+      .getMany();
   }
 }

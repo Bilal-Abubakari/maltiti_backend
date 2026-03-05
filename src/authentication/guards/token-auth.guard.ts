@@ -16,21 +16,22 @@ import { Reflector } from "@nestjs/core";
 import { TokenExpiredError } from "jsonwebtoken";
 
 @Injectable()
-export class CookieAuthGuard implements CanActivate {
-  private logger = new Logger(CookieAuthGuard.name);
+export class TokenAuthGuard implements CanActivate {
+  private readonly logger = new Logger(TokenAuthGuard.name);
   constructor(
-    private jwtService: JwtService,
-    private usersService: UsersService,
-    private reflector: Reflector,
+    private readonly jwtService: JwtService,
+    private readonly usersService: UsersService,
+    private readonly reflector: Reflector,
   ) {}
 
   public async canActivate(context: ExecutionContext): Promise<boolean> {
     const roles = this.reflector.get(Roles, context.getHandler());
-    if (!roles) {
-      return true;
-    }
     const request = context.switchToHttp().getRequest<Request>();
+
+    // Attempt to get token from Authorization header
     const token = request.headers.authorization?.split(" ")[1];
+
+    // If no token, allow access ONLY if no roles are required
     if (!token) {
       this.logger.error("No access token found in Authorization header");
       throw new UnauthorizedException(
@@ -56,7 +57,17 @@ export class CookieAuthGuard implements CanActivate {
       throw new UnauthorizedException("User not found");
     }
 
+    // Attach user to request so @CurrentUser() can find it
     (request as Request & { user: User }).user = user;
-    return roles.includes(user.userType);
+
+    // If roles are specified, check if user has permission
+    if (roles && !roles.includes(user.userType)) {
+      this.logger.error(
+        `User ${user.id} with role ${user.userType} does not have required roles [${roles}]`,
+      );
+      return false;
+    }
+
+    return true;
   }
 }

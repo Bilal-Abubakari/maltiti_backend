@@ -33,7 +33,7 @@ export class DeliveryCostService {
   ): number {
     let boxes = 0;
     cart.forEach(cartItem => {
-      boxes += cartItem.quantity / cartItem.product.quantityInBox;
+      boxes += cartItem.quantity / (cartItem.product.quantityInBox ?? 20);
     });
     if (boxes < 1) {
       boxes = 1;

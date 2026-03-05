@@ -19,7 +19,7 @@ import { UsersService } from "../users/users.service";
 import { RegisterUserDto } from "../dto/registerUser.dto";
 import { SignInDto } from "../dto/signIn.dto";
 import { AuthenticationService } from "./authentication.service";
-import { CookieAuthGuard } from "./guards/cookie-auth.guard";
+import { TokenAuthGuard } from "./guards/token-auth.guard";
 import { Request, Response } from "express";
 import { User } from "../entities/User.entity";
 import { VerifyPhoneDto } from "../dto/UserInfo.dto";
@@ -135,7 +135,7 @@ export class AuthenticationController {
   })
   @UsePipes(new ValidationPipe())
   @Post("verify-phone/:id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async verifyPhone(
     @Param("id") id: string,
@@ -457,7 +457,7 @@ export class AuthenticationController {
     description: "Unauthorized - not logged in",
     type: ErrorResponseDto,
   })
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Post("logout")
   public async logout(
     @Req() request: Request,
@@ -527,7 +527,7 @@ export class AuthenticationController {
   })
   @UsePipes(new ValidationPipe())
   @Post("create-admin")
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.SuperAdmin])
   public async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
@@ -575,7 +575,7 @@ export class AuthenticationController {
   })
   @UsePipes(new ValidationPipe())
   @Post("change-password/:id")
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   public async changePassword(
     @Param("id") id: string,
     @Body() changePasswordDto: ChangePasswordDto,

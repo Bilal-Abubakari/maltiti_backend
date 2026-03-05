@@ -3,4 +3,4 @@ export const ADMIN_EMAILS: string[] = [
   "mohammed.abubakari@maltitiaenterprise.com",
 ];
 
-export const ADMIN_FROM_EMAIL = "info@maltitiaenterprise.com";
+export const ADMIN_FROM_EMAIL = "no-reply@maltitiaenterprise.com";

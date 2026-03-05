@@ -13,14 +13,14 @@ import { ReviewService } from "./review.service";
 import { CreateReviewDto } from "../dto/createReview.dto";
 import { UpdateReviewDto } from "../dto/updateReview.dto";
 import { ReviewResponseDto } from "../dto/reviewResponse.dto";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 
 @ApiTags("Reviews")
 @Controller("reviews")
-@UseGuards(CookieAuthGuard, RolesGuard)
+@UseGuards(TokenAuthGuard, RolesGuard)
 export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 

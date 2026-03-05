@@ -17,7 +17,6 @@ import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
 import { SaleQueryService } from "./sale-query.service";
 import { LineItemManagementService } from "./line-item-management.service";
-import { NotificationService } from "../notification/notification.service";
 import { StockManagementService } from "./stock-management.service";
 import { CheckoutModule } from "../checkout/checkout.module";
 import { SaleCreationService } from "./sale-creation.service";
@@ -40,7 +39,6 @@ import { SaleCancellationService } from "./sale-cancellation.service";
     SaleQueryService,
     LineItemManagementService,
     StockManagementService,
-    NotificationService,
     SaleCreationService,
     SaleUpdateService,
     SaleCancellationService,

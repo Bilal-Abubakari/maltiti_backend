@@ -10,8 +10,7 @@ import { ConfigModule } from "@nestjs/config";
 import { LocalStrategy } from "./strategy/local.strategy";
 import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
 import { JwtStrategy } from "./strategy/jwt.strategy";
-import { NotificationService } from "../notification/notification.service";
-import { CookieAuthGuard } from "./guards/cookie-auth.guard";
+import { TokenAuthGuard } from "./guards/token-auth.guard";
 import { OptionalAuthGuard } from "./guards/optional-auth.guard";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { User } from "../entities/User.entity";
@@ -53,8 +52,7 @@ import { ProductsModule } from "../products/products.module";
     RefreshTokenIdsStorage,
     LocalStrategy,
     JwtRefreshTokenStrategy,
-    NotificationService,
-    CookieAuthGuard,
+    TokenAuthGuard,
     OptionalAuthGuard,
     CartService,
     ProductsService,

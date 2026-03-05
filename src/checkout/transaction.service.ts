@@ -27,6 +27,7 @@ import {
   ProcessCheckoutResult,
 } from "../interfaces/general";
 import { NotificationService } from "../notification/notification.service";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
 import { DeliveryCostService } from "./delivery-cost.service";
 import { PaymentService } from "./payment.service";
 import { CustomerManagementService } from "./customer-management.service";
@@ -61,6 +62,7 @@ export class TransactionService {
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
     private readonly notificationService: NotificationService,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
     private readonly deliveryCostService: DeliveryCostService,
     private readonly paymentService: PaymentService,
     private readonly customerManagementService: CustomerManagementService,
@@ -72,6 +74,7 @@ export class TransactionService {
     data: InitializeTransaction,
   ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
     const user = await this.userService.findOne(id);
+    this.logger.log(`Initializing transaction for user: ${user.id}`);
     return this.initializeTransactionCommon(user, undefined, data);
   }
 
@@ -617,6 +620,30 @@ export class TransactionService {
       orderData,
       subject,
     );
+
+    // Send in-app notification
+    try {
+      // Get admin user IDs
+      const adminUserIds = await this.getAdminUserIds();
+
+      // Send notification to customer (if registered)
+      const userId = customer?.user?.id;
+
+      await this.notificationIntegrationService.notifyOrderCreated(
+        userId,
+        sale.id,
+        totalAmount,
+        customer.name,
+        adminUserIds,
+      );
+    } catch (error) {
+      this.logger.error("Failed to send in-app order notifications", error);
+      // Don't fail the transaction if in-app notification fails
+    }
+  }
+
+  private async getAdminUserIds(): Promise<string[]> {
+    return await this.notificationService.getAdminUserIds();
   }
 
   private async initializeTransactionCommon(
@@ -656,8 +683,12 @@ export class TransactionService {
         paymentInitData,
         guestEmail,
       });
-      await this.sendOrderNotifications(checkout);
+      this.logger.log(
+        "Checked processed, proceeding to generate payment reference",
+      );
       await queryRunner.commitTransaction();
+
+      await this.sendOrderNotifications(checkout);
 
       const reference = generatePaymentReference(paymentData.saleId);
       checkout.sale.paymentReference = reference;

@@ -2,9 +2,10 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import * as process from "process";
+import * as process from "node:process";
 import * as cookieParser from "cookie-parser";
 import * as express from "express";
+import { ORIGINS } from "./constants/origin.constants";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, {
@@ -39,10 +40,7 @@ async function bootstrap(): Promise<void> {
 
   // Enable CORS with credentials support for cookies
   app.enableCors({
-    origin: [
-      process.env.FRONTEND_URL_ADMIN || "http://localhost:4200",
-      process.env.FRONTEND_URL || "http://localhost:3000",
-    ],
+    origin: ORIGINS,
     credentials: true,
   });
 

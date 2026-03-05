@@ -18,7 +18,7 @@ import { AuditLogQueryDto } from "../dto/auditLogQuery.dto";
 import { AuditLogResponseDto } from "../dto/auditLogResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { AuditLog } from "../entities/AuditLog.entity";
 
@@ -28,7 +28,7 @@ import { AuditLog } from "../entities/AuditLog.entity";
  */
 @ApiTags("audit")
 @Controller("audits")
-@UseGuards(CookieAuthGuard)
+@UseGuards(TokenAuthGuard)
 @Roles([Role.SuperAdmin])
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}

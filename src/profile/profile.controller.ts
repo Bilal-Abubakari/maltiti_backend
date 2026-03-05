@@ -19,8 +19,7 @@ import {
   ApiConsumes,
 } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { Request } from "express";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { UsersService } from "../users/users.service";
 import { UpdateProfileDto } from "../dto/updateProfile.dto";
 import {
@@ -35,6 +34,7 @@ import { AuditEntityType } from "../enum/audit-entity-type.enum";
 import { RequestWithUser } from "../interfaces/jwt.interface";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
+import { CurrentUser } from "../authentication/decorators/current-user.decorator";
 
 /**
  * Controller for authenticated user's profile management
@@ -42,7 +42,7 @@ import { Role } from "../enum/role.enum";
  */
 @ApiTags("Profile & Settings")
 @Controller("me")
-@UseGuards(CookieAuthGuard)
+@UseGuards(TokenAuthGuard)
 @ApiCookieAuth()
 export class ProfileController {
   constructor(private readonly usersService: UsersService) {}
@@ -67,10 +67,8 @@ export class ProfileController {
   @Get("profile")
   @Roles([Role.Admin, Role.SuperAdmin, Role.User])
   public async getProfile(
-    @Req() request: Request,
+    @CurrentUser() user: User,
   ): Promise<IResponse<Partial<User>>> {
-    const user = (request as unknown as { user: User }).user as User;
-
     // Fetch fresh user data from database
     const profile = await this.usersService.findUserById(user.id);
 
@@ -194,7 +192,7 @@ export class ProfileController {
       },
       fileFilter: (req, file, callback) => {
         // Allow only image files
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+        if (!new RegExp(/\/(jpg|jpeg|png|gif)$/).exec(file.mimetype)) {
           return callback(
             new BadRequestException("Only image files are allowed"),
             false,

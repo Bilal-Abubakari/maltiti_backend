@@ -7,6 +7,7 @@ import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "./payment.service";
+import { NotificationTopic } from "../enum/notification-topic.enum";
 
 @Injectable()
 export class OrderOperationsService {
@@ -182,6 +183,8 @@ export class OrderOperationsService {
       );
     }
     const sale = checkout.sale;
+    const oldOrderStatus = sale.orderStatus;
+    const oldPaymentStatus = sale.paymentStatus;
     if (orderStatus) {
       sale.orderStatus = orderStatus;
     }
@@ -204,98 +207,20 @@ export class OrderOperationsService {
         "Go",
         "Go",
       );
+      await this.notificationService.sendInAppNotification(
+        NotificationTopic.ORDER_STATUS_UPDATED,
+        {
+          topic: NotificationTopic.ORDER_STATUS_UPDATED,
+          userId: user.id,
+          title: "Order Status Updated",
+          message,
+          orderId: sale.id,
+          oldStatus: oldOrderStatus,
+          newStatus: orderStatus || oldOrderStatus,
+          paymentStatus: paymentStatus || oldPaymentStatus,
+        },
+      );
     }
     return await this.saleRepository.save(sale);
-  }
-
-  public async cancelOrder(id: string): Promise<Checkout> {
-    const order = await this.checkoutRepository.findOne({
-      where: { id },
-      relations: ["sale", "sale.customer", "sale.customer.user", "carts"],
-    });
-    if (!order) {
-      throw new HttpException(
-        {
-          status: HttpStatus.NOT_FOUND,
-          error: "Order not found",
-        },
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    const sale = order.sale;
-    const customer = sale.customer;
-    const user = customer.user;
-    if (sale.orderStatus === OrderStatus.CANCELLED) {
-      throw new HttpException(
-        {
-          status: HttpStatus.CONFLICT,
-          error: "This order is already cancelled",
-        },
-        HttpStatus.CONFLICT,
-      );
-    }
-    if (sale.orderStatus === OrderStatus.DELIVERED) {
-      throw new HttpException(
-        {
-          status: HttpStatus.CONFLICT,
-          error: "This order is already delivered and cannot be cancelled",
-        },
-        HttpStatus.CONFLICT,
-      );
-    }
-    if (sale.orderStatus === OrderStatus.IN_TRANSIT) {
-      throw new HttpException(
-        {
-          status: HttpStatus.CONFLICT,
-          error: "This order is already in transit and cannot be cancelled",
-        },
-        HttpStatus.CONFLICT,
-      );
-    }
-    if (
-      sale.paymentStatus === PaymentStatus.PAID ||
-      sale.orderStatus === OrderStatus.PACKAGING
-    ) {
-      try {
-        await this.paymentService.refundPayment(sale.paymentReference);
-        sale.orderStatus = OrderStatus.CANCELLED;
-        sale.paymentStatus = PaymentStatus.REFUNDED;
-      } catch (error) {
-        throw new HttpException(
-          {
-            status: HttpStatus.INTERNAL_SERVER_ERROR,
-            error: error.response?.data?.message || "Refund failed",
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-    }
-    sale.orderStatus = OrderStatus.CANCELLED;
-    sale.deletedAt = new Date();
-    await this.saleRepository.save(sale);
-    if (user) {
-      await this.notificationService.sendEmail(
-        `${user.name} has cancelled the order with id ${order.id}`,
-        [
-          "bilal.abubakari@maltitiaenterprise.com",
-          "mohammed.abubakari@maltitiaenterprise.com",
-        ],
-        "Order Cancelled",
-        user.name,
-        process.env.ADMIN_URL,
-        "Go",
-        "Go",
-      );
-      await this.notificationService.sendEmail(
-        "Your order has been cancelled successfully, please do order again",
-        user.email,
-        "Order Cancelled",
-        user.name,
-        process.env.APP_URL,
-        "Go",
-        "Go",
-      );
-    }
-    return await this.checkoutRepository.save(order);
   }
 }

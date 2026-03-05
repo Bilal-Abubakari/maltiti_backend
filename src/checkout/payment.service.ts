@@ -8,9 +8,10 @@ import {
   PaymentInitializationApiResponse,
 } from "../interfaces/payment.interface";
 import { Sale } from "../entities/Sale.entity";
-import { Checkout } from "../entities/Checkout.entity";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { NotificationService } from "../notification/notification.service";
+import { NotificationTopic } from "../enum/notification-topic.enum";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
 
 @Injectable()
 export class PaymentService {
@@ -19,9 +20,8 @@ export class PaymentService {
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
-    @InjectRepository(Checkout)
-    private readonly checkoutRepository: Repository<Checkout>,
     private readonly notificationService: NotificationService,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
   ) {}
 
   public async initializePayment(
@@ -151,7 +151,7 @@ export class PaymentService {
         `Payment marked as paid for sale: ${sale.id} (reference: ${reference})`,
       );
 
-      // Send confirmation email
+      // Send confirmation emails and in-app notifications
       const checkout = sale.checkout;
       const email =
         checkout?.guestEmail ||
@@ -160,30 +160,46 @@ export class PaymentService {
       const name =
         sale.customer?.name || sale.customer?.user?.name || "Customer";
 
+      const adminUserIds = await this.notificationService.getAdminUserIds();
+
+      // Notify customer and admins
       if (email) {
-        if (checkout?.guestEmail) {
-          // Guest checkout
-          await this.notificationService.sendEmail(
-            `Your payment has been received, your order is already in progress. Your Order ID is ${sale.id}. You can track your order anytime using this ID and your email address.`,
-            email,
-            "Payment Confirmation",
-            name,
-            `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
-            "Track Order",
-            "Track Order",
-          );
-        } else if (sale.customer?.user) {
-          // Authenticated user
-          await this.notificationService.sendEmail(
-            "Your payment has been received, your order is already in progress",
-            email,
-            "Payment Confirmation",
-            name,
-            process.env.APP_URL,
-            "Go",
-            "Go",
-          );
-        }
+        await this.notificationIntegrationService.notifyPaymentReceived(
+          sale.customer?.user?.id || "",
+          sale.id,
+          sale.amount,
+          "Online Payment",
+          name,
+          adminUserIds,
+          reference,
+        );
+
+        await this.notificationService.sendEmail(
+          `Your payment has been received, your order is already in progress. Your Order ID is ${sale.id}. You can track your order anytime using this ID and your email address.`,
+          email,
+          "Payment Confirmation",
+          name,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "Track Order",
+          "Track Order",
+        );
+      }
+
+      if (sale.customer?.user) {
+        await this.notificationService.sendInAppNotification(
+          NotificationTopic.PAYMENT_RECEIVED,
+          {
+            topic: NotificationTopic.PAYMENT_RECEIVED,
+            userId: sale.customer.user.id,
+            title: "Payment Received",
+            message:
+              "Your payment has been received, your order is already in progress",
+            orderId: sale.id,
+            amount: sale.amount,
+            paymentMethod: "Online Payment", // Assuming, or get from sale
+            transactionId: reference,
+          },
+        );
       }
     } catch (error) {
       this.logger.error(
@@ -249,6 +265,22 @@ export class PaymentService {
           process.env.APP_URL,
           "Go to Dashboard",
           "Go to Dashboard",
+        );
+      }
+
+      // Send in-app notification if customer user exists
+      if (sale.customer?.user) {
+        await this.notificationService.sendInAppNotification(
+          NotificationTopic.REFUND_PROCESSED,
+          {
+            topic: NotificationTopic.REFUND_PROCESSED,
+            userId: sale.customer.user.id,
+            title: "Refund Processed",
+            message: `Your refund for order ${sale.id} has been processed successfully. The funds should appear in your account within 7-12 business days depending on your bank.`,
+            orderId: sale.id,
+            refundAmount: sale.amount, // Assuming full refund, or calculate
+            refundMethod: "Bank Transfer", // Assuming
+          },
         );
       }
     } catch (error) {

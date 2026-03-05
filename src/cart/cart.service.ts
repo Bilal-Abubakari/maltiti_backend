@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DeleteResult, IsNull, Repository } from "typeorm";
 import { Cart } from "../entities/Cart.entity";
@@ -15,6 +15,7 @@ import {
 
 @Injectable()
 export class CartService {
+  private readonly logger = new Logger(CartService.name);
   constructor(
     private readonly userService: UsersService,
     @InjectRepository(Cart)
@@ -204,6 +205,7 @@ export class CartService {
         }
       } catch (error) {
         // If product not found or any other error, skip this item
+        this.logger.error("Error adding item to cart:", error);
         skippedItems.push(item.productId);
       }
     }
@@ -357,6 +359,7 @@ export class CartService {
           addedItems.push(this.transformCartToDto(savedCart));
         }
       } catch (error) {
+        this.logger.error("Error adding item to guest cart:", error);
         // If product not found or any other error, skip this item
         skippedItems.push(item.productId);
       }
@@ -412,6 +415,7 @@ export class CartService {
         }
       } catch (error) {
         // If any error occurs, skip this item
+        this.logger.error("Error syncing guest cart item:", error);
         skippedCount++;
       }
     }

@@ -15,7 +15,7 @@ import { CustomerService } from "./customer.service";
 import { IResponse, IPaginatedResponse } from "../interfaces/general";
 import { CreateCustomerDto } from "../dto/createCustomer.dto";
 import { UpdateCustomerDto } from "../dto/updateCustomer.dto";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { Customer } from "../entities/Customer.entity";
 import { DeleteResult } from "typeorm";
 import {
@@ -33,11 +33,11 @@ import { CustomerMeResponseDto } from "../dto/customerMeResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 
-@UseGuards(CookieAuthGuard)
+@UseGuards(TokenAuthGuard)
 @ApiTags("customers")
 @Controller("customers")
 export class CustomerController {
-  constructor(private customerService: CustomerService) {}
+  constructor(private readonly customerService: CustomerService) {}
 
   @Get()
   @ApiOperation({ summary: "Get all customers with pagination" })

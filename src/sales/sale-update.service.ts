@@ -22,8 +22,10 @@ import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { StockManagementService } from "./stock-management.service";
 import { LineItemManagementService } from "./line-item-management.service";
 import { NotificationService } from "../notification/notification.service";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { formatStatus } from "../utils/status-formatter.util";
+import { NotificationTopic } from "../enum/notification-topic.enum";
 
 @Injectable()
 export class SaleUpdateService {
@@ -35,6 +37,7 @@ export class SaleUpdateService {
     private readonly stockManagementService: StockManagementService,
     private readonly lineItemManagementService: LineItemManagementService,
     private readonly notificationService: NotificationService,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -45,13 +48,13 @@ export class SaleUpdateService {
     return this.executeInTransaction(async queryRunner => {
       const sale = await queryRunner.manager.findOne(Sale, {
         where: { id: saleId, deletedAt: IsNull() },
-        relations: ["customer"],
+        relations: ["customer", "customer.user"],
       });
       if (!sale) {
         throw new NotFoundException(`Sale with ID "${saleId}" not found`);
       }
 
-      // Prevent editing if already paid or beyond
+      // Prevent editing if already paid or in transit
       if (
         [OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED].includes(
           sale.orderStatus,
@@ -61,6 +64,9 @@ export class SaleUpdateService {
           "Cannot edit sale that has been delivered or in transit",
         );
       }
+
+      // Store old statuses for notifications
+      const oldOrderStatus = sale.orderStatus;
 
       // Store old line items to handle stock adjustments
       const oldLineItems = [...sale.lineItems];
@@ -72,8 +78,12 @@ export class SaleUpdateService {
         queryRunner,
       );
 
-      // Send status update email to customer if status was updated (outside transaction)
-      await this.sendStatusUpdateEmail(savedSale, updateDto);
+      // Send a status update email to the customer if the status was updated (outside transaction)
+      await this.sendStatusUpdateNotifications(
+        savedSale,
+        updateDto,
+        oldOrderStatus,
+      );
 
       return transformSaleToResponseDto(savedSale);
     });
@@ -119,6 +129,41 @@ export class SaleUpdateService {
     } catch (error) {
       // Log error but don't fail the operation
       console.error("Failed to send status update email:", error);
+    }
+
+    // Send in-app notification
+    try {
+      const customer = await this.saleRepository
+        .createQueryBuilder("sale")
+        .leftJoinAndSelect("sale.customer", "customer")
+        .leftJoinAndSelect("customer.user", "user")
+        .where("sale.id = :saleId", { saleId })
+        .getOne();
+
+      if (customer?.customer.user?.id) {
+        const oldStatus = updateDto.orderStatus
+          ? "Previous Status"
+          : savedSale.orderStatus;
+        await this.notificationIntegrationService.notifyOrderStatusUpdated(
+          customer.customer.user.id,
+          savedSale.id,
+          oldStatus,
+          formatStatus(savedSale.orderStatus),
+          savedSale.paymentStatus
+            ? formatStatus(savedSale.paymentStatus)
+            : undefined,
+        );
+
+        // Special notification for delivery
+        if (savedSale.orderStatus === OrderStatus.DELIVERED) {
+          await this.notificationIntegrationService.notifyOrderDelivered(
+            customer.customer.user.id,
+            savedSale.id,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send in-app status update notification:", error);
     }
 
     return transformSaleToResponseDto(savedSale);
@@ -280,45 +325,33 @@ export class SaleUpdateService {
     const productTotal = Number(sale.amount ?? 0);
     const newTotalAmount = productTotal + dto.deliveryCost;
 
-    // Send notification email
-    const customer = sale.customer;
-    const user = customer?.user;
-    const email = user?.email || sale.checkout?.guestEmail || customer?.email;
-    const name = customer?.name || "Valued Customer";
+    const userId = sale.customer?.user?.id;
 
-    if (email) {
-      if (wasAwaitingDelivery) {
-        // Special email for international orders
-        await this.notificationService.sendEmail(
-          `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${dto.deliveryCost.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`,
-          email,
-          "Delivery Fee Calculated - Ready for Payment",
-          name,
-          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
-          "Pay Now",
-          "Pay Now",
-        );
-      } else {
-        await this.notificationService.sendEmail(
-          `The delivery cost for your order has been updated to GHS ${dto.deliveryCost.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
-          email,
-          "Delivery Cost Updated",
-          name,
-          user
-            ? process.env.APP_URL
-            : `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
-          "View Order",
-          "View Order",
-        );
-      }
+    // Send in-app notification if customer user exists
+    if (userId) {
+      await this.notificationIntegrationService.notifyOrderDeliveryCostUpdated(
+        userId,
+        sale.id,
+        dto.deliveryCost,
+        newTotalAmount,
+        wasAwaitingDelivery,
+      );
     }
+
+    // Send notification email
+    await this.sendDeliveryCostNotifications(
+      sale,
+      wasAwaitingDelivery,
+      newTotalAmount,
+    );
 
     return transformSaleToResponseDto(sale);
   }
 
-  private async sendStatusUpdateEmail(
+  private async sendStatusUpdateNotifications(
     savedSale: Sale,
     updateDto: UpdateSaleDto,
+    oldOrderStatus: OrderStatus,
   ): Promise<void> {
     if (updateDto.orderStatus || updateDto.paymentStatus) {
       try {
@@ -334,6 +367,41 @@ export class SaleUpdateService {
       } catch (error) {
         // Log error but don't fail the operation
         console.error("Failed to send status update email:", error);
+      }
+
+      // In-app notification
+      try {
+        const customer = await this.saleRepository
+          .createQueryBuilder("sale")
+          .leftJoinAndSelect("sale.customer", "customer")
+          .leftJoinAndSelect("customer.user", "user")
+          .where("sale.id = :saleId", { saleId: savedSale.id })
+          .getOne();
+
+        if (customer?.customer.user?.id) {
+          await this.notificationIntegrationService.notifyOrderStatusUpdated(
+            customer.customer.user.id,
+            savedSale.id,
+            oldOrderStatus,
+            formatStatus(savedSale.orderStatus),
+            savedSale.paymentStatus
+              ? formatStatus(savedSale.paymentStatus)
+              : undefined,
+          );
+
+          // Special notification for delivery
+          if (savedSale.orderStatus === OrderStatus.DELIVERED) {
+            await this.notificationIntegrationService.notifyOrderDelivered(
+              customer.customer.user.id,
+              savedSale.id,
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          "Failed to send in-app status update notification:",
+          error,
+        );
       }
     }
   }
@@ -445,6 +513,68 @@ export class SaleUpdateService {
           );
         }
       }
+    }
+  }
+
+  private async sendDeliveryCostNotifications(
+    sale: Sale,
+    wasAwaitingDelivery: boolean,
+    newTotalAmount: number,
+  ): Promise<void> {
+    const customer = sale.customer;
+    const user = customer?.user;
+    const email = user?.email || sale.checkout?.guestEmail || customer?.email;
+    const name = customer?.name || "Valued Customer";
+
+    if (email) {
+      if (wasAwaitingDelivery) {
+        // Special email for international orders
+        await this.notificationService.sendEmail(
+          `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${sale.deliveryFee.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`,
+          email,
+          "Delivery Fee Calculated - Ready for Payment",
+          name,
+          `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "Pay Now",
+          "Pay Now",
+        );
+      } else {
+        await this.notificationService.sendEmail(
+          `The delivery cost for your order has been updated to GHS ${sale.deliveryFee.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`,
+          email,
+          "Delivery Cost Updated",
+          name,
+          user
+            ? process.env.APP_URL
+            : `${process.env.FRONTEND_URL}/track-order/${sale.id}`,
+          "View Order",
+          "View Order",
+        );
+      }
+    }
+
+    // Send in-app notification if user exists
+    if (user) {
+      const title = wasAwaitingDelivery
+        ? "Delivery Fee Calculated - Ready for Payment"
+        : "Delivery Cost Updated";
+      const message = wasAwaitingDelivery
+        ? `Great news! The delivery cost for your order has been calculated. Delivery Fee: GHS ${sale.deliveryFee.toFixed(2)}. Total Amount: GHS ${newTotalAmount.toFixed(2)}. You can now proceed to payment.`
+        : `The delivery cost for your order has been updated to GHS ${sale.deliveryFee.toFixed(2)}. Your new total amount is GHS ${newTotalAmount.toFixed(2)}.`;
+
+      await this.notificationService.sendInAppNotification(
+        NotificationTopic.ORDER_DELIVERY_COST_UPDATED,
+        {
+          topic: NotificationTopic.ORDER_DELIVERY_COST_UPDATED,
+          userId: user.id,
+          title,
+          message,
+          orderId: sale.id,
+          deliveryCost: sale.deliveryFee,
+          totalAmount: newTotalAmount,
+          isReadyForPayment: wasAwaitingDelivery,
+        },
+      );
     }
   }
 }
