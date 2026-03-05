@@ -20,7 +20,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { OptionalAuthGuard } from "../authentication/guards/optional-auth.guard";
 import { CurrentUser } from "../authentication/decorators/current-user.decorator";
 import { ProductsService } from "./products.service";
@@ -52,7 +52,7 @@ import { User } from "../entities/User.entity";
 @ApiTags("Products")
 @Controller("products")
 export class ProductsController {
-  constructor(private productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) {}
 
   @Get("all-products")
   @ApiOperation({
@@ -153,7 +153,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @Post("add-product")
   @ApiOperation({
@@ -180,7 +180,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @Put("edit-product/:id")
   @ApiBearerAuth()
@@ -220,7 +220,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @Delete("delete-product/:id")
   @ApiBearerAuth()
@@ -256,7 +256,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @Patch("change-status/:id")
   @ApiBearerAuth()
@@ -288,7 +288,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.User])
   @Patch("favorite/:id")
   @ApiBearerAuth()
@@ -321,7 +321,7 @@ export class ProductsController {
     };
   }
 
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @Get("export/excel")
   @ApiBearerAuth()

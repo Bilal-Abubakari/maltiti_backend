@@ -6,6 +6,8 @@ import {
   ContactUsSuccessResponseDto,
   ContactUsErrorResponseDto,
 } from "../dto/contactUsResponse.dto";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class ContactService {
@@ -15,6 +17,8 @@ export class ContactService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
+    private readonly usersService: UsersService,
   ) {
     // Set admin email from environment or use default
     this.adminEmail =
@@ -45,6 +49,25 @@ export class ContactService {
 
       // Send email to administrator
       await this.sendAdminNotificationEmail(contactUsDto, senderIp);
+
+      // Send in-app notification to admins
+      try {
+        const adminUsers = await this.usersService.findAdminUsers();
+        const adminUserIds = adminUsers.map(admin => admin.id);
+
+        await this.notificationIntegrationService.notifyContactFormSubmitted(
+          adminUserIds,
+          contactUsDto.fullName || "Anonymous",
+          contactUsDto.email || "No email provided",
+          "New Contact Form Submission",
+        );
+      } catch (error) {
+        this.logger.error(
+          "Failed to send in-app contact form notification",
+          error,
+        );
+        // Don't fail the request if in-app notification fails
+      }
 
       this.logger.log("Contact form submission processed successfully", {
         email: contactUsDto.email || "Not provided",

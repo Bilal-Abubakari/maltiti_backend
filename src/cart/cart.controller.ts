@@ -15,9 +15,8 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
-  ApiCookieAuth,
 } from "@nestjs/swagger";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { CartService } from "./cart.service";
 import { IResponse } from "../interfaces/general";
 import { DeleteResult } from "typeorm";
@@ -49,9 +48,8 @@ import {
  * Handles shopping cart operations for authenticated users
  */
 @ApiTags("Cart")
-@ApiCookieAuth()
 @Controller("cart")
-@UseGuards(CookieAuthGuard, RolesGuard)
+@UseGuards(TokenAuthGuard, RolesGuard)
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 

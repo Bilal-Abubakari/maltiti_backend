@@ -23,7 +23,7 @@ import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { IResponse } from "../interfaces/general";
 import { User } from "../entities/User.entity";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
@@ -47,7 +47,7 @@ export class UsersController {
     type: UserResponseDto,
     isArray: true,
   })
-  @UseGuards(CookieAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Roles([Role.SuperAdmin])
   @Get()
   public async findAll(): Promise<IResponse<User[]>> {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Review } from "../entities/Review.entity";
@@ -6,14 +6,22 @@ import { Sale } from "../entities/Sale.entity";
 import { CreateReviewDto } from "../dto/createReview.dto";
 import { UpdateReviewDto } from "../dto/updateReview.dto";
 import { ReviewResponseDto } from "../dto/reviewResponse.dto";
+import { NotificationIntegrationService } from "../notification/notification-integration.service";
+import { NotificationService } from "../notification/notification.service";
+import { Product } from "../entities/Product.entity";
 
 @Injectable()
 export class ReviewService {
+  private readonly logger = new Logger(ReviewService.name);
   constructor(
     @InjectRepository(Review)
     private readonly reviewRepository: Repository<Review>,
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
+    private readonly notificationIntegrationService: NotificationIntegrationService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   public async createReview(
@@ -23,7 +31,7 @@ export class ReviewService {
 
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: null },
-      relations: ["customer"],
+      relations: ["customer", "customer.user"],
     });
     if (!sale) {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
@@ -38,6 +46,40 @@ export class ReviewService {
     });
 
     const savedReview = await this.reviewRepository.save(review);
+
+    // Send admin notification
+    try {
+      const adminUserIds = await this.notificationService.getAdminUserIds();
+      const firstItem = sale.lineItems?.[0];
+      let productName = "Product";
+      let productId = "N/A";
+
+      if (firstItem) {
+        productId = firstItem.productId;
+        const product = await this.productRepository.findOne({
+          where: { id: productId },
+        });
+        if (product) {
+          productName = product.name;
+        }
+      }
+
+      await this.notificationIntegrationService.notifyReviewSubmitted(
+        sale.customer.user?.id || "",
+        savedReview.id,
+        productId,
+        productName,
+        sale.customer.name,
+        rating,
+        adminUserIds,
+      );
+    } catch (error) {
+      // Don't fail the review creation if notification fails
+      this.logger.error(
+        `Failed to send purchase review in-app notification: ${error.message}`,
+      );
+    }
+
     return this.transformToResponseDto(savedReview);
   }
 

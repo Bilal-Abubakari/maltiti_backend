@@ -44,6 +44,7 @@ export class CheckoutService {
     id: string,
     data: InitializeTransaction,
   ): Promise<IInitializeTransactionResponse<IInitializeTransactionData>> {
+    this.logger.log(`Initializing transaction for sale`);
     return this.transactionService.initializeTransaction(id, data);
   }
 
@@ -79,10 +80,6 @@ export class CheckoutService {
       orderStatus,
       paymentStatus,
     );
-  }
-
-  public async cancelOrder(id: string): Promise<Checkout> {
-    return this.orderOperationsService.cancelOrder(id);
   }
 
   // Guest checkout methods

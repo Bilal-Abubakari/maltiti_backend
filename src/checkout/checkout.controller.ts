@@ -20,7 +20,7 @@ import { CurrentUser } from "../authentication/decorators/current-user.decorator
 import { User } from "../entities/User.entity";
 import { IResponse, ordersPagination } from "../interfaces/general";
 import { CheckoutService } from "./checkout.service";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import {
   InitializeTransaction,
@@ -80,7 +80,7 @@ export class CheckoutController {
   constructor(private readonly checkoutService: CheckoutService) {}
 
   @Get("orders")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({ summary: "Get all orders for current user" })
   @ApiResponse({
@@ -99,7 +99,7 @@ export class CheckoutController {
   }
 
   @Get("order/:id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({ summary: "Get a specific order" })
   @ApiParam({ name: "id", description: "Order ID" })
@@ -139,7 +139,7 @@ export class CheckoutController {
   }
 
   @Get("confirm-payment/:saleId")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({ summary: "Confirm payment for an order" })
   @ApiParam({ name: "saleId", description: "Sale ID" })
@@ -160,7 +160,7 @@ export class CheckoutController {
   }
 
   @Post("delivery")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({
     summary: "Calculate delivery cost based on location details",
@@ -182,7 +182,7 @@ export class CheckoutController {
   }
 
   @Get("admin/orders")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin])
   @ApiOperation({ summary: "Get all orders (admin)" })
   @ApiQuery({ name: "orderStatus", enum: OrderStatus, required: false })
@@ -214,7 +214,7 @@ export class CheckoutController {
   }
 
   @Post("initialize-transaction")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({ summary: "Initialize payment transaction" })
   @ApiResponse({
@@ -237,7 +237,7 @@ export class CheckoutController {
   }
 
   @Post("place-order")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({
     summary:
@@ -262,7 +262,7 @@ export class CheckoutController {
   }
 
   @Post("pay-for-order/:saleId")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   @ApiOperation({
     summary:
@@ -286,7 +286,7 @@ export class CheckoutController {
   }
 
   @Patch("sale-status/:id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin])
   @ApiOperation({ summary: "Update sale status" })
   @ApiParam({ name: "id", description: "Checkout ID" })
@@ -306,28 +306,6 @@ export class CheckoutController {
     );
     return {
       message: "Sale status updated successfully",
-      data: response,
-    };
-  }
-
-  @Patch("cancel-order/:id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
-  @Roles([Role.User])
-  @ApiOperation({ summary: "Cancel an order" })
-  @ApiParam({ name: "id", description: "Checkout ID" })
-  @ApiResponse({
-    status: 200,
-    description:
-      "Order has been successfully cancelled. If you have paid, you will receive refund in 7-12 business days",
-    type: CheckoutResponseDto,
-  })
-  public async cancelOrder(
-    @Param("id") id: string,
-  ): Promise<IResponse<Checkout>> {
-    const response = await this.checkoutService.cancelOrder(id);
-    return {
-      message:
-        "Order has been successfully cancelled. If you have paid, you will receive refund in 7-12 business days",
       data: response,
     };
   }

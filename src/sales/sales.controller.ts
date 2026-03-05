@@ -45,7 +45,7 @@ import { IPaginatedResponse, IResponse } from "../interfaces/general";
 import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
-import { CookieAuthGuard } from "../authentication/guards/cookie-auth.guard";
+import { TokenAuthGuard } from "../authentication/guards/token-auth.guard";
 import { RolesGuard } from "../authentication/guards/roles/roles.guard";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
@@ -72,7 +72,7 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Post()
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Create a new sale" })
   @ApiResponse({ status: 201, type: SaleResponseDto })
@@ -83,7 +83,7 @@ export class SalesController {
   }
 
   @Patch(":id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Edit sale details" })
   @ApiResponse({ status: 200, type: SaleResponseDto })
@@ -199,7 +199,7 @@ export class SalesController {
   }
 
   @Get()
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "List sales" })
   @ApiResponse({ status: 200, type: Object })
@@ -406,7 +406,7 @@ export class SalesController {
   }
 
   @Post(":id/cancel-by-admin")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({
     summary: "Cancel sale by admin",
@@ -448,7 +448,7 @@ export class SalesController {
   }
 
   @Delete(":id")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({
     summary: "Soft delete sale (legacy)",
@@ -469,7 +469,7 @@ export class SalesController {
   }
 
   @Patch(":id/delivery-cost")
-  @UseGuards(CookieAuthGuard, RolesGuard)
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({
     summary: "Update delivery cost for a sale (e.g., for international orders)",

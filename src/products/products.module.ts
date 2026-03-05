@@ -15,7 +15,6 @@ import { Sale } from "../entities/Sale.entity";
 import { Cart } from "../entities/Cart.entity";
 import { Customer } from "../entities/Customer.entity";
 import { User } from "../entities/User.entity";
-import { NotificationModule } from "../notification/notification.module";
 import { ProductCrudService } from "./product-crud.service";
 import { ProductRecommendationService } from "./product-recommendation.service";
 import { ProductExportService } from "./product-export.service";
@@ -34,7 +33,6 @@ import { ProductSearchService } from "./product-search.service";
       User,
     ]),
     IngredientsModule,
-    NotificationModule,
   ],
   exports: [
     TypeOrmModule,

@@ -1,6 +1,5 @@
-import { Module, forwardRef } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 import { ProfileController } from "./profile.controller";
-import { UsersModule } from "../users/users.module";
 import { APP_INTERCEPTOR } from "@nestjs/core";
 import { AuditInterceptor } from "../interceptors/audit.interceptor";
 
@@ -8,7 +7,7 @@ import { AuditInterceptor } from "../interceptors/audit.interceptor";
  * Module for user profile and settings management
  */
 @Module({
-  imports: [forwardRef(() => UsersModule)],
+  imports: [],
   controllers: [ProfileController],
   providers: [
     {
