@@ -1,9 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, IsNull } from "typeorm";
-import * as PDFDocument from "pdfkit";
-import * as path from "path";
-import { Sale } from "../entities/Sale.entity";
+import { Injectable } from "@nestjs/common";
 import { Product } from "../entities/Product.entity";
 import {
   DriverDetailsDto,
@@ -11,6 +6,8 @@ import {
   ReceiverDetailsDto,
 } from "../dto/generateWaybill.dto";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
+import { PdfGeneratorService } from "./pdf-generator.service";
+import { SaleQueryService } from "./sale-query.service";
 
 interface LineItemWithProduct extends SaleLineItem {
   product?: Product;
@@ -19,33 +16,16 @@ interface LineItemWithProduct extends SaleLineItem {
 @Injectable()
 export class WaybillService {
   constructor(
-    @InjectRepository(Sale)
-    private readonly saleRepository: Repository<Sale>,
-    @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
+    private readonly pdfGenerator: PdfGeneratorService,
+    private readonly saleQuery: SaleQueryService,
   ) {}
 
   public async generateWaybill(
     saleId: string,
     waybillDto: GenerateWaybillDto,
   ): Promise<Buffer> {
-    const sale = await this.saleRepository.findOne({
-      where: { id: saleId, deletedAt: IsNull() },
-      relations: ["customer"],
-    });
-    if (!sale) {
-      throw new NotFoundException(`Sale with ID "${saleId}" not found`);
-    }
-
-    // Fetch product details for each line item
-    const lineItemsWithProducts = await Promise.all(
-      sale.lineItems.map(async item => {
-        const product = await this.productRepository.findOne({
-          where: { id: item.productId, deletedAt: IsNull() },
-        });
-        return { ...item, product };
-      }),
-    );
+    const { sale, lineItemsWithProducts } =
+      await this.saleQuery.getSaleWithEnrichedLineItems(saleId);
 
     // Use receiver details if provided, otherwise fall back to customer
     const receiver: ReceiverDetailsDto = waybillDto.receiver || {
@@ -81,33 +61,19 @@ export class WaybillService {
     receiver: ReceiverDetailsDto,
     remarks: string,
   ): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ margin: 50 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", chunk => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      // Company primary color
-      const primaryColor = "#0F6938";
-
-      // Add company logo
-      this.addLogo(doc);
-
-      // Add header
-      this.addHeader(doc, primaryColor);
-
+    return this.pdfGenerator.generatePdf((doc, primaryColor) => {
       // Add waybill details
-      this.addWaybillDetails(doc, waybillNo, waybillDate, primaryColor);
+      this.pdfGenerator.addDocumentDetails(
+        doc,
+        "WAYBILL",
+        waybillNo,
+        waybillDate,
+        primaryColor,
+        "Waybill",
+      );
 
       // Add horizontal separator
-      doc
-        .strokeColor(primaryColor)
-        .lineWidth(2)
-        .moveTo(50, 170)
-        .lineTo(550, 170)
-        .stroke();
+      this.pdfGenerator.addSeparator(doc, primaryColor);
 
       // Add driver and receiver sections side by side
       this.addDriverAndReceiverSections(doc, driver, receiver, primaryColor);
@@ -126,72 +92,13 @@ export class WaybillService {
       this.addSignatureSection(doc);
 
       // Add footer
-      this.addFooter(doc, primaryColor);
-
-      doc.end();
-    });
-  }
-
-  private addLogo(doc: PDFKit.PDFDocument): void {
-    const logoPath = path.join(
-      process.cwd(),
-      "src",
-      "assets",
-      "images",
-      "maltiti-logo.png",
-    );
-    try {
-      doc.image(logoPath, 50, 45, { width: 80, height: 80 });
-    } catch (error) {
-      console.error("Logo not found:", error);
-      console.error("Attempted path:", logoPath);
-    }
-  }
-
-  private addHeader(doc: PDFKit.PDFDocument, primaryColor: string): void {
-    doc
-      .fontSize(16)
-      .fillColor(primaryColor)
-      .text("MALTITI A. ENTERPRISE LTD.", 140, 50);
-
-    doc
-      .fontSize(9)
-      .fillColor("#333333")
-      .text("Training, Organic Products and General Goods", 140, 72)
-      .text("P. O BOX TL 2501, Tamale", 140, 85)
-      .text("Tel: 0242381560 / 0557309018", 140, 98)
-      .text("Digital Address: NS-94-7460", 140, 111)
-      .text("www.maltitiaenterprise.com", 140, 124)
-      .text("Email: info@maltitiaenterprise.com", 140, 137);
-  }
-
-  private addWaybillDetails(
-    doc: PDFKit.PDFDocument,
-    waybillNo: string,
-    waybillDate: Date,
-    primaryColor: string,
-  ): void {
-    // Waybill title
-    doc
-      .fontSize(28)
-      .fillColor(primaryColor)
-      .text("WAYBILL", 400, 50, { align: "right" });
-
-    // Waybill details (right side)
-    doc
-      .fontSize(10)
-      .fillColor("#333333")
-      .text(`Waybill No: ${waybillNo}`, 400, 85, { align: "right" })
-      .text(
-        `Date: ${waybillDate.toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}`,
-        400,
-        100,
-        { align: "right" },
+      this.pdfGenerator.addFooter(
+        doc,
+        primaryColor,
+        "This waybill serves as proof of goods in transit. Please verify items upon receipt.",
+        8,
       );
+    });
   }
 
   private addDriverAndReceiverSections(
@@ -348,28 +255,5 @@ export class WaybillService {
       width: 150,
       align: "center",
     });
-  }
-
-  private addFooter(doc: PDFKit.PDFDocument, primaryColor: string): void {
-    const footerY = 750;
-    doc
-      .strokeColor(primaryColor)
-      .lineWidth(1)
-      .moveTo(50, footerY)
-      .lineTo(550, footerY)
-      .stroke();
-
-    doc
-      .fontSize(8)
-      .fillColor("#666666")
-      .text(
-        "This waybill serves as proof of goods in transit. Please verify items upon receipt.",
-        50,
-        footerY + 10,
-        {
-          align: "center",
-          width: 500,
-        },
-      );
   }
 }

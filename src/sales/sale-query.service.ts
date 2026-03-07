@@ -3,11 +3,17 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, ILike, Repository } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
+import { Product } from "../entities/Product.entity";
 import { ListSalesDto } from "../dto/listSales.dto";
 import { ListSalesByEmailDto } from "../dto/sales/listSalesByEmail.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { IPagination } from "../interfaces/general";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
+import { SaleLineItem } from "../interfaces/sale-line-item.interface";
+
+interface LineItemWithProduct extends SaleLineItem {
+  product?: Product;
+}
 
 @Injectable()
 export class SaleQueryService {
@@ -16,6 +22,8 @@ export class SaleQueryService {
     private readonly saleRepository: Repository<Sale>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
   ) {}
 
   public async listSales(
@@ -102,5 +110,29 @@ export class SaleQueryService {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);
     }
     return transformSaleToResponseDto(sale);
+  }
+
+  public async getSaleWithEnrichedLineItems(
+    saleId: string,
+  ): Promise<{ sale: Sale; lineItemsWithProducts: LineItemWithProduct[] }> {
+    const sale = await this.saleRepository.findOne({
+      where: { id: saleId, deletedAt: IsNull() },
+      relations: ["customer"],
+    });
+    if (!sale) {
+      throw new NotFoundException(`Sale with ID "${saleId}" not found`);
+    }
+
+    // Fetch product details for each line item
+    const lineItemsWithProducts = await Promise.all(
+      sale.lineItems.map(async item => {
+        const product = await this.productRepository.findOne({
+          where: { id: item.productId, deletedAt: IsNull() },
+        });
+        return { ...item, product };
+      }),
+    );
+
+    return { sale, lineItemsWithProducts };
   }
 }

@@ -413,7 +413,6 @@ export class NotificationService {
         topic,
         payload as unknown as Record<string, unknown>,
       );
-      console.log("link", link);
 
       // Create notification entity
       const notification = this.notificationRepository.create({
