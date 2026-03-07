@@ -22,6 +22,7 @@ import { CheckoutModule } from "../checkout/checkout.module";
 import { SaleCreationService } from "./sale-creation.service";
 import { SaleUpdateService } from "./sale-update.service";
 import { SaleCancellationService } from "./sale-cancellation.service";
+import { PdfGeneratorService } from "./pdf-generator.service";
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { SaleCancellationService } from "./sale-cancellation.service";
     SaleCreationService,
     SaleUpdateService,
     SaleCancellationService,
+    PdfGeneratorService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,

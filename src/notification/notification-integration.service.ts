@@ -221,13 +221,14 @@ export class NotificationIntegrationService {
     transactionId?: string,
   ): Promise<void> {
     try {
+      const formattedAmount = Number(amount).toFixed(2);
       // Customer notification
       if (userId) {
         const payload: PaymentReceivedPayload = {
           topic: NotificationTopic.PAYMENT_RECEIVED,
           userId,
           title: "💰 Payment Received",
-          message: `Your payment of GHS ${amount.toFixed(2)} for order ${orderId} has been received`,
+          message: `Your payment of GHS ${formattedAmount} for order ${orderId} has been received`,
           orderId,
           amount,
           paymentMethod,
@@ -245,7 +246,7 @@ export class NotificationIntegrationService {
         topic: NotificationTopic.ADMIN_PAYMENT_RECEIVED,
         userId: "",
         title: "💰 Payment Confirmed",
-        message: `Payment of GHS ${amount.toFixed(2)} received for order ${orderId} (Customer: ${customerName})`,
+        message: `Payment of GHS ${formattedAmount} received for order ${orderId} (Customer: ${customerName})`,
         orderId,
         amount,
         customerName,
