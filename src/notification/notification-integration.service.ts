@@ -18,6 +18,7 @@ import {
   OrderDeliveredPayload,
   OrderDeliveryCostUpdatedPayload,
 } from "./types/notification-payload.types";
+import { userOrderId } from "../utils/product.utils";
 
 /**
  * Integration service to trigger in-app notifications alongside emails
@@ -166,28 +167,30 @@ export class NotificationIntegrationService {
       : "";
     try {
       // Customer notification
-      const customerPayload: OrderCancelledPayload = {
-        topic: NotificationTopic.ORDER_CANCELLED,
-        userId,
-        title: "❌ Order Cancelled",
-        message: `Your order ${orderId} has been cancelled. ${refundStatement}`,
-        orderId,
-        cancellationReason,
-        refundAmount,
-        cancelledBy,
-      };
+      if (userId) {
+        const customerPayload: OrderCancelledPayload = {
+          topic: NotificationTopic.ORDER_CANCELLED,
+          userId,
+          title: "❌ Order Cancelled",
+          message: `Your order ${userOrderId(orderId)} has been cancelled. ${refundStatement}`,
+          orderId,
+          cancellationReason,
+          refundAmount,
+          cancelledBy,
+        };
 
-      await this.notificationService.sendInAppNotification(
-        NotificationTopic.ORDER_CANCELLED,
-        customerPayload,
-      );
+        await this.notificationService.sendInAppNotification(
+          NotificationTopic.ORDER_CANCELLED,
+          customerPayload,
+        );
+      }
 
       // Admin notification
       const adminPayload: AdminOrderCancelledPayload = {
         topic: NotificationTopic.ADMIN_ORDER_CANCELLED,
         userId: "",
         title: "⚠️ Order Cancelled",
-        message: `Order ${orderId} from ${customerName} was cancelled by ${cancelledBy}`,
+        message: `Order ${userOrderId(orderId)} from ${customerName} was cancelled by ${cancelledBy}`,
         orderId,
         customerName,
         cancellationReason,
