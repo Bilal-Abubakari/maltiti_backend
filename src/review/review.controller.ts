@@ -20,7 +20,6 @@ import { Role } from "../enum/role.enum";
 
 @ApiTags("Reviews")
 @Controller("reviews")
-@UseGuards(TokenAuthGuard, RolesGuard)
 export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 
@@ -40,6 +39,7 @@ export class ReviewController {
   }
 
   @Get(":id")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User, Role.Admin])
   @ApiOperation({ summary: "Get a review by ID" })
   @ApiParam({
@@ -60,6 +60,7 @@ export class ReviewController {
   }
 
   @Get("customer/:customerId")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User, Role.Admin])
   @ApiOperation({ summary: "Get reviews by customer ID" })
   @ApiParam({
@@ -79,6 +80,7 @@ export class ReviewController {
   }
 
   @Get("sale/:saleId")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User, Role.Admin])
   @ApiOperation({ summary: "Get reviews by sale ID" })
   @ApiParam({
@@ -98,6 +100,7 @@ export class ReviewController {
   }
 
   @Get()
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin])
   @ApiOperation({ summary: "Get all reviews" })
   @ApiResponse({
@@ -110,6 +113,7 @@ export class ReviewController {
   }
 
   @Put(":id")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User, Role.Admin])
   @ApiOperation({ summary: "Update a review" })
   @ApiParam({
@@ -131,6 +135,7 @@ export class ReviewController {
   }
 
   @Delete(":id")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin])
   @ApiOperation({ summary: "Delete a review" })
   @ApiParam({
