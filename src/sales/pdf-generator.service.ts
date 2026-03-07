@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import * as PDFDocument from "pdfkit";
 import * as path from "node:path";
 import { Sale } from "../entities/Sale.entity";
@@ -20,6 +20,8 @@ interface TotalsData {
 
 @Injectable()
 export class PdfGeneratorService {
+  private readonly logger = new Logger(PdfGeneratorService.name);
+
   public addLogo(doc: PDFKit.PDFDocument): void {
     const logoPath = path.join(
       process.cwd(),
@@ -31,8 +33,7 @@ export class PdfGeneratorService {
     try {
       doc.image(logoPath, 50, 45, { width: 80, height: 80 });
     } catch (error) {
-      console.error("Logo not found:", error);
-      console.error("Attempted path:", logoPath);
+      this.logger.error("Error adding logo:", error);
     }
   }
 
