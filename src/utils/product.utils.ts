@@ -67,14 +67,6 @@ export function isLowStock(
 }
 
 /**
- * Format product weight display
- */
-export function formatWeight(weight: string): string {
-  if (!weight) return "N/A";
-  return weight.toLowerCase().replaceAll(/(\d+)([a-z]+)/g, "$1 $2");
-}
-
-/**
  * Generate batch number
  * Format: BATCH-YYYY-MM-NNN
  * Example: BATCH-2024-01-001
