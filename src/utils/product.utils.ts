@@ -26,7 +26,9 @@ export function generateSKU(
   };
 
   const gradeCode = grade ? grade.charAt(0).toUpperCase() : "X";
-  const sizeCode = size ? size.toUpperCase().replace(/[^A-Z0-9]/g, "") : "STD";
+  const sizeCode = size
+    ? size.toUpperCase().replaceAll(/[^A-Z0-9]/g, "")
+    : "STD";
   const randomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
 
   return `${categoryPrefixes[category]}-${gradeCode}-${sizeCode}-${randomCode}`;
@@ -65,14 +67,6 @@ export function isLowStock(
 }
 
 /**
- * Format product weight display
- */
-export function formatWeight(weight: string): string {
-  if (!weight) return "N/A";
-  return weight.toLowerCase().replace(/(\d+)([a-z]+)/g, "$1 $2");
-}
-
-/**
  * Generate batch number
  * Format: BATCH-YYYY-MM-NNN
  * Example: BATCH-2024-01-001
@@ -87,3 +81,7 @@ export function generateBatchNumber(): string {
 
   return `BATCH-${year}-${month}-${randomNum}`;
 }
+
+export const userOrderId = (saleId: string): string => {
+  return saleId.split("-")?.[0] ?? "Unknown Reference";
+};

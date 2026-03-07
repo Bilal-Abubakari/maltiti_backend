@@ -175,6 +175,14 @@ export class SaleCancellationService {
       throw new BadRequestException("This order has already been cancelled");
     }
 
+    if (
+      [OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED].includes(sale.orderStatus)
+    ) {
+      throw new BadRequestException(
+        "Cannot cancel an order in transit or delivered",
+      );
+    }
+
     const cancellationResult = await this.calculateRefundForAdmin(
       sale,
       waivePenalty,

@@ -22,6 +22,7 @@ import { NotificationLinkBuilder } from "./notification-link.builder";
 import { NotificationGateway } from "./notification.gateway";
 import { PaginatedNotificationsResponseDto } from "../dto/paginated-notifications-response.dto";
 import { UsersService } from "../users/users.service";
+import { userOrderId } from "../utils/product.utils";
 
 @Injectable()
 export class NotificationService {
@@ -180,9 +181,7 @@ export class NotificationService {
 
     // Send in-app notification to admins
     try {
-      const adminUsers =
-        await this.usersService.findUsersByEmails(ADMIN_EMAILS);
-      const adminUserIds = adminUsers.map(u => u.id);
+      const adminUserIds = await this.getAdminUserIds();
       if (adminUserIds.length > 0) {
         await this.sendInAppNotificationToMultipleUsers(
           NotificationTopic.ADMIN_ORDER_CANCELLED,
@@ -190,7 +189,7 @@ export class NotificationService {
           {
             topic: NotificationTopic.ADMIN_ORDER_CANCELLED,
             title: "Order Cancelled by Customer",
-            message: `${cancellationData.customerName} has cancelled the order ${cancellationData.orderId}`,
+            message: `${cancellationData.customerName} has cancelled the order ${userOrderId(cancellationData.orderId)}`,
             orderId: cancellationData.orderId,
             customerName: cancellationData.customerName,
             cancellationReason: cancellationData.cancellationReason,

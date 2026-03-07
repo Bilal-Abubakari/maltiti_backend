@@ -49,7 +49,6 @@ import {
  */
 @ApiTags("Cart")
 @Controller("cart")
-@UseGuards(TokenAuthGuard, RolesGuard)
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
@@ -75,6 +74,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Get()
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async getCart(
     @CurrentUser() user: User,
@@ -119,6 +119,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Delete(":id")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async removeFromCart(
     @Param("id") id: string,
@@ -161,6 +162,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Post()
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async addToCart(
     @CurrentUser() user: User,
@@ -216,6 +218,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Patch(":id")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async addQuantity(
     @Param("id") id: string,
@@ -254,6 +257,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Delete("all-cart")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async removeAllFromCart(
     @CurrentUser() user: User,
@@ -298,6 +302,7 @@ export class CartController {
     type: ErrorResponseDto,
   })
   @Post("bulk")
+  @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.User])
   public async bulkAddToCart(
     @CurrentUser() user: User,
