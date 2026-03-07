@@ -132,7 +132,7 @@ export class NotificationService {
     orderStatus: string,
     paymentStatus?: string,
   ): Promise<unknown> {
-    const subject = `Order Status Update - ${orderId}`;
+    const subject = `Order Status Update - ${orderId.split("-")?.[0]}`;
     const body = `Your order status has been updated. Please find the details below.`;
 
     return await this.mailerService.sendMail({
