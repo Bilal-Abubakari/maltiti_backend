@@ -20,10 +20,10 @@ export interface RecommendationConfig {
 
 export const DEFAULT_RECOMMENDATION_CONFIG: RecommendationConfig = {
   limit: 8,
-  purchaseWeight: 5.0,
+  purchaseWeight: 5,
   categoryPreferenceWeight: 2.5,
-  cartWeight: 3.0,
-  salesPerformanceWeight: 2.0,
+  cartWeight: 3,
+  salesPerformanceWeight: 2,
   trendWeight: 1.5,
 };
 
@@ -259,8 +259,7 @@ export class ProductRecommendationService {
     const now = Date.now();
 
     cartItems.forEach(cartItem => {
-      if (!cartItem.product || cartItem.product.status !== ProductStatus.ACTIVE)
-        return;
+      if (cartItem.product?.status !== ProductStatus.ACTIVE) return;
 
       // Count frequency
       productFrequency.set(
@@ -271,7 +270,7 @@ export class ProductRecommendationService {
       // Recent cart additions get bonus
       const daysSinceAdded =
         (now - new Date(cartItem.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-      const recencyBonus = daysSinceAdded < 7 ? 1.5 : 1.0;
+      const recencyBonus = daysSinceAdded < 7 ? 1.5 : 1;
 
       const score = weight * recencyBonus;
       productScores.set(
@@ -405,7 +404,7 @@ export class ProductRecommendationService {
     });
 
     // Normalize and apply weight
-    const maxTrendScore = Math.max(...[...productTrendScore.values()], 1) || 1;
+    const maxTrendScore = Math.max(...productTrendScore.values(), 1) || 1;
     productTrendScore.forEach((trendScore, productId) => {
       const normalizedScore = (trendScore / maxTrendScore) * weight;
       productScores.set(
@@ -416,72 +415,126 @@ export class ProductRecommendationService {
   }
 
   /**
-   * Select top N products based on scores
+   * Select top N products based on scores, with a multi-tier fallback
+   * to always guarantee `limit` products are returned.
+   *
+   * Fallback cascade (triggered when not enough scored products exist):
+   *   1. Score-based ranked products
+   *   2. Featured products
+   *   3. Newest active products (by createdAt DESC)
+   *   4. Random active products (shuffled, last resort for a brand-new system)
    */
   private async selectTopProducts(
     productScores: Map<string, number>,
     limit: number,
   ): Promise<Product[]> {
-    // Sort by score descending
-    const rankedProducts = [...productScores.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .map(([productId]) => productId);
+    const result: Product[] = [];
+    const seenIds = new Set<string>();
 
-    if (rankedProducts.length === 0) {
-      // Fallback: return featured products if no scores
-      return this.productsRepository.find({
+    // Tier 1: score-based recommendations
+    const scoredTier = await this.fetchScoredProducts(productScores);
+    this.fillFromProducts(scoredTier, result, seenIds, limit);
+
+    // Tier 2: featured products
+    if (result.length < limit) {
+      const featuredTier = await this.productsRepository.find({
         where: {
           deletedAt: IsNull(),
           status: ProductStatus.ACTIVE,
           isFeatured: true,
         },
+        relations: ["ingredients"],
         take: limit,
       });
+      this.fillFromProducts(featuredTier, result, seenIds, limit);
     }
 
-    // Fetch full product details
+    // Tier 3: newest active products
+    if (result.length < limit) {
+      const newestTier = await this.productsRepository.find({
+        where: { deletedAt: IsNull(), status: ProductStatus.ACTIVE },
+        order: { createdAt: "DESC" },
+        relations: ["ingredients"],
+        take: limit * 2, // over-fetch to account for already-seen items
+      });
+      this.fillFromProducts(newestTier, result, seenIds, limit);
+    }
+
+    // Tier 4: random active products
+    if (result.length < limit) {
+      const allActive = await this.productsRepository.find({
+        where: { deletedAt: IsNull(), status: ProductStatus.ACTIVE },
+        relations: ["ingredients"],
+      });
+      this.fillFromProducts(
+        this.shuffleProducts(allActive),
+        result,
+        seenIds,
+        limit,
+      );
+    }
+
+    return result.slice(0, limit);
+  }
+
+  /**
+   * Fetch products ordered by their computed scores (highest first).
+   */
+  private async fetchScoredProducts(
+    productScores: Map<string, number>,
+  ): Promise<Product[]> {
+    if (productScores.size === 0) return [];
+
+    const rankedIds = [...productScores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id);
+
     const products = await this.productsRepository.find({
       where: {
-        id: In(rankedProducts),
+        id: In(rankedIds),
         deletedAt: IsNull(),
         status: ProductStatus.ACTIVE,
       },
       relations: ["ingredients"],
     });
 
-    // Create a map for quick lookup
     const productMap = new Map(products.map(p => [p.id, p]));
 
-    // Return products in ranked order, up to limit
-    const result: Product[] = [];
-    for (const productId of rankedProducts) {
-      const product = productMap.get(productId);
-      if (product) {
+    // Preserve score-based order and drop any IDs that are no longer active
+    return rankedIds.reduce<Product[]>((acc, id) => {
+      const product = productMap.get(id);
+      if (product) acc.push(product);
+      return acc;
+    }, []);
+  }
+
+  /**
+   * Append unseen products from `candidates` into `result` until `limit` is reached.
+   */
+  private fillFromProducts(
+    candidates: Product[],
+    result: Product[],
+    seenIds: Set<string>,
+    limit: number,
+  ): void {
+    for (const product of candidates) {
+      if (result.length >= limit) break;
+      if (!seenIds.has(product.id)) {
         result.push(product);
-        if (result.length >= limit) break;
+        seenIds.add(product.id);
       }
     }
+  }
 
-    // If we still don't have enough, fill with featured products
-    if (result.length < limit) {
-      const additionalProducts = await this.productsRepository.find({
-        where: {
-          deletedAt: IsNull(),
-          status: ProductStatus.ACTIVE,
-          isFeatured: true,
-        },
-        take: limit - result.length,
-      });
-
-      // Only add products not already in result
-      const resultIds = new Set(result.map(p => p.id));
-      additionalProducts.forEach(p => {
-        if (!resultIds.has(p.id)) {
-          result.push(p);
-        }
-      });
+  /**
+   * Return a new array with elements shuffled using the Fisher-Yates algorithm.
+   */
+  private shuffleProducts(products: Product[]): Product[] {
+    const shuffled = [...products];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-
-    return result.slice(0, limit);
+    return shuffled;
   }
 }
