@@ -1,6 +1,7 @@
 import { Sale } from "../entities/Sale.entity";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { Customer } from "../entities/Customer.entity";
+import { calculateGrandTotal } from "./payment-fee.util";
 
 export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
   const transformedLineItems = sale.lineItems.map(item => {
@@ -59,10 +60,15 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
     paymentStatus: sale.paymentStatus,
     amount: sale.amount,
     deliveryFee: sale.deliveryFee,
+    serviceFee: sale.serviceFee,
     confirmedDeliveryDate: sale.confirmedDeliveryDate,
     total:
       (sale.amount ?? 0) + (sale.deliveryFee ?? 0) > 0
-        ? (sale.amount ?? 0) + (sale.deliveryFee ?? 0)
+        ? calculateGrandTotal(
+            Number(sale.amount ?? 0),
+            Number(sale.deliveryFee ?? 0),
+            Number(sale.serviceFee ?? 0),
+          )
         : undefined,
     lineItems: transformedLineItems,
     createdAt: sale.createdAt,

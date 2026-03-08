@@ -68,10 +68,22 @@ export class UpdateSaleDto {
   @IsEnum(PaymentStatus)
   public paymentStatus?: PaymentStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: "Delivery fee in GHS",
+  })
   @IsOptional()
   @IsNumber()
   public deliveryFee?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Service processing fee in GHS. If not provided, it will be automatically " +
+      "recalculated as 1.95% of (amount + deliveryFee) whenever the delivery fee is updated.",
+    example: 9.75,
+  })
+  @IsOptional()
+  @IsNumber()
+  public serviceFee?: number;
 
   @ApiPropertyOptional({ type: [UpdateSaleLineItemDto] })
   @IsOptional()

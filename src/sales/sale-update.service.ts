@@ -26,6 +26,10 @@ import { NotificationIntegrationService } from "../notification/notification-int
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { formatStatus } from "../utils/status-formatter.util";
 import { NotificationTopic } from "../enum/notification-topic.enum";
+import {
+  calculateServiceFee,
+  calculateGrandTotal,
+} from "../utils/payment-fee.util";
 
 @Injectable()
 export class SaleUpdateService {
@@ -312,6 +316,11 @@ export class SaleUpdateService {
     // Update Sale with delivery fee
     sale.deliveryFee = dto.deliveryCost;
 
+    // Recalculate service fee based on the new subtotal (product total + delivery fee)
+    const subtotal = Number(sale.amount ?? 0) + dto.deliveryCost;
+    const { totalServiceFee } = calculateServiceFee(subtotal);
+    sale.serviceFee = totalServiceFee;
+
     // Auto-transition from AWAITING_DELIVERY to PENDING_PAYMENT when delivery fee is set
     const wasAwaitingDelivery =
       sale.paymentStatus === PaymentStatus.AWAITING_DELIVERY;
@@ -321,9 +330,13 @@ export class SaleUpdateService {
 
     await this.saleRepository.save(sale);
 
-    // Calculate total for email notification
+    // Calculate total for email notification (includes service fee)
     const productTotal = Number(sale.amount ?? 0);
-    const newTotalAmount = productTotal + dto.deliveryCost;
+    const newTotalAmount = calculateGrandTotal(
+      productTotal,
+      dto.deliveryCost,
+      totalServiceFee,
+    );
 
     const userId = sale.customer?.user?.id;
 
@@ -455,6 +468,16 @@ export class SaleUpdateService {
         );
       }
       sale.deliveryFee = updateDto.deliveryFee;
+      // Recalculate service fee based on new subtotal unless explicitly overridden
+      if (updateDto.serviceFee === undefined) {
+        const subtotal = Number(sale.amount ?? 0) + updateDto.deliveryFee;
+        const { totalServiceFee } = calculateServiceFee(subtotal);
+        sale.serviceFee = totalServiceFee;
+      }
+    }
+
+    if (updateDto.serviceFee !== undefined) {
+      sale.serviceFee = updateDto.serviceFee;
     }
 
     if (updateDto.paymentStatus) {

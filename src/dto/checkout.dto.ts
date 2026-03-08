@@ -129,7 +129,11 @@ export class UpdateSaleStatusDto {
 
 export class UpdateDeliveryCostDto {
   @ApiProperty({
-    description: "New delivery cost amount",
+    description:
+      "New delivery cost amount in GHS. " +
+      "When set, the service processing fee (1.95% of product total + delivery fee) will be " +
+      "automatically recalculated and stored on the sale. The customer will be charged " +
+      "the grand total: product amount + delivery fee + service fee.",
     example: 150.5,
     required: true,
   })

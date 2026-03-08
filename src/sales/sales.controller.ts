@@ -473,12 +473,16 @@ export class SalesController {
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({
     summary: "Update delivery cost for a sale (e.g., for international orders)",
+    description:
+      "Updates the delivery fee for a sale. The service processing fee (1.95% of " +
+      "product total + delivery fee) is automatically recalculated and stored. " +
+      "The customer will be notified with the new totals including the service fee.",
   })
   @ApiParam({ name: "id", description: "Sale ID" })
   @ApiResponse({
     status: 200,
     description:
-      "Delivery cost updated successfully. Customer will be notified.",
+      "Delivery cost updated successfully. Service fee recalculated. Customer will be notified.",
     type: SaleResponseDto,
   })
   public async updateDeliveryCost(
