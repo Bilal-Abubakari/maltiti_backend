@@ -4,42 +4,49 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { User } from './User.entity';
-import { Product } from './Product.entity';
-import { IsPositive } from 'class-validator';
-import { Checkout } from './Checkout.entity';
+} from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { User } from "./User.entity";
+import { Product } from "./Product.entity";
+import { IsPositive } from "class-validator";
+import { Checkout } from "./Checkout.entity";
 
-@Entity({ name: 'Carts' })
+@Entity({ name: "Carts" })
 export class Cart {
   constructor() {
     // Generate a UUID for the new user instance
     this.id = uuidv4();
   }
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
-  @ManyToOne(() => User, { lazy: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "userId" })
+  public user: User | null;
 
-  @ManyToOne(() => Product, { eager: true })
-  @JoinColumn({ name: 'productId' })
-  product: Product;
+  @Column({ nullable: true })
+  public sessionId: string | null;
+
+  @ManyToOne(() => Product, { eager: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "productId" })
+  public product: Product;
 
   @Column()
   @IsPositive()
-  quantity: number;
+  public quantity: number;
 
-  @ManyToOne(() => Checkout, { lazy: true, nullable: true })
-  @JoinColumn({ name: 'checkoutId' })
-  checkout?: Checkout | null;
+  @ManyToOne(() => Checkout, {
+    lazy: true,
+    nullable: true,
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "checkoutId" })
+  public checkout?: Checkout | null;
 
   @Column({ default: new Date() })
-  createdAt: Date;
+  public createdAt: Date;
 
   @Column({ default: new Date() })
-  updatedAt: Date;
+  public updatedAt: Date;
 }

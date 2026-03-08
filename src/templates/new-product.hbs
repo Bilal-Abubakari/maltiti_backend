@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>New Product Available - Maltiti A. Enterprise Ltd</title>
+    <style>
+        /* Reset styles */
+        body, table, td, a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base styles */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333333;
+        }
+
+        /* Container styles */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header styles */
+        .header {
+            background: linear-gradient(135deg, #0F6938 0%, #0a4d28 100%);
+            padding: 35px 25px 15px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 10px;
+            filter: brightness(0) invert(1);
+        }
+
+        /* Content styles */
+        .content {
+            padding: 40px 30px;
+        }
+
+        .badge {
+            display: inline-block;
+            background-color: #0F6938;
+            color: #ffffff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .heading {
+            color: #0F6938;
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            line-height: 1.3;
+        }
+
+        .greeting {
+            color: #333333;
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 25px 0;
+        }
+
+        .message {
+            color: #555555;
+            font-size: 15px;
+            line-height: 1.7;
+            margin: 0 0 30px 0;
+        }
+
+        /* Product card styles */
+        .product-card {
+            background-color: #f8faf9;
+            border: 2px solid #e8ede8;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .product-image {
+            width: 100%;
+            max-width: 280px;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-name {
+            color: #0F6938;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 15px 0;
+        }
+
+        .product-description {
+            color: #555555;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+
+        .product-category {
+            display: inline-block;
+            background-color: #e8f5ee;
+            color: #0F6938;
+            padding: 6px 16px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+
+        /* Price styles */
+        .price-container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .price-label {
+            color: #777777;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 8px 0;
+            font-weight: 600;
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .price-row:last-child {
+            border-bottom: none;
+        }
+
+        .price-type {
+            color: #555555;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .price-value {
+            color: #0F6938;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        /* Features list */
+        .features-list {
+            text-align: left;
+            margin: 25px 0;
+        }
+
+        .feature-item {
+            color: #555555;
+            font-size: 14px;
+            line-height: 1.8;
+            margin: 10px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .feature-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0F6938;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* Button styles */
+        .button-container {
+            margin: 35px 0;
+            text-align: center;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 16px 48px;
+            background-color: #0F6938;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(15, 105, 56, 0.2);
+        }
+
+        .cta-button:hover {
+            background-color: #0a4d28;
+        }
+
+        /* Info box styles */
+        .info-box {
+            background-color: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #555555;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .info-box strong {
+            color: #d68000;
+        }
+
+        /* Footer styles */
+        .footer {
+            background-color: #f8faf9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-text {
+            color: #777777;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 10px 0;
+        }
+
+        .footer-link {
+            color: #0F6938;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+
+        .social-links {
+            margin: 20px 0;
+        }
+
+        .social-link {
+            display: inline-block;
+            margin: 0 8px;
+            color: #0F6938;
+            font-size: 12px;
+            text-decoration: none;
+        }
+
+        /* Responsive styles */
+        @media screen and (max-width: 600px) {
+            .email-container {
+                width: 100% !important;
+            }
+
+            .header, .content, .footer {
+                padding: 25px 20px !important;
+            }
+
+            .heading {
+                font-size: 24px !important;
+            }
+
+            .product-name {
+                font-size: 20px !important;
+            }
+
+            .logo {
+                max-width: 150px !important;
+            }
+
+            .cta-button {
+                padding: 14px 36px !important;
+                font-size: 15px !important;
+            }
+
+            .product-card {
+                padding: 20px !important;
+            }
+
+            .price-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td style="padding: 20px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="email-container">
+                    <!-- Header -->
+                    <tr>
+                        <td class="header">
+                            <img src="https://res.cloudinary.com/deyszqsgf/image/upload/v1764454227/maltiti-logo_xusduy.png"
+                                 alt="Maltiti A. Enterprise Ltd Logo"
+                                 class="logo"
+                                 width="100">
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td class="content">
+                            <div style="text-align: center;">
+                                <span class="badge">🎉 New Arrival</span>
+                            </div>
+
+                            <h1 class="heading">Exciting New Product Alert!</h1>
+
+                            <p class="greeting">Hello <strong>{{customerName}}</strong>,</p>
+
+                            <p class="message">
+                                We're thrilled to announce that we've just added a fantastic new product to our collection!
+                                As one of our valued customers, you're among the first to know about this exciting addition.
+                            </p>
+
+                            <!-- Product Card -->
+                            <div class="product-card">
+                                {{#if productImage}}
+                                <img src="{{productImage}}"
+                                     alt="{{productName}}"
+                                     class="product-image">
+                                {{/if}}
+
+                                <h2 class="product-name">{{productName}}</h2>
+
+                                {{#if productCategory}}
+                                <div>
+                                    <span class="product-category">{{productCategory}}</span>
+                                </div>
+                                {{/if}}
+
+                                {{#if productDescription}}
+                                <p class="product-description">{{productDescription}}</p>
+                                {{/if}}
+
+                                <!-- Price Information -->
+                                <div class="price-container">
+                                    <p class="price-label">Available Pricing</p>
+
+                                    {{#if wholesalePrice}}
+                                    <div class="price-row">
+                                        <span class="price-type">Wholesale Price</span>
+                                        <span class="price-value">GHS {{wholesalePrice}}</span>
+                                    </div>
+                                    {{/if}}
+
+                                    {{#if retailPrice}}
+                                    <div class="price-row">
+                                        <span class="price-type">Retail Price</span>
+                                        <span class="price-value">GHS {{retailPrice}}</span>
+                                    </div>
+                                    {{/if}}
+
+                                    {{#if inBoxPrice}}
+                                    <div class="price-row">
+                                        <span class="price-type">Box Price ({{quantityInBox}} units)</span>
+                                        <span class="price-value">GHS {{inBoxPrice}}</span>
+                                    </div>
+                                    {{/if}}
+                                </div>
+
+                                {{#if productFeatures}}
+                                <div class="features-list">
+                                    {{#each productFeatures}}
+                                    <div class="feature-item">{{this}}</div>
+                                    {{/each}}
+                                </div>
+                                {{/if}}
+                            </div>
+
+                            <p class="message">
+                                Don't miss out on this opportunity to be one of the first to order this amazing product.
+                                Stock is limited, and we expect high demand!
+                            </p>
+
+                            <!-- CTA Button -->
+                            <div class="button-container">
+                                <a href="{{productUrl}}"
+                                   class="cta-button"
+                                   target="_blank"
+                                   role="button"
+                                   aria-label="View product and order now">
+                                    View Product & Order Now
+                                </a>
+                            </div>
+
+                            <!-- Info Box -->
+                            <div class="info-box">
+                                <p>
+                                    <strong>⚡ Limited Time Offer:</strong><br>
+                                    Be among the first 50 customers to order and receive a special welcome discount on your next purchase!
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <p class="footer-text">
+                                Have questions about this product? Our team is here to help!
+                            </p>
+                            <p class="footer-text">
+                                Contact us at
+                                <a href="mailto:support@maltitiaenterprise.com" class="footer-link">support@maltitiaenterprise.com</a>
+                                or call us at <a href="tel: +233557309018" class="footer-link">+233 557 309 018</a>
+                            </p>
+
+                            <p class="footer-text" style="margin-top: 20px;">
+                                &copy; {{currentYear}} Maltiti A. Enterprise Ltd. All rights reserved.
+                            </p>
+
+                            <p class="footer-text" style="font-size: 11px; color: #999999; margin-top: 15px;">
+                                You're receiving this email because you're a valued customer of Maltiti A. Enterprise Ltd.
+                                <br>
+                                <a href="{{unsubscribeUrl}}" style="color: #999999; text-decoration: underline;">Unsubscribe from product updates</a>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

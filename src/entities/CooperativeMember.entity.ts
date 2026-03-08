@@ -4,70 +4,70 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { Cooperative } from './Cooperative.entity';
+} from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { Cooperative } from "./Cooperative.entity";
 
-@Entity({ name: 'cooperativeMembers' })
+@Entity({ name: "cooperativeMembers" })
 export class CooperativeMember {
   constructor() {
     // Generate a UUID for the new user instance
     this.id = uuidv4();
   }
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
   @Column()
-  name: string;
+  public name: string;
 
   @ManyToOne(() => Cooperative, cooperative => cooperative.id)
-  cooperative: string;
+  public cooperative: string;
 
   @Column()
-  @Unique(['phoneNumber'])
-  phoneNumber: string;
+  @Unique(["phoneNumber"])
+  public phoneNumber: string;
 
   @Column()
-  houseNumber: string;
+  public houseNumber: string;
 
   @Column()
-  gpsAddress: string;
+  public gpsAddress: string;
 
   @Column()
-  image: string;
+  public image: string;
 
   @Column()
-  idType: string;
+  public idType: string;
 
-  @Unique(['email'])
+  @Unique(["email"])
   @Column()
-  idNumber: string;
-
-  @Column()
-  community: string;
+  public idNumber: string;
 
   @Column()
-  district: string;
+  public community: string;
 
   @Column()
-  region: string;
+  public district: string;
 
   @Column()
-  dob: Date;
+  public region: string;
 
   @Column()
-  education: string;
+  public dob: Date;
 
   @Column()
-  occupation: string;
+  public education: string;
 
   @Column()
-  secondaryOccupation: string;
+  public occupation: string;
 
   @Column()
-  crops: string;
+  public secondaryOccupation: string;
 
   @Column()
-  farmSize: number;
+  public crops: string;
+
+  @Column()
+  public farmSize: number;
 }

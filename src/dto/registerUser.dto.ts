@@ -1,18 +1,35 @@
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsPhoneNumber,
   IsStrongPassword,
-} from 'class-validator';
+  IsString,
+} from "class-validator";
+import { Role } from "../enum/role.enum";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class RegisterUserDto {
+  @ApiProperty({
+    description: "User full name",
+    example: "John Doe",
+  })
   @IsNotEmpty()
-  name: string;
+  public name: string;
 
+  @ApiProperty({
+    description: "User email address",
+    example: "user@example.com",
+  })
   @IsEmail()
-  email: string;
+  public email: string;
 
+  @ApiProperty({
+    description:
+      "User password (min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 symbol)",
+    example: "Password123!",
+  })
   @IsNotEmpty()
   @IsStrongPassword(
     {
@@ -24,15 +41,38 @@ export class RegisterUserDto {
     },
     { always: true },
   )
-  password: string;
+  public password: string;
 
+  @ApiProperty({
+    description: "Password confirmation",
+    example: "Password123!",
+  })
   @IsNotEmpty()
-  confirmPassword: string;
+  public confirmPassword: string;
 
+  @ApiProperty({
+    description: "User role type",
+    enum: Role,
+    example: Role.User,
+  })
   @IsNotEmpty()
-  userType: string;
+  @IsEnum(Role)
+  public userType: Role;
 
+  @ApiPropertyOptional({
+    description: "User phone number",
+    example: "+233244123456",
+  })
   @IsOptional()
   @IsPhoneNumber()
-  phoneNumber?: string;
+  public phoneNumber?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Guest session ID to sync cart items (optional, for guest users signing up)",
+    example: "guest-1234567890",
+  })
+  @IsOptional()
+  @IsString()
+  public sessionId?: string;
 }

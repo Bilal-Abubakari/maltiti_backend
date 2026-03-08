@@ -1,27 +1,48 @@
-import { Module } from '@nestjs/common';
-import { AuthenticationController } from './authentication.controller';
-import { AuthenticationService } from './authentication.service';
-import { PassportModule } from '@nestjs/passport';
-import { JwtModule } from '@nestjs/jwt';
-import { UsersModule } from '../users/users.module';
-import { UsersService } from '../users/users.service';
-import { RefreshTokenIdsStorage } from './refresh-token-ids-storage';
-import * as process from 'process';
-import { ConfigModule } from '@nestjs/config';
-import { LocalStrategy } from './strategy/local.strategy';
-import { JwtRefreshTokenStrategy } from './strategy/jwt-refresh-token.strategy';
-import { JwtStrategy } from './strategy/jwt.strategy';
-import { NotificationService } from '../notification/notification.service';
+import { Module, Global } from "@nestjs/common";
+import { AuthenticationController } from "./authentication.controller";
+import { AuthenticationService } from "./authentication.service";
+import { PassportModule } from "@nestjs/passport";
+import { JwtModule } from "@nestjs/jwt";
+import { UsersService } from "../users/users.service";
+import { RefreshTokenIdsStorage } from "./refresh-token-ids-storage";
+import * as process from "node:process";
+import { ConfigModule } from "@nestjs/config";
+import { LocalStrategy } from "./strategy/local.strategy";
+import { JwtRefreshTokenStrategy } from "./strategy/jwt-refresh-token.strategy";
+import { JwtStrategy } from "./strategy/jwt.strategy";
+import { TokenAuthGuard } from "./guards/token-auth.guard";
+import { OptionalAuthGuard } from "./guards/optional-auth.guard";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { User } from "../entities/User.entity";
+import { Verification } from "../entities/Verification.entity";
+import { CartService } from "../cart/cart.service";
+import { Cart } from "../entities/Cart.entity";
+import { ProductsService } from "../products/products.service";
+import { Product } from "../entities/Product.entity";
+import { Batch } from "../entities/Batch.entity";
+import { Sale } from "../entities/Sale.entity";
+import { Customer } from "../entities/Customer.entity";
+import { ProductsModule } from "../products/products.module";
 
+@Global()
 @Module({
   imports: [
-    UsersModule,
+    TypeOrmModule.forFeature([
+      User,
+      Verification,
+      Cart,
+      Product,
+      Batch,
+      Sale,
+      Customer,
+    ]),
     ConfigModule.forRoot(),
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.register({
-      secret: String(process.env.JWT_SECRET),
-      signOptions: { expiresIn: '1h' },
+      secret: process.env.JWT_SECRET || "secret",
+      signOptions: { expiresIn: "30m" },
     }),
+    ProductsModule,
   ],
   controllers: [AuthenticationController],
   providers: [
@@ -31,7 +52,11 @@ import { NotificationService } from '../notification/notification.service';
     RefreshTokenIdsStorage,
     LocalStrategy,
     JwtRefreshTokenStrategy,
-    NotificationService,
+    TokenAuthGuard,
+    OptionalAuthGuard,
+    CartService,
+    ProductsService,
   ],
+  exports: [JwtModule, AuthenticationService, UsersService, OptionalAuthGuard],
 })
 export class AuthenticationModule {}

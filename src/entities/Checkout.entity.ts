@@ -1,57 +1,17 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { User } from './User.entity';
-import { Cart } from './Cart.entity';
-import { orderStatuses } from '../interfaces/checkout.interface';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne } from "typeorm";
+import { Sale } from "./Sale.entity";
+import { Audit } from "./Audit.entity";
+import { Cart } from "./Cart.entity";
 
-@Entity({ name: 'Checkouts' })
-export class Checkout {
-  constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
-  }
+@Entity({ name: "Checkouts" })
+export class Checkout extends Audit {
+  @OneToOne(() => Sale, sale => sale.checkout, { nullable: false })
+  @JoinColumn({ name: "saleId" })
+  public sale: Sale;
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @OneToMany(() => Cart, cart => cart.checkout)
+  public carts: Cart[];
 
-  @ManyToOne(() => User, { lazy: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  @OneToMany(() => Cart, cart => cart.checkout, { lazy: true })
-  @JoinColumn()
-  carts: Cart[];
-
-  @Column({
-    enum: orderStatuses,
-  })
-  orderStatus: string;
-
-  @Column()
-  amount: string;
-
-  @Column({ enum: ['paid', 'unpaid', 'refunded'] })
-  paymentStatus: string;
-
-  @Column({ default: new Date() })
-  createdAt: Date;
-
-  @Column({ default: new Date() })
-  updatedAt: Date;
-
-  @Column()
-  location: string;
-
-  @Column()
-  name: string;
-
-  @Column()
-  extraInfo: string;
+  @Column({ nullable: true })
+  public guestEmail: string | null;
 }

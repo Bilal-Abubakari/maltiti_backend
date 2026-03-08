@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{{subject}} - Maltiti A. Enterprise Ltd</title>
+    <style>
+        /* Reset styles */
+        body, table, td, a {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            /* Outlook-specific CSS properties for table spacing */
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        /* Base styles */
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333333;
+        }
+
+        /* Container styles */
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+
+        /* Header styles */
+        .header {
+            background-color: #ffffff;
+            padding: 35px 25px 15px;
+            text-align: center;
+            border-bottom: 3px solid #0F6938;
+        }
+
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+
+        /* Content styles */
+        .content {
+            padding: 40px 30px;
+        }
+
+        .heading {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0F6938;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+
+        .greeting {
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+
+        .message {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 20px 0;
+        }
+
+        .status-box {
+            background-color: #f8faf9;
+            border-left: 4px solid #0F6938;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #0F6938;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333333;
+        }
+
+        /* Button styles */
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background-color: #0F6938;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(15, 105, 56, 0.2);
+        }
+
+        .cta-button:hover {
+            background-color: #0a4d28;
+        }
+
+        /* Footer styles */
+        .footer {
+            background-color: #f8faf9;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-text {
+            color: #777777;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0 0 10px 0;
+        }
+
+        .footer-links {
+            margin: 20px 0;
+        }
+
+        .footer-link {
+            color: #0F6938;
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 14px;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="email-container">
+        <tr>
+            <td>
+                <!-- Header -->
+                <div class="header">
+                    <img src="https://res.cloudinary.com/deyszqsgf/image/upload/v1764454227/maltiti-logo_xusduy.png" alt="Maltiti A. Enterprise Ltd" class="logo">
+                </div>
+
+                <!-- Content -->
+                <div class="content">
+                    <h1 class="heading">{{subject}}</h1>
+
+                    <p class="greeting">Hello <strong>{{name}}</strong>,</p>
+
+                    <p class="message">{{body}}</p>
+
+                    <div class="status-box">
+                        <div class="status-label">Order Status:</div>
+                        <div class="status-value">{{orderStatus}}</div>
+                        {{#if paymentStatus}}
+                        <div class="status-label" style="margin-top: 10px;">Payment Status:</div>
+                        <div class="status-value">{{paymentStatus}}</div>
+                        {{/if}}
+                    </div>
+
+                    <p class="message">You can track your order status anytime by visiting our website.</p>
+
+                    <!-- CTA Button -->
+                    <div class="button-container">
+                        <a href="{{url}}"
+                           class="cta-button"
+                           target="_blank"
+                           role="button"
+                           aria-label="{{action}}">
+                            {{action}}
+                        </a>
+                    </div>
+
+                    <p class="message">If you have any questions about your order, please don't hesitate to contact us.</p>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                    <p class="footer-text">© 2024 Maltiti A. Enterprise Ltd. All rights reserved.</p>
+                    <div class="footer-links">
+                        <a href="https://maltitiaenterprise.com" class="footer-link">Visit Our Website</a>
+                        <a href="mailto:info@maltitiaenterprise.com" class="footer-link">Contact Us</a>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

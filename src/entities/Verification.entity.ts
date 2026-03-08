@@ -1,35 +1,18 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { User } from './User.entity';
+import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
+import { User } from "./User.entity";
+import { Audit } from "./Audit.entity";
 
-@Entity({ name: 'verifications' })
-export class Verification {
-  constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
-  }
-
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @ManyToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'userId' })
-  user: User;
+@Entity({ name: "verifications" })
+export class Verification extends Audit {
+  @ManyToOne(() => User, { eager: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
+  public user: User;
 
   @Column({
-    enum: ['email', 'phone'],
+    enum: ["email", "phone"],
   })
-  type: string;
+  public type: string;
 
   @Column()
-  token: string;
-
-  @Column({ default: new Date() })
-  createdAt: Date;
+  public token: string;
 }

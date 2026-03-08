@@ -1,24 +1,37 @@
 module.exports = {
-  parser: '@typescript-eslint/parser',
+  parser: "@typescript-eslint/parser",
   parserOptions: {
-    project: 'tsconfig.json',
+    project: "tsconfig.json",
     tsconfigRootDir: __dirname,
-    sourceType: 'module',
+    sourceType: "module",
   },
-  plugins: ['@typescript-eslint/eslint-plugin'],
+  plugins: ["@typescript-eslint/eslint-plugin"],
   extends: [
-    'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
   ],
   root: true,
   env: {
     node: true,
     jest: true,
   },
-  ignorePatterns: ['.eslintrc.js'],
+  ignorePatterns: [".eslintrc.js"],
   rules: {
-    '@typescript-eslint/explicit-function-return-type': 2,
-    '@typescript-eslint/explicit-module-boundary-types': 2,
-    '@typescript-eslint/no-explicit-any': 2,
+    "prettier/prettier": [
+      "error",
+      {
+        endOfLine: "auto",
+      },
+    ],
+    "@typescript-eslint/explicit-function-return-type": 2,
+    "@typescript-eslint/explicit-module-boundary-types": 2,
+    "@typescript-eslint/no-explicit-any": 2,
+    "@typescript-eslint/explicit-member-accessibility": [
+      "error",
+      {
+        accessibility: "explicit",
+        overrides: { constructors: "no-public" },
+      },
+    ],
   },
 };

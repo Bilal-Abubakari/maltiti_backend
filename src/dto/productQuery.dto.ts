@@ -1,0 +1,276 @@
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
+import { ProductCategory } from "../enum/product-category.enum";
+import { ProductStatus } from "../enum/product-status.enum";
+import { ProductGrade } from "../enum/product-grade.enum";
+import { UnitOfMeasurement } from "../enum/unit-of-measurement.enum";
+import { SortOrder } from "../enum/sort-order.enum";
+import { ProductSortBy } from "../enum/product-sort-by.enum";
+
+/**
+ * DTO for querying/filtering products with pagination
+ */
+export class ProductQueryDto {
+  @ApiPropertyOptional({
+    description: "Page number for pagination",
+    example: 1,
+    minimum: 1,
+    default: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  public page?: number = 1;
+
+  @ApiPropertyOptional({
+    description: "Number of items per page",
+    example: 10,
+    minimum: 1,
+    maximum: 100,
+    default: 10,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  public limit?: number = 10;
+
+  @ApiPropertyOptional({
+    description: "Search term for product name or description",
+    example: "shea butter",
+  })
+  @IsOptional()
+  @IsString()
+  public searchTerm?: string;
+
+  @ApiPropertyOptional({
+    description: "Filter by product category",
+    enum: ProductCategory,
+    enumName: "ProductCategory",
+
+    example: ProductCategory.SHEA_BUTTER,
+  })
+  @IsOptional()
+  @IsEnum(ProductCategory)
+  public category?: ProductCategory;
+
+  @ApiPropertyOptional({
+    description: "Filter by product status",
+    enum: ProductStatus,
+    enumName: "ProductStatus",
+    example: ProductStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  public status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description: "Filter by product grade",
+    enum: ProductGrade,
+    enumName: "ProductGrade",
+    example: ProductGrade.GRADE_A,
+  })
+  @IsOptional()
+  @IsEnum(ProductGrade)
+  public grade?: ProductGrade;
+
+  @ApiPropertyOptional({
+    description: "Filter by unit of measurement",
+    enum: UnitOfMeasurement,
+    enumName: "UnitOfMeasurement",
+    example: UnitOfMeasurement.KILOGRAM,
+  })
+  @IsOptional()
+  @IsEnum(UnitOfMeasurement)
+  public unitOfMeasurement?: UnitOfMeasurement;
+
+  @ApiPropertyOptional({
+    description: "Filter by featured products",
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  public isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Filter by organic products",
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  public isOrganic?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Minimum price filter",
+    example: 10.0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  public minPrice?: number;
+
+  @ApiPropertyOptional({
+    description: "Maximum price filter",
+    example: 100.0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  public maxPrice?: number;
+
+  @ApiPropertyOptional({
+    description: "Sort field",
+    example: "createdAt",
+    enum: ProductSortBy,
+    enumName: "ProductSortBy",
+  })
+  @IsOptional()
+  @IsString()
+  public sortBy?: string = ProductSortBy.CREATED_AT;
+
+  @ApiPropertyOptional({
+    description: "Sort order",
+    example: SortOrder.DESC,
+    enum: SortOrder,
+    enumName: "SortOrder",
+  })
+  @IsOptional()
+  @IsString()
+  public sortOrder?: SortOrder = SortOrder.DESC;
+
+  @ApiPropertyOptional({
+    description: "Filter by batch ID",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @IsOptional()
+  @IsString()
+  public batchId?: string;
+}
+
+/**
+ * DTO for exporting products to Excel (without pagination)
+ * Contains all filtering options from ProductQueryDto except pagination
+ */
+export class ExportProductQueryDto {
+  @ApiPropertyOptional({
+    description: "Search term for product name or description",
+    example: "shea butter",
+  })
+  @IsOptional()
+  @IsString()
+  public searchTerm?: string;
+
+  @ApiPropertyOptional({
+    description: "Filter by product category",
+    enum: ProductCategory,
+    enumName: "ProductCategory",
+    example: ProductCategory.SHEA_BUTTER,
+  })
+  @IsOptional()
+  @IsEnum(ProductCategory)
+  public category?: ProductCategory;
+
+  @ApiPropertyOptional({
+    description: "Filter by product status",
+    enum: ProductStatus,
+    enumName: "ProductStatus",
+    example: ProductStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  public status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description: "Filter by product grade",
+    enum: ProductGrade,
+    enumName: "ProductGrade",
+    example: ProductGrade.GRADE_A,
+  })
+  @IsOptional()
+  @IsEnum(ProductGrade)
+  public grade?: ProductGrade;
+
+  @ApiPropertyOptional({
+    description: "Filter by unit of measurement",
+    enum: UnitOfMeasurement,
+    enumName: "UnitOfMeasurement",
+    example: UnitOfMeasurement.KILOGRAM,
+  })
+  @IsOptional()
+  @IsEnum(UnitOfMeasurement)
+  public unitOfMeasurement?: UnitOfMeasurement;
+
+  @ApiPropertyOptional({
+    description: "Filter by featured products",
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  public isFeatured?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Filter by organic products",
+    example: true,
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  public isOrganic?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Minimum price filter",
+    example: 10.0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  public minPrice?: number;
+
+  @ApiPropertyOptional({
+    description: "Maximum price filter",
+    example: 100.0,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  public maxPrice?: number;
+
+  @ApiPropertyOptional({
+    description: "Sort field",
+    example: "createdAt",
+    enum: ["name", "retail", "createdAt", "rating", "stockQuantity"],
+  })
+  @IsOptional()
+  @IsString()
+  public sortBy?: string = "createdAt";
+
+  @ApiPropertyOptional({
+    description: "Sort order",
+    example: "DESC",
+    enum: ["ASC", "DESC"],
+  })
+  @IsOptional()
+  @IsString()
+  public sortOrder?: "ASC" | "DESC" = "DESC";
+
+  @ApiPropertyOptional({
+    description: "Filter by batch ID",
+    example: "123e4567-e89b-12d3-a456-426614174000",
+  })
+  @IsOptional()
+  @IsString()
+  public batchId?: string;
+}

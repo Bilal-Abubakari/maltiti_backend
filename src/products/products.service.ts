@@ -1,141 +1,218 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
-import { Product } from '../entities/Product.entity';
-import { AddProductDto } from '../dto/addProduct.dto';
-import { IBestProducts, productsPagination } from '../interfaces/general';
+import { Injectable, Logger } from "@nestjs/common";
+import { Product } from "../entities/Product.entity";
+import { User } from "../entities/User.entity";
+import { BestProductsResponseDto } from "../dto/productResponse.dto";
+import {
+  ExportProductQueryDto,
+  ProductQueryDto,
+} from "../dto/productQuery.dto";
+import { IPagination } from "../interfaces/general";
+import { LightProduct } from "../interfaces/product-light.model";
+import { ProductCrudService } from "./product-crud.service";
+import {
+  ProductRecommendationService,
+  RecommendationConfig,
+  DEFAULT_RECOMMENDATION_CONFIG,
+} from "./product-recommendation.service";
+import { ProductExportService } from "./product-export.service";
+import { ProductNotificationService } from "./product-notification.service";
+import { ProductSearchService } from "./product-search.service";
+import { CreateProductDto } from "../dto/createProduct.dto";
+import { UpdateProductDto } from "../dto/updateProduct.dto";
+import * as ExcelJS from "exceljs";
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
+    private readonly productCrudService: ProductCrudService,
+    private readonly productRecommendationService: ProductRecommendationService,
+    private readonly productExportService: ProductExportService,
+    private readonly productNotificationService: ProductNotificationService,
+    private readonly productSearchService: ProductSearchService,
   ) {}
 
-  async getAllProducts(
-    page: number = 1,
-    limit: number = 10,
-    searchTerm: string = '',
-    category: string = '',
-  ): Promise<productsPagination> {
-    const skip = (page - 1) * limit;
+  /**
+   * Get all products with flexible filtering, pagination, and sorting
+   */
+  public async getAllProducts(
+    queryDto: ProductQueryDto,
+  ): Promise<IPagination<Product>> {
+    return this.productSearchService.getAllProducts(queryDto);
+  }
 
-    const queryBuilder = this.productsRepository.createQueryBuilder('product');
+  /**
+   * Get best/featured products with intelligent recommendations
+   */
+  public async getBestProducts(
+    user?: User,
+    config: Partial<RecommendationConfig> = {},
+  ): Promise<BestProductsResponseDto> {
+    const fullConfig: RecommendationConfig = {
+      ...DEFAULT_RECOMMENDATION_CONFIG,
+      ...config,
+    };
 
-    if (searchTerm) {
-      queryBuilder.where('LOWER(product.name) LIKE LOWER(:searchTerm)', {
-        searchTerm: `%${searchTerm.toLowerCase()}%`,
-      });
+    let products: Product[];
+
+    if (user) {
+      // Personalized recommendations for authenticated users
+      products =
+        await this.productRecommendationService.getPersonalizedProducts(
+          user,
+          fullConfig,
+        );
+    } else {
+      // Curated recommendations for anonymous users
+      products =
+        await this.productRecommendationService.getCuratedProducts(fullConfig);
     }
-
-    if (category) {
-      queryBuilder.andWhere('LOWER(product.category) LIKE LOWER(:category)', {
-        category: `%${category.toLowerCase()}%`,
-      });
-    }
-
-    const [products, totalItems] = await queryBuilder
-      .skip(skip)
-      .take(10)
-      .getManyAndCount();
-
-    const customizedProduct = products.map(product => ({
-      ...product,
-      ingredients: product.ingredients.split(','),
-    }));
 
     return {
-      totalItems,
-      currentPage: page,
-      totalPages: Math.ceil(totalItems / limit),
-      products: customizedProduct,
+      totalItems: products.length,
+      data: products,
     };
   }
 
-  async getBestProducts(): Promise<IBestProducts> {
-    const queryBuilder = this.productsRepository
-      .createQueryBuilder('product')
-      .orderBy('RANDOM()') // Order by random to get random products
-      .take(8); // Take only 8 products
+  /**
+   * Get all products for export (without pagination, with filters)
+   */
+  public async getProductsForExport(
+    queryDto: ExportProductQueryDto,
+  ): Promise<Product[]> {
+    return this.productExportService.getProductsForExport(queryDto);
+  }
 
-    const products = await queryBuilder.getMany();
+  /**
+   * Generate Excel file for products export
+   */
+  public async generateProductsExcel(
+    products: Product[],
+  ): Promise<ExcelJS.Buffer> {
+    return this.productExportService.generateProductsExcel(products);
+  }
 
-    const customizedProduct = products.map(product => ({
-      ...product,
-      ingredients: product.ingredients.split(','),
-    }));
+  /**
+   * Export products to Excel with optional filters
+   */
+  public async exportProductsToExcel(
+    queryDto: ExportProductQueryDto,
+  ): Promise<ExcelJS.Buffer> {
+    return this.productExportService.exportProductsToExcel(queryDto);
+  }
 
-    return {
-      totalItems: 8, // Assuming you always want to retrieve 8 random products
-      data: customizedProduct,
+  /**
+   * Get a single product by ID
+   */
+  public async getOneProduct(id: string): Promise<Product> {
+    return this.productCrudService.getOneProduct(id);
+  }
+
+  /**
+   * Create a new product
+   */
+  public async createProduct(productInfo: CreateProductDto): Promise<Product> {
+    const savedProduct =
+      await this.productCrudService.createProduct(productInfo);
+
+    // Send new product notification to all customers (async, don't block)
+    this.productNotificationService
+      .sendNewProductNotificationToCustomers(savedProduct)
+      .catch(error => {
+        this.logger.error(
+          "Failed to send new product notifications",
+          error.stack,
+        );
+      });
+
+    return savedProduct;
+  }
+
+  /**
+   * Update an existing product
+   */
+  public async editProduct(
+    id: string,
+    productInfo: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.productCrudService.getOneProduct(id);
+
+    // Capture old prices for comparison
+    const oldPrices = {
+      wholesale: product.wholesale,
+      retail: product.retail,
+      inBoxPrice: product.inBoxPrice,
     };
-  }
 
-  async getOneProducts(id: string): Promise<Product> {
-    return this.productsRepository.findOneBy({ id: id });
-  }
-
-  async createProduct(productInfo: AddProductDto): Promise<Product> {
-    const product = new Product();
-    await this.setProduct(product, productInfo);
-    return this.productsRepository.save(product);
-  }
-
-  async editProduct(id: string, productInfo: AddProductDto): Promise<Product> {
-    const product = await this.productsRepository.findOneBy({ id: id });
-    await this.setProduct(product, productInfo);
-    return this.productsRepository.save(product);
-  }
-
-  async changeProductStatus(id: string): Promise<Product> {
-    const product = await this.productsRepository.findOneBy({ id: id });
-    if (product.status === 'active') {
-      product.status = 'inactive';
-    } else if (product.status === 'inactive') {
-      product.status = 'active';
-    }
-    return this.productsRepository.save(product);
-  }
-
-  async favorite(id: string): Promise<Product> {
-    const product = await this.productsRepository.findOneBy({ id: id });
-    if (product.favorite) {
-      product.favorite = false;
-    } else if (!product.favorite) {
-      product.favorite = true;
-    }
-    return this.productsRepository.save(product);
-  }
-
-  async setProduct(
-    product: Product,
-    productInfo: AddProductDto,
-  ): Promise<void> {
-    product.name = productInfo.name;
-    product.category = productInfo.category;
-    product.image = productInfo.image;
-    product.description = productInfo.description;
-    product.ingredients = productInfo.ingredients.toString();
-    product.retail = productInfo.retail;
-    product.weight = productInfo.weight;
-    product.wholesale = productInfo.wholesale;
-    product.size = productInfo.size;
-    product.status = productInfo.status;
-    product.inBoxPrice = String(
-      Number(productInfo.quantityInBox) * Number(productInfo.wholesale),
+    const savedProduct = await this.productCrudService.editProduct(
+      id,
+      productInfo,
     );
-    product.stockQuantity = productInfo.stockQuantity;
-    product.quantityInBox = productInfo.quantityInBox;
-    product.updatedAt = new Date();
-    product.rating = String((Math.random() * (3.5 - 5) + 5).toFixed(1));
-    product.reviews = String(Math.floor(Math.random() * 99) + 1);
+
+    // Detect price changes and send notifications (async, don't block)
+    this.productNotificationService
+      .detectAndNotifyPriceChanges(savedProduct, oldPrices)
+      .catch(error => {
+        this.logger.error(
+          "Failed to send price change notifications",
+          error.stack,
+        );
+      });
+
+    return savedProduct;
   }
 
-  async deleteProduct(id: string): Promise<DeleteResult> {
-    return this.productsRepository.delete({ id: id });
+  /**
+   * Toggle product status between active and inactive
+   */
+  public async changeProductStatus(id: string): Promise<Product> {
+    return this.productCrudService.changeProductStatus(id);
   }
 
-  async findOne(id: string): Promise<Product> {
-    return this.productsRepository.findOneBy({ id });
+  /**
+   * Toggle product favorite status
+   */
+  public async toggleFavorite(id: string): Promise<Product> {
+    return this.productCrudService.toggleFavorite(id);
+  }
+
+  /**
+   * Soft delete a product
+   */
+  public async deleteProduct(
+    id: string,
+  ): Promise<{ deleted: boolean; id: string }> {
+    return this.productCrudService.deleteProduct(id);
+  }
+
+  /**
+   * Hard delete a product (use with caution)
+   */
+  public async hardDeleteProduct(
+    id: string,
+  ): Promise<{ deleted: boolean; id: string }> {
+    return this.productCrudService.hardDeleteProduct(id);
+  }
+
+  /**
+   * Get total stock for a product across all batches
+   */
+  public async getTotalStock(productId: string): Promise<number> {
+    return this.productSearchService.getTotalStock(productId);
+  }
+
+  /**
+   * Get all products with only id and name fields
+   */
+  public async getAllProductsBasic(): Promise<LightProduct[]> {
+    return this.productCrudService.getAllProductsBasic();
+  }
+
+  /**
+   * Find a product by ID
+   */
+  public async findOne(id: string): Promise<Product> {
+    return this.productCrudService.findOne(id);
   }
 }

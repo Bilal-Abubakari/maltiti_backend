@@ -1,55 +1,49 @@
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
-import { Exclude } from 'class-transformer';
-import { v4 as uuidv4 } from 'uuid';
-import { IsEmail } from 'class-validator';
+import { Column, Entity, Unique } from "typeorm";
+import { Exclude } from "class-transformer";
+import { IsEmail } from "class-validator";
+import { Role } from "../enum/role.enum";
+import { Status } from "../enum/status.enum";
+import { Audit } from "./Audit.entity";
 
-@Entity({ name: 'users' })
-export class User {
-  constructor() {
-    // Generate a UUID for the new user instance
-    this.id = uuidv4();
-  }
-
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
+@Entity({ name: "users" })
+export class User extends Audit {
   @Column()
   @IsEmail()
-  @Unique(['email'])
-  email: string;
+  @Unique(["email"])
+  public email: string;
 
   @Column()
-  name: string;
+  public name: string;
 
   @Column({ select: false })
   @Exclude()
-  password: string;
+  public password: string;
 
-  @Column({ enum: ['user', 'admin'] })
-  userType: string;
-
-  @Column({ nullable: true })
-  @Unique(['phoneNumber'])
-  phoneNumber: string;
+  @Column({ enum: Role })
+  public userType: Role;
 
   @Column({ nullable: true })
-  permissions: string;
+  @Unique(["phoneNumber"])
+  public phoneNumber: string;
 
   @Column({ nullable: true })
-  rememberToken: string;
-
-  @Column({ default: 'active' })
-  status: string;
+  public avatarUrl: string;
 
   @Column({ nullable: true })
-  dob: Date;
+  public permissions: string;
 
-  @Column({ default: new Date() })
-  createdAt: Date;
+  @Column({ default: false })
+  public mustChangePassword: boolean;
 
   @Column({ nullable: true })
-  emailVerifiedAt: Date;
+  public rememberToken: string;
 
-  @Column({ default: new Date() })
-  updatedAt: Date;
+  @Column({ default: Status.Active })
+  public status: Status;
+
+  @Column({ nullable: true })
+  public dob: Date;
+
+  @Column({ nullable: true })
+  public emailVerifiedAt: Date;
 }

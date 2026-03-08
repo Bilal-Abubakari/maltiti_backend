@@ -2,10 +2,9 @@ import {
   Injectable,
   OnApplicationBootstrap,
   OnApplicationShutdown,
-} from '@nestjs/common';
-import Redis from 'ioredis';
-import { ConfigService } from '@nestjs/config';
-import * as process from 'process';
+} from "@nestjs/common";
+import Redis from "ioredis";
+import { ConfigService } from "@nestjs/config";
 
 export class InvalidatedRefreshTokenError extends Error {}
 
@@ -15,27 +14,35 @@ export class RefreshTokenIdsStorage
 {
   private redisClient: Redis;
   constructor(private configService: ConfigService) {}
-  onApplicationBootstrap(): void {
+  public onApplicationBootstrap(): void {
+    const redisTls = this.configService.get<string>("REDIS_TLS");
+
     this.redisClient = new Redis({
-      password: process.env.REDIS_PASSWORD,
-      host: process.env.REDIS_HOST,
-      port: Number(process.env.REDIS_PORT),
-      username: process.env.REDIS_USERNAME,
-      tls: {
-        rejectUnauthorized: false,
-      },
+      password: this.configService.get<string>("REDIS_PASSWORD"),
+      host: this.configService.get<string>("REDIS_HOST"),
+      port: this.configService.get<number>("REDIS_PORT"),
+      username: this.configService.get<string>("REDIS_USERNAME"),
+      tls:
+        redisTls === "false"
+          ? undefined
+          : {
+              rejectUnauthorized: false,
+            },
+    });
+    this.redisClient.on("error", err => {
+      console.error("Redis error:", err);
     });
   }
 
-  onApplicationShutdown(): Promise<'OK'> {
+  public onApplicationShutdown(): Promise<"OK"> {
     return this.redisClient.quit();
   }
 
-  async insert(userId: string, tokenId: string): Promise<void> {
+  public async insert(userId: string, tokenId: string): Promise<void> {
     await this.redisClient.set(this.getKey(userId), tokenId);
   }
 
-  async validate(userId: string, tokenId: string): Promise<boolean> {
+  public async validate(userId: string, tokenId: string): Promise<boolean> {
     const storedId = await this.redisClient.get(this.getKey(userId));
     if (storedId !== tokenId) {
       throw new InvalidatedRefreshTokenError();
@@ -43,7 +50,7 @@ export class RefreshTokenIdsStorage
     return storedId === tokenId;
   }
 
-  async invalidate(userId: string): Promise<void> {
+  public async invalidate(userId: string): Promise<void> {
     await this.redisClient.del(this.getKey(userId));
   }
 
