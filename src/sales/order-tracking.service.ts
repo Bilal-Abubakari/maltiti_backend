@@ -15,6 +15,10 @@ import {
   IInitializeTransactionResponse,
 } from "../interfaces/payment.interface";
 import { generatePaymentReference } from "../utils/payment.utils";
+import {
+  calculateServiceFee,
+  calculateGrandTotal,
+} from "../utils/payment-fee.util";
 
 @Injectable()
 export class OrderTrackingService {
@@ -89,9 +93,22 @@ export class OrderTrackingService {
       );
     }
 
-    // Calculate total from Sale fields
-    const totalAmount =
-      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
+    // Calculate total from Sale fields, recalculating service fee if missing
+    const productTotal = Number(sale.amount ?? 0);
+    const deliveryFee = Number(sale.deliveryFee ?? 0);
+
+    if (sale.serviceFee === null || sale.serviceFee === undefined) {
+      const { totalServiceFee } = calculateServiceFee(
+        productTotal + deliveryFee,
+      );
+      sale.serviceFee = totalServiceFee;
+    }
+
+    const totalAmount = calculateGrandTotal(
+      productTotal,
+      deliveryFee,
+      Number(sale.serviceFee),
+    );
 
     const useEmail = guestEmail || customerEmail;
     const reference = generatePaymentReference(sale.id);

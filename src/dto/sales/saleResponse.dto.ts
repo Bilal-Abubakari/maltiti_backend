@@ -250,14 +250,25 @@ export class SaleResponseDto {
   public deliveryFee?: number;
 
   @ApiPropertyOptional({
+    description:
+      "Service processing fee charged to cover payment gateway costs (e.g. Paystack 1.95% of subtotal). " +
+      "Calculated as: (amount + deliveryFee) * 1.95%.",
+    example: 9.75,
+    minimum: 0,
+  })
+  public serviceFee?: number;
+
+  @ApiPropertyOptional({
     description: "Date when delivery was confirmed (null if not confirmed)",
     example: "2023-10-01T12:00:00Z",
   })
   public confirmedDeliveryDate?: Date;
 
   @ApiPropertyOptional({
-    description: "Total payable amount (amount + deliveryFee)",
-    example: 500,
+    description:
+      "Grand total payable amount (amount + deliveryFee + serviceFee). " +
+      "This is the exact amount charged to the customer.",
+    example: 509.75,
     minimum: 0,
   })
   public total?: number;

@@ -38,6 +38,15 @@ export class Sale extends Audit {
   @Column({ type: "decimal", precision: 10, scale: 2, nullable: true })
   public deliveryFee: number;
 
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    default: null,
+  })
+  public serviceFee: number;
+
   @Column({ type: "timestamp", nullable: true, default: null })
   public confirmedDeliveryDate: Date;
 

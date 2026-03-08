@@ -36,6 +36,10 @@ import {
   IInitializeTransactionResponse,
 } from "../interfaces/payment.interface";
 import { generatePaymentReference } from "../utils/payment.utils";
+import {
+  calculateServiceFee,
+  calculateGrandTotal,
+} from "../utils/payment-fee.util";
 
 type CheckoutData =
   | InitializeTransaction
@@ -351,10 +355,15 @@ export class TransactionService {
       sale.paymentStatus = PaymentStatus.AWAITING_DELIVERY;
       sale.amount = productTotal;
       sale.deliveryFee = null;
+      // Service fee cannot be calculated until delivery fee is known; set to null
+      sale.serviceFee = null;
     } else {
       sale.paymentStatus = PaymentStatus.PENDING_PAYMENT;
       sale.amount = productTotal;
       sale.deliveryFee = deliveryCost > 0 ? deliveryCost : null;
+      const subtotal = productTotal + Math.max(deliveryCost, 0);
+      const { totalServiceFee } = calculateServiceFee(subtotal);
+      sale.serviceFee = totalServiceFee;
     }
 
     sale.lineItems = carts.map(cart => ({
@@ -512,7 +521,11 @@ export class TransactionService {
   ): { saleId: string; email: string; totalAmount: number } | undefined {
     if (!isPlaceOrder && paymentInitData) {
       // Prepare payment data for initialization after transaction commit
-      const paymentAmount = (sale.amount ?? 0) + (sale.deliveryFee ?? 0);
+      const paymentAmount = calculateGrandTotal(
+        Number(sale.amount ?? 0),
+        Number(sale.deliveryFee ?? 0),
+        Number(sale.serviceFee ?? 0),
+      );
       const email = paymentInitData.user
         ? paymentInitData.user.email
         : paymentInitData.email;
@@ -537,8 +550,11 @@ export class TransactionService {
       );
     }
 
-    const paymentAmount =
-      (checkout.sale.amount ?? 0) + (checkout.sale.deliveryFee ?? 0);
+    const paymentAmount = calculateGrandTotal(
+      Number(checkout.sale.amount ?? 0),
+      Number(checkout.sale.deliveryFee ?? 0),
+      Number(checkout.sale.serviceFee ?? 0),
+    );
 
     const email = paymentInitData.user?.email || paymentInitData.email;
 
@@ -598,8 +614,11 @@ export class TransactionService {
     const deliveryAddress = customer.address
       ? `${customer.address}, ${customer.city}, ${customer.region}, ${customer.country}`
       : undefined;
-    const totalAmount =
-      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
+    const totalAmount = calculateGrandTotal(
+      Number(sale.amount ?? 0),
+      Number(sale.deliveryFee ?? 0),
+      Number(sale.serviceFee ?? 0),
+    );
     const orderData = {
       orderId: sale.id,
       orderDate: sale.createdAt.toLocaleDateString(),

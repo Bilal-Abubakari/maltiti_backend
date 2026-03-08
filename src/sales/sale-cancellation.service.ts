@@ -15,6 +15,7 @@ import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../checkout/payment.service";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { NotificationIntegrationService } from "../notification/notification-integration.service";
+import { calculateGrandTotal } from "../utils/payment-fee.util";
 
 @Injectable()
 export class SaleCancellationService {
@@ -304,9 +305,12 @@ export class SaleCancellationService {
     // Business rules for customer cancellation
     const { orderStatus, paymentStatus } = sale;
 
-    // Calculate total order amount
-    const totalAmount =
-      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
+    // Calculate total order amount (inclusive of service fee)
+    const totalAmount = calculateGrandTotal(
+      Number(sale.amount ?? 0),
+      Number(sale.deliveryFee ?? 0),
+      Number(sale.serviceFee ?? 0),
+    );
 
     let refundAmount = 0;
     let penaltyAmount = 0;
@@ -375,8 +379,11 @@ export class SaleCancellationService {
     refundProcessed: boolean;
   }> {
     const { paymentStatus } = sale;
-    const totalAmount =
-      Number(sale.amount ?? 0) + Number(sale.deliveryFee ?? 0);
+    const totalAmount = calculateGrandTotal(
+      Number(sale.amount ?? 0),
+      Number(sale.deliveryFee ?? 0),
+      Number(sale.serviceFee ?? 0),
+    );
 
     let refundAmount = 0;
     let penaltyAmount = 0;
