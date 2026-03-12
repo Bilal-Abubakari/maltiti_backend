@@ -23,7 +23,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBody,
 } from "@nestjs/swagger";
 import { CustomerResponseDto } from "../dto/customerResponse.dto";
@@ -32,6 +31,7 @@ import { User } from "../entities/User.entity";
 import { CustomerMeResponseDto } from "../dto/customerMeResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
+import { CustomerQueryDto } from "../dto/customerQuery.dto";
 
 @UseGuards(TokenAuthGuard)
 @ApiTags("customers")
@@ -40,25 +40,12 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Get()
-  @ApiOperation({ summary: "Get all customers with pagination" })
-  @ApiQuery({
-    name: "page",
-    required: false,
-    type: Number,
-    description: "Page number",
-  })
-  @ApiQuery({
-    name: "limit",
-    required: false,
-    type: Number,
-    description: "Items per page",
-  })
+  @ApiOperation({ summary: "Get all customers with advanced filtering" })
   @ApiResponse({ status: 200, description: "Customers retrieved successfully" })
   public async getAllCustomers(
-    @Query("page") page: number = 1,
-    @Query("limit") limit: number = 20,
+    @Query() queryDto: CustomerQueryDto,
   ): Promise<IPaginatedResponse<Customer>> {
-    const customers = await this.customerService.getAllCustomers(page, limit);
+    const customers = await this.customerService.getAllCustomers(queryDto);
 
     return {
       message: "Customers loaded successfully",

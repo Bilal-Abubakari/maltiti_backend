@@ -6,6 +6,7 @@ import { CreateCustomerDto } from "../dto/createCustomer.dto";
 import { UpdateCustomerDto } from "../dto/updateCustomer.dto";
 import { IPagination } from "../interfaces/general";
 import { User } from "../entities/User.entity";
+import { CustomerQueryDto } from "../dto/customerQuery.dto";
 
 @Injectable()
 export class CustomerService {
@@ -38,14 +39,73 @@ export class CustomerService {
   }
 
   public async getAllCustomers(
-    page: number = 1,
-    limit: number = 10,
+    queryDto: CustomerQueryDto,
   ): Promise<IPagination<Customer>> {
-    const [customers, totalItems] = await this.customerRepository.findAndCount({
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: "DESC" },
-    });
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      email,
+      phone,
+      country,
+      region,
+      city,
+      startDate,
+      endDate,
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+    } = queryDto;
+
+    const queryBuilder = this.customerRepository.createQueryBuilder("customer");
+
+    if (search) {
+      queryBuilder.andWhere(
+        "(customer.name ILIKE :search OR customer.email ILIKE :search OR customer.phone ILIKE :search OR customer.phoneNumber ILIKE :search)",
+        { search: `%${search}%` },
+      );
+    }
+
+    if (email) {
+      queryBuilder.andWhere("customer.email = :email", { email });
+    }
+
+    if (phone) {
+      queryBuilder.andWhere(
+        "(customer.phone = :phone OR customer.phoneNumber = :phone)",
+        { phone },
+      );
+    }
+
+    if (country) {
+      queryBuilder.andWhere("customer.country ILIKE :country", {
+        country: `%${country}%`,
+      });
+    }
+
+    if (region) {
+      queryBuilder.andWhere("customer.region ILIKE :region", {
+        region: `%${region}%`,
+      });
+    }
+
+    if (city) {
+      queryBuilder.andWhere("customer.city ILIKE :city", { city: `%${city}%` });
+    }
+
+    if (startDate) {
+      queryBuilder.andWhere("customer.createdAt >= :startDate", { startDate });
+    }
+
+    if (endDate) {
+      queryBuilder.andWhere("customer.createdAt <= :endDate", { endDate });
+    }
+
+    queryBuilder
+      .orderBy(`customer.${sortBy}`, sortOrder as "ASC" | "DESC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [customers, totalItems] = await queryBuilder.getManyAndCount();
 
     const totalPages = Math.ceil(totalItems / limit);
 
@@ -81,12 +141,12 @@ export class CustomerService {
   ): Promise<Customer> {
     const customer = await this.findOneCustomer(customerInfo.id);
     const existingCustomer = await this.findCustomerByEmailOrPhone(
-      customerInfo.phone ?? "",
+      "",
       customerInfo.email ?? "",
     );
 
     // Check if email is being updated and already exists
-    if (existingCustomer) {
+    if (existingCustomer && existingCustomer.id !== customer.id) {
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -136,11 +196,26 @@ export class CustomerService {
     if (customerInfo.phone !== undefined) {
       customer.phone = customerInfo.phone;
     }
+    if (customerInfo.phoneNumber !== undefined) {
+      customer.phoneNumber = customerInfo.phoneNumber;
+    }
     if (customerInfo.email !== undefined) {
       customer.email = customerInfo.email;
     }
     if (customerInfo.address !== undefined) {
       customer.address = customerInfo.address;
+    }
+    if (customerInfo.country !== undefined) {
+      customer.country = customerInfo.country;
+    }
+    if (customerInfo.region !== undefined) {
+      customer.region = customerInfo.region;
+    }
+    if (customerInfo.city !== undefined) {
+      customer.city = customerInfo.city;
+    }
+    if (customerInfo.extraInfo !== undefined) {
+      customer.extraInfo = customerInfo.extraInfo;
     }
   }
 }
