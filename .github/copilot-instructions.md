@@ -2,3 +2,4 @@
  - Use Nest JS and TypeScript best practices
  - Always add access modifiers to your classes and methods
  - Private methods should be at the end of the class and public methods should be at the top
+ - Let's avoid inverted negated conditions
