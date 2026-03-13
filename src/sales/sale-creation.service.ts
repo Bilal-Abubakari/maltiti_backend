@@ -3,7 +3,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
 import { Customer } from "../entities/Customer.entity";
-import { Product } from "../entities/Product.entity";
 import { CreateSaleDto } from "../dto/sales/createSale.dto";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { OrderStatus } from "../enum/order-status.enum";
@@ -25,8 +24,6 @@ export class SaleCreationService {
     private readonly saleRepository: Repository<Sale>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
-    @InjectRepository(Product)
-    private readonly productRepository: Repository<Product>,
     private readonly stockManagementService: StockManagementService,
     private readonly lineItemManagementService: LineItemManagementService,
     private readonly notificationService: NotificationService,
@@ -62,12 +59,16 @@ export class SaleCreationService {
         validatedLineItems,
       );
     }
+
+    const subtotal = this.calculateSubtotal(validatedLineItems);
+
     const sale = this.saleRepository.create({
       customer,
-      orderStatus,
+      amount: subtotal,
       paymentStatus,
       lineItems: validatedLineItems,
       deliveryFee,
+      orderStatus,
     });
 
     const savedSale = await this.saleRepository.save(sale);
@@ -81,6 +82,13 @@ export class SaleCreationService {
     await this.sendInAppNotificationIfUser(saleResponse, customer);
 
     return saleResponse;
+  }
+
+  private calculateSubtotal(lineItems: SaleLineItem[]): number {
+    return lineItems.reduce((total, item) => {
+      const price = item.finalPrice ?? item.customPrice ?? 0;
+      return total + price * item.requestedQuantity;
+    }, 0);
   }
 
   private async sendOrderConfirmationEmail(

@@ -464,7 +464,8 @@ export class SalesController {
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
     description: "Customer cancelled sale",
-    getEntityId: result => (result?.sale as Record<string, unknown>)?.id as string,
+    getEntityId: result =>
+      (result?.sale as Record<string, unknown>)?.id as string,
   })
   public async cancelSaleByCustomer(
     @Param("id") saleId: string,
@@ -506,7 +507,8 @@ export class SalesController {
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
     description: "Admin cancelled sale",
-    getEntityId: result => (result?.sale as Record<string, unknown>)?.id as string,
+    getEntityId: result =>
+      (result?.sale as Record<string, unknown>)?.id as string,
   })
   public async cancelSaleByAdmin(
     @Param("id") saleId: string,

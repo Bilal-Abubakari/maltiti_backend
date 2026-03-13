@@ -6,7 +6,10 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { Sale } from "../entities/Sale.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 import { PaymentStatus } from "../enum/payment-status.enum";
+import { PaymentMethod } from "../enum/payment-method.enum";
+import { PaymentRecordStatus } from "../enum/payment-record-status.enum";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { PaymentService } from "../checkout/payment.service";
@@ -25,7 +28,9 @@ export class OrderTrackingService {
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
-    private readonly paymentService: PaymentService, // Inject PaymentService
+    @InjectRepository(SalePayment)
+    private readonly salePaymentRepository: Repository<SalePayment>,
+    private readonly paymentService: PaymentService,
   ) {}
 
   public async trackOrder(
@@ -39,6 +44,7 @@ export class OrderTrackingService {
         "checkout",
         "checkout.carts",
         "checkout.carts.product",
+        "payments",
       ],
     });
     if (!sale) {
@@ -114,6 +120,20 @@ export class OrderTrackingService {
     const reference = generatePaymentReference(sale.id);
     sale.paymentReference = reference;
     await this.saleRepository.save(sale);
+
+    // Record the customer-initiated payment attempt BEFORE going to Paystack
+    // Status is PENDING until Paystack webhook confirms it
+    const pendingPayment = this.salePaymentRepository.create({
+      sale,
+      amount: totalAmount,
+      paymentMethod: PaymentMethod.PAYSTACK,
+      status: PaymentRecordStatus.PENDING,
+      reference,
+      note: "Customer initiated Paystack payment",
+      isCustomerInitiated: true,
+    });
+    await this.salePaymentRepository.save(pendingPayment);
+
     const response = await this.paymentService.initializePayment(
       sale.id,
       reference,

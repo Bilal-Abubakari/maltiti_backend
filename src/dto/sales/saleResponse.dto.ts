@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { OrderStatus } from "../../enum/order-status.enum";
 import { PaymentStatus } from "../../enum/payment-status.enum";
+import { SalePaymentResponseDto } from "./salePaymentResponse.dto";
 
 /**
  * DTO for batch allocation in sale line items
@@ -278,6 +279,28 @@ export class SaleResponseDto {
     type: () => [SaleLineItemResponseDto],
   })
   public lineItems: SaleLineItemResponseDto[];
+
+  @ApiPropertyOptional({
+    description:
+      "All payment records for this sale (partial and full payments). " +
+      "Populated when fetching a single sale's details.",
+    type: () => [SalePaymentResponseDto],
+  })
+  public payments?: SalePaymentResponseDto[];
+
+  @ApiPropertyOptional({
+    description:
+      "Total amount confirmed/paid across all payment records for this sale.",
+    example: 750,
+  })
+  public totalPaid?: number;
+
+  @ApiPropertyOptional({
+    description:
+      "Outstanding balance remaining (total - totalPaid). Zero or negative means fully paid.",
+    example: 250,
+  })
+  public balanceRemaining?: number;
 
   @ApiProperty({
     description: "Sale creation date",

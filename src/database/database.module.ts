@@ -17,6 +17,7 @@ import { AuditLog } from "../entities/AuditLog.entity";
 import { Review } from "../entities/Review.entity";
 import { DailyReportLog } from "../entities/DailyReportLog.entity";
 import { Notification } from "../entities/Notification.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { Notification } from "../entities/Notification.entity";
           Review,
           DailyReportLog,
           Notification,
+          SalePayment,
         ],
         synchronize: false,
         autoLoadEntities: false,

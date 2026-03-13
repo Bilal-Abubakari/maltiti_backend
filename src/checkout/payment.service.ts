@@ -8,7 +8,10 @@ import {
   PaymentInitializationApiResponse,
 } from "../interfaces/payment.interface";
 import { Sale } from "../entities/Sale.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 import { PaymentStatus } from "../enum/payment-status.enum";
+import { PaymentMethod } from "../enum/payment-method.enum";
+import { PaymentRecordStatus } from "../enum/payment-record-status.enum";
 import { NotificationService } from "../notification/notification.service";
 import { NotificationTopic } from "../enum/notification-topic.enum";
 import { NotificationIntegrationService } from "../notification/notification-integration.service";
@@ -20,6 +23,8 @@ export class PaymentService {
   constructor(
     @InjectRepository(Sale)
     private readonly saleRepository: Repository<Sale>,
+    @InjectRepository(SalePayment)
+    private readonly salePaymentRepository: Repository<SalePayment>,
     private readonly notificationService: NotificationService,
     private readonly notificationIntegrationService: NotificationIntegrationService,
   ) {}
@@ -142,6 +147,18 @@ export class PaymentService {
 
       // Verify the payment with Paystack using the payment reference
       await this.verifyPayment(reference);
+
+      // Record this payment in the SalePayments table for full traceability
+      const paystackPayment = this.salePaymentRepository.create({
+        sale,
+        amount: sale.amount,
+        paymentMethod: PaymentMethod.PAYSTACK,
+        status: PaymentRecordStatus.CONFIRMED,
+        reference,
+        note: "Payment confirmed via Paystack webhook",
+        isCustomerInitiated: true,
+      });
+      await this.salePaymentRepository.save(paystackPayment);
 
       // Mark the sale as paid
       sale.paymentStatus = PaymentStatus.PAID;
