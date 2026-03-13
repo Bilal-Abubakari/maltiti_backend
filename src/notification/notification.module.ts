@@ -1,6 +1,6 @@
 import { Global, Module, forwardRef } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { JwtModule } from "@nestjs/jwt";
+import { JwtModule, JwtModuleOptions } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { NotificationService } from "./notification.service";
 import { NotificationController } from "./notification.controller";
@@ -18,10 +18,10 @@ import { UsersModule } from "../users/users.module";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService): JwtModuleOptions => ({
         secret: configService.get<string>("JWT_SECRET") || "secret",
         signOptions: {
-          expiresIn: configService.get<string>("JWT_EXPIRATION") || "1d",
+          expiresIn: configService.get("JWT_EXPIRATION") ?? "1d",
         },
       }),
     }),
