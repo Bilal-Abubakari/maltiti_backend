@@ -104,7 +104,7 @@ export class SaleQueryService {
   public async getSaleDetails(saleId: string): Promise<SaleResponseDto> {
     const sale = await this.saleRepository.findOne({
       where: { id: saleId, deletedAt: IsNull() },
-      relations: ["customer"],
+      relations: ["customer", "payments"],
     });
     if (!sale) {
       throw new NotFoundException(`Sale with ID "${saleId}" not found`);

@@ -6,6 +6,7 @@ import { UsersService } from "../users/users.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { Checkout } from "../entities/Checkout.entity";
 import { Sale } from "../entities/Sale.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 import { Customer } from "../entities/Customer.entity";
 import { AuthenticationModule } from "../authentication/authentication.module";
 import { DeliveryCostService } from "./delivery-cost.service";
@@ -18,7 +19,7 @@ import { Cart } from "../entities/Cart.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Checkout, Sale, Customer, Cart]),
+    TypeOrmModule.forFeature([Checkout, Sale, SalePayment, Customer, Cart]),
     CartModule,
     AuthenticationModule,
   ],

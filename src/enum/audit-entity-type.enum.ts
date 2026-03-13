@@ -14,6 +14,7 @@ export enum AuditEntityType {
   SALE = "SALE",
   CHECKOUT = "CHECKOUT",
   CART = "CART",
+  PAYMENT = "PAYMENT",
 
   // Cooperative Management
   COOPERATIVE = "COOPERATIVE",

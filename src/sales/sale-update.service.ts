@@ -210,6 +210,10 @@ export class SaleUpdateService {
     };
 
     sale.lineItems.push(newItem);
+
+    // Recalculate amount and service fee
+    sale.amount = this.calculateSubtotal(sale.lineItems);
+
     const savedSale = await this.saleRepository.save(sale);
     return transformSaleToResponseDto(savedSale);
   }
@@ -536,6 +540,16 @@ export class SaleUpdateService {
         oldLineItems,
         queryRunner,
       );
+
+      // Recalculate amount (subtotal)
+      sale.amount = this.calculateSubtotal(sale.lineItems);
+
+      // Recalculate service fee based on new subtotal and current delivery fee
+      if (updateDto.serviceFee === undefined) {
+        const totalForFee = Number(sale.amount) + Number(sale.deliveryFee ?? 0);
+        const { totalServiceFee } = calculateServiceFee(totalForFee);
+        sale.serviceFee = totalServiceFee;
+      }
     }
 
     // Validate status changes if any status is being updated (after line items are updated)
@@ -548,6 +562,13 @@ export class SaleUpdateService {
     }
 
     return queryRunner.manager.save(Sale, sale);
+  }
+
+  private calculateSubtotal(lineItems: SaleLineItem[]): number {
+    return lineItems.reduce((total, item) => {
+      const price = item.finalPrice ?? item.customPrice ?? 0;
+      return total + price * item.requestedQuantity;
+    }, 0);
   }
 
   private validateStatusChange(

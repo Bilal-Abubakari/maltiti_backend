@@ -5,7 +5,9 @@ import { InvoiceService } from "./invoice.service";
 import { ReceiptService } from "./receipt.service";
 import { WaybillService } from "./waybill.service";
 import { SalesController } from "./sales.controller";
+import { SalePaymentController } from "./sale-payment.controller";
 import { Sale } from "../entities/Sale.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
@@ -23,10 +25,18 @@ import { SaleCancellationService } from "./sale-cancellation.service";
 import { PdfGeneratorService } from "./pdf-generator.service";
 import { SaleDocumentEmailService } from "./sale-document-email.service";
 import { ProductDisplayService } from "./product-display.service";
+import { SalePaymentService } from "./sale-payment.service";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Sale, Customer, Batch, Product, Checkout]),
+    TypeOrmModule.forFeature([
+      Sale,
+      SalePayment,
+      Customer,
+      Batch,
+      Product,
+      Checkout,
+    ]),
     CheckoutModule,
   ],
   providers: [
@@ -46,8 +56,9 @@ import { ProductDisplayService } from "./product-display.service";
     PdfGeneratorService,
     SaleDocumentEmailService,
     ProductDisplayService,
+    SalePaymentService,
   ],
-  controllers: [SalesController],
+  controllers: [SalesController, SalePaymentController],
   exports: [
     SalesService,
     InvoiceService,
