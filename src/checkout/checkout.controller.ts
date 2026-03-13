@@ -63,6 +63,12 @@ import { SaleDto } from "../dto/sales/sale.dto";
 import { GetDeliveryCostDto } from "../dto/checkout/getDeliveryCost.dto";
 import { PaymentInitializationApiResponse } from "../interfaces/payment.interface";
 import { PaystackWebhookEvent } from "../interfaces/webhook.interface";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
+
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
 
 @ApiTags("Checkout")
 @Controller("checkout")
@@ -294,6 +300,12 @@ export class CheckoutController {
     status: 200,
     description: "Sale status updated successfully",
     type: SaleResponseDto,
+  })
+  @AuditLog({
+    actionType: AuditActionType.ORDER_STATUS_UPDATED,
+    entityType: AuditEntityType.CHECKOUT,
+    description: "Updated sale order/payment status",
+    getEntityId: getDataId,
   })
   public async updateSaleStatus(
     @Param("id") id: string,

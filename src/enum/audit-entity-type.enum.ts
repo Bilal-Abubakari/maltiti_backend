@@ -22,8 +22,11 @@ export enum AuditEntityType {
   // Customer Management
   CUSTOMER = "CUSTOMER",
 
-  // Reports
+  // Reports & Documents
   REPORT = "REPORT",
+  INVOICE = "INVOICE",
+  RECEIPT = "RECEIPT",
+  WAYBILL = "WAYBILL",
 
   // System
   SYSTEM = "SYSTEM",

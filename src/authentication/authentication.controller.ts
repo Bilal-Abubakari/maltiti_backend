@@ -54,6 +54,12 @@ import {
 } from "../dto/authResponse.dto";
 import { ResendVerificationDto } from "../dto/resendVerification.dto";
 import { MALTITI_DOMAIN } from "../utils/constants";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
+
+const getDataId = (result: Record<string, unknown>): string =>
+  String((result?.data as { id: string })?.id ?? "");
 
 @ApiTags("Authentication")
 @Controller("authentication")
@@ -529,6 +535,12 @@ export class AuthenticationController {
   @Post("create-admin")
   @UseGuards(TokenAuthGuard)
   @Roles([Role.SuperAdmin])
+  @AuditLog({
+    actionType: AuditActionType.USER_CREATED,
+    entityType: AuditEntityType.USER,
+    description: "Created a new admin user account",
+    getEntityId: getDataId,
+  })
   public async createAdmin(
     @Body() createAdminDto: CreateAdminDto,
   ): Promise<IResponse<User>> {
@@ -576,6 +588,12 @@ export class AuthenticationController {
   @UsePipes(new ValidationPipe())
   @Post("change-password/:id")
   @UseGuards(TokenAuthGuard)
+  @AuditLog({
+    actionType: AuditActionType.PASSWORD_CHANGED,
+    entityType: AuditEntityType.USER,
+    description: "Changed account password",
+    getEntityId: getDataId,
+  })
   public async changePassword(
     @Param("id") id: string,
     @Body() changePasswordDto: ChangePasswordDto,

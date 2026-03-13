@@ -32,6 +32,12 @@ import { CustomerMeResponseDto } from "../dto/customerMeResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { CustomerQueryDto } from "../dto/customerQuery.dto";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
+
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
 
 @UseGuards(TokenAuthGuard)
 @ApiTags("customers")
@@ -109,6 +115,12 @@ export class CustomerController {
     status: 409,
     description: "Customer with email already exists",
   })
+  @AuditLog({
+    actionType: AuditActionType.CREATE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Created a new customer",
+    getEntityId: getDataId,
+  })
   public async createCustomer(
     @Body() customerInfo: CreateCustomerDto,
   ): Promise<IResponse<Customer>> {
@@ -129,6 +141,12 @@ export class CustomerController {
     status: 409,
     description: "Customer with email already exists",
   })
+  @AuditLog({
+    actionType: AuditActionType.UPDATE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Updated customer information",
+    getEntityId: getDataId,
+  })
   public async updateCustomer(
     @Body() customerInfo: UpdateCustomerDto,
   ): Promise<IResponse<Customer>> {
@@ -145,6 +163,11 @@ export class CustomerController {
   @ApiParam({ name: "id", type: String, description: "Customer ID" })
   @ApiResponse({ status: 200, description: "Customer deleted successfully" })
   @ApiResponse({ status: 404, description: "Customer not found" })
+  @AuditLog({
+    actionType: AuditActionType.DELETE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Deleted customer",
+  })
   public async deleteCustomer(
     @Param("id") id: string,
   ): Promise<IResponse<DeleteResult>> {

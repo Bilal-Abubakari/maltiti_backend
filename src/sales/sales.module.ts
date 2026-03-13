@@ -11,8 +11,6 @@ import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
 import { Checkout } from "../entities/Checkout.entity";
 import { BatchesService } from "../products/batches/batches.service";
-import { APP_INTERCEPTOR } from "@nestjs/core";
-import { AuditInterceptor } from "../interceptors/audit.interceptor";
 import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
 import { SaleQueryService } from "./sale-query.service";
@@ -48,10 +46,6 @@ import { ProductDisplayService } from "./product-display.service";
     PdfGeneratorService,
     SaleDocumentEmailService,
     ProductDisplayService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor,
-    },
   ],
   controllers: [SalesController],
   exports: [
