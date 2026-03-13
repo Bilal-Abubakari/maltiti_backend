@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Order Confirmation - Maltiti A. Enterprise Ltd</title>
+    <style>
+        /* Reset */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100% !important;
+            background-color: #f4f7f6;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #333333;
+        }
+
+        .email-wrapper {
+            background-color: #f4f7f6;
+            padding: 30px 0;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0F6938 0%, #0a4d28 100%);
+            padding: 40px 30px 30px;
+            text-align: center;
+        }
+
+        .logo {
+            max-width: 160px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background-color: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 50px;
+            padding: 8px 24px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .header-title {
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 700;
+            margin: 16px 0 6px;
+            line-height: 1.3;
+        }
+
+        .header-subtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        /* Content */
+        .content {
+            padding: 36px 30px;
+        }
+
+        .greeting {
+            font-size: 17px;
+            line-height: 1.6;
+            margin: 0 0 24px 0;
+            color: #333333;
+        }
+
+        .intro-message {
+            background-color: #f0faf4;
+            border-left: 4px solid #0F6938;
+            border-radius: 4px;
+            padding: 16px 20px;
+            margin: 0 0 30px 0;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #444444;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0F6938;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0 0 14px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e8f5ee;
+        }
+
+        /* Order summary card */
+        .summary-card {
+            background-color: #f8faf9;
+            border: 1px solid #e0ede6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .summary-row {
+            display: flex;
+            padding: 12px 18px;
+            border-bottom: 1px solid #e8efe9;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .summary-table tr td {
+            padding: 11px 18px;
+            border-bottom: 1px solid #e8efe9;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .summary-table td:first-child {
+            font-weight: 600;
+            color: #555555;
+            width: 40%;
+        }
+
+        .summary-table td:last-child {
+            color: #333333;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-pending       { background-color: #fff3cd; color: #856404; }
+        .badge-packaging     { background-color: #cce5ff; color: #004085; }
+        .badge-in_transit    { background-color: #d1ecf1; color: #0c5460; }
+        .badge-delivered     { background-color: #d4edda; color: #155724; }
+        .badge-cancelled     { background-color: #f8d7da; color: #721c24; }
+
+        .badge-invoice_requested { background-color: #fff3cd; color: #856404; }
+        .badge-awaiting_delivery { background-color: #cce5ff; color: #004085; }
+        .badge-pending_payment   { background-color: #ffe5b4; color: #7a4f00; }
+        .badge-paid              { background-color: #d4edda; color: #155724; }
+        .badge-refunded          { background-color: #e2d9f3; color: #432874; }
+
+        /* Order items table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e0ede6;
+        }
+
+        .items-table thead tr {
+            background-color: #0F6938;
+        }
+
+        .items-table thead th {
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 12px 16px;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .items-table thead th:last-child,
+        .items-table tbody td:last-child,
+        .items-table tfoot td:last-child {
+            text-align: right;
+        }
+
+        .items-table tbody tr:nth-child(even) {
+            background-color: #f8faf9;
+        }
+
+        .items-table tbody tr:nth-child(odd) {
+            background-color: #ffffff;
+        }
+
+        .items-table tbody td {
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #333333;
+            border-bottom: 1px solid #e8efe9;
+        }
+
+        .items-table tfoot tr {
+            background-color: #f0faf4;
+        }
+
+        .items-table tfoot td {
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        .items-table .subtotal-row td {
+            font-weight: 600;
+        }
+
+        .items-table .total-row td {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0F6938;
+            border-top: 2px solid #0F6938;
+        }
+
+        .product-name {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        /* Info notice */
+        .notice {
+            background-color: #fffbf0;
+            border: 1px solid #ffd966;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #664d00;
+            line-height: 1.6;
+        }
+
+        .notice strong {
+            color: #4a3700;
+        }
+
+        /* CTA Button */
+        .button-container {
+            text-align: center;
+            margin: 32px 0 24px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: #0F6938;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(15, 105, 56, 0.3);
+            letter-spacing: 0.3px;
+        }
+
+        .cta-button:hover {
+            background-color: #0a4d28;
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 1px solid #e8efe9;
+            margin: 28px 0;
+        }
+
+        /* Help section */
+        .help-section {
+            background-color: #f8faf9;
+            border-radius: 8px;
+            padding: 20px 24px;
+            text-align: center;
+            font-size: 14px;
+            color: #666666;
+            line-height: 1.7;
+        }
+
+        .help-section a {
+            color: #0F6938;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #0a4d28;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .footer-logo {
+            max-width: 100px;
+            height: auto;
+            margin-bottom: 16px;
+            opacity: 0.85;
+        }
+
+        .footer-text {
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            line-height: 1.7;
+            margin: 0 0 10px 0;
+        }
+
+        .footer-links {
+            margin: 14px 0 0;
+        }
+
+        .footer-link {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            margin: 0 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .footer-link:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media screen and (max-width: 600px) {
+            .email-wrapper { padding: 10px 0; }
+            .email-container { border-radius: 0; }
+            .header, .content, .footer { padding: 24px 18px !important; }
+            .header-title { font-size: 24px !important; }
+            .items-table thead th,
+            .items-table tbody td,
+            .items-table tfoot td { padding: 10px 10px; font-size: 13px; }
+            .summary-table tr td { padding: 10px 14px; }
+        }
+
+        @media (prefers-contrast: more) {
+            .cta-button { border: 2px solid #ffffff; }
+        }
+    </style>
+</head>
+<body>
+<div class="email-wrapper">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="650" class="email-container">
+
+                    <!-- ===== HEADER ===== -->
+                    <tr>
+                        <td class="header">
+                            <img src="https://res.cloudinary.com/deyszqsgf/image/upload/v1764454227/maltiti-logo_xusduy.png"
+                                 alt="Maltiti A. Enterprise Ltd"
+                                 class="logo">
+                            <div>
+                                <span class="header-badge">Order Confirmed</span>
+                            </div>
+                            <h1 class="header-title">Thank You for Your Order!</h1>
+                            <p class="header-subtitle">Your order has been received and is being processed.</p>
+                        </td>
+                    </tr>
+
+                    <!-- ===== CONTENT ===== -->
+                    <tr>
+                        <td class="content">
+
+                            <p class="greeting">Hello <strong>{{customerName}}</strong>,</p>
+
+                            <div class="intro-message">
+                                We've successfully created an order for you. Below you'll find a full summary of your order.
+                                Our team will be in touch with you regarding next steps.
+                            </div>
+
+                            <!-- Order Summary -->
+                            <div class="section">
+                                <div class="section-title">📋 Order Summary</div>
+                                <div class="summary-card">
+                                    <table class="summary-table">
+                                        <tr>
+                                            <td>Order Reference</td>
+                                            <td><strong>#{{orderReference}}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Order Date</td>
+                                            <td>{{orderDate}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Order Status</td>
+                                            <td>
+                                                <span class="badge badge-{{orderStatusClass}}">{{orderStatus}}</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Payment Status</td>
+                                            <td>
+                                                <span class="badge badge-{{paymentStatusClass}}">{{paymentStatus}}</span>
+                                            </td>
+                                        </tr>
+                                        {{#if deliveryAddress}}
+                                        <tr>
+                                            <td>Delivery Address</td>
+                                            <td>{{deliveryAddress}}</td>
+                                        </tr>
+                                        {{/if}}
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Customer Details -->
+                            <div class="section">
+                                <div class="section-title">👤 Customer Details</div>
+                                <div class="summary-card">
+                                    <table class="summary-table">
+                                        <tr>
+                                            <td>Name</td>
+                                            <td>{{customerName}}</td>
+                                        </tr>
+                                        {{#if customerEmail}}
+                                        <tr>
+                                            <td>Email</td>
+                                            <td>{{customerEmail}}</td>
+                                        </tr>
+                                        {{/if}}
+                                        {{#if customerPhone}}
+                                        <tr>
+                                            <td>Phone</td>
+                                            <td>{{customerPhone}}</td>
+                                        </tr>
+                                        {{/if}}
+                                        {{#if customerCity}}
+                                        <tr>
+                                            <td>City</td>
+                                            <td>{{customerCity}}{{#if customerRegion}}, {{customerRegion}}{{/if}}</td>
+                                        </tr>
+                                        {{/if}}
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Order Items -->
+                            <div class="section">
+                                <div class="section-title">🛒 Items Ordered</div>
+                                <table class="items-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Qty</th>
+                                            <th>Unit Price</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{#each orderItems}}
+                                        <tr>
+                                            <td><span class="product-name">{{this.productName}}</span></td>
+                                            <td>{{this.quantity}}</td>
+                                            <td>GHS {{this.unitPrice}}</td>
+                                            <td>GHS {{this.lineTotal}}</td>
+                                        </tr>
+                                        {{/each}}
+                                    </tbody>
+                                    <tfoot>
+                                        {{#if subtotal}}
+                                        <tr class="subtotal-row">
+                                            <td colspan="3">Subtotal</td>
+                                            <td>GHS {{subtotal}}</td>
+                                        </tr>
+                                        {{/if}}
+                                        {{#if deliveryFee}}
+                                        <tr class="subtotal-row">
+                                            <td colspan="3">Delivery Fee</td>
+                                            <td>GHS {{deliveryFee}}</td>
+                                        </tr>
+                                        {{/if}}
+                                        {{#if serviceFee}}
+                                        <tr class="subtotal-row">
+                                            <td colspan="3">Service Fee</td>
+                                            <td>GHS {{serviceFee}}</td>
+                                        </tr>
+                                        {{/if}}
+                                        <tr class="total-row">
+                                            <td colspan="3">Grand Total</td>
+                                            <td>{{#if grandTotal}}GHS {{grandTotal}}{{else}}To be determined{{/if}}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <!-- Payment Notice -->
+                            <div class="notice">
+                                <strong>💡 What Happens Next?</strong><br>
+                                If you haven't made payment yet, please do so to allow us to begin processing your order. If payment has already been made, we'll proceed with processing shortly.
+                                You can track your order at any time using the button below.
+                            </div>
+
+                            <!-- CTA -->
+                            <div class="button-container">
+                                <a href="{{trackOrderUrl}}"
+                                   class="cta-button"
+                                   target="_blank"
+                                   role="button"
+                                   aria-label="Track Your Order">
+                                    Track Your Order
+                                </a>
+                            </div>
+
+                            <hr class="divider">
+
+                            <!-- Help -->
+                            <div class="help-section">
+                                <p>
+                                    Questions about your order? We're happy to help!<br>
+                                    Reach us at <a href="mailto:info@maltitiaenterprise.com">info@maltitiaenterprise.com</a>
+                                    or visit us at <a href="https://maltitiaenterprise.com">maltitiaenterprise.com</a>
+                                </p>
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    <!-- ===== FOOTER ===== -->
+                    <tr>
+                        <td class="footer">
+                            <img src="https://res.cloudinary.com/deyszqsgf/image/upload/v1764454227/maltiti-logo_xusduy.png"
+                                 alt="Maltiti A. Enterprise Ltd"
+                                 class="footer-logo">
+                            <p class="footer-text">
+                                &copy; {{currentYear}} Maltiti A. Enterprise Ltd. All rights reserved.<br>
+                                This email was sent because an order was created for your account.
+                            </p>
+                            <div class="footer-links">
+                                <a href="https://maltitiaenterprise.com" class="footer-link">Website</a>
+                                <a href="mailto:info@maltitiaenterprise.com" class="footer-link">Contact Us</a>
+                                <a href="{{trackOrderUrl}}" class="footer-link">Track Order</a>
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</div>
+</body>
+</html>
+

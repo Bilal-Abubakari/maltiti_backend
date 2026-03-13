@@ -23,6 +23,8 @@ import { SaleCreationService } from "./sale-creation.service";
 import { SaleUpdateService } from "./sale-update.service";
 import { SaleCancellationService } from "./sale-cancellation.service";
 import { PdfGeneratorService } from "./pdf-generator.service";
+import { SaleDocumentEmailService } from "./sale-document-email.service";
+import { ProductDisplayService } from "./product-display.service";
 
 @Module({
   imports: [
@@ -44,12 +46,20 @@ import { PdfGeneratorService } from "./pdf-generator.service";
     SaleUpdateService,
     SaleCancellationService,
     PdfGeneratorService,
+    SaleDocumentEmailService,
+    ProductDisplayService,
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
   ],
   controllers: [SalesController],
-  exports: [SalesService, InvoiceService, ReceiptService, WaybillService],
+  exports: [
+    SalesService,
+    InvoiceService,
+    ReceiptService,
+    WaybillService,
+    SaleDocumentEmailService,
+  ],
 })
 export class SalesModule {}

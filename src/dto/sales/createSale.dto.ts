@@ -51,6 +51,14 @@ export class CreateSaleDto {
   public customerId: string;
 
   @ApiPropertyOptional({
+    description: "Delivery fee in GHS",
+    default: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  public deliveryFee?: number;
+
+  @ApiPropertyOptional({
     enum: OrderStatus,
     enumName: "OrderStatus",
     default: OrderStatus.PENDING,
