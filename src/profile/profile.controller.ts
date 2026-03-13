@@ -36,6 +36,9 @@ import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
 import { CurrentUser } from "../authentication/decorators/current-user.decorator";
 
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
+
 /**
  * Controller for authenticated user's profile management
  * All endpoints are self-service (user manages their own profile)
@@ -116,7 +119,7 @@ export class ProfileController {
     actionType: AuditActionType.UPDATE,
     entityType: AuditEntityType.USER,
     description: "Updated own profile",
-    getEntityId: result => result?.data?.id,
+    getEntityId: getDataId,
   })
   @Put("profile")
   @Roles([Role.Admin, Role.SuperAdmin, Role.User])
@@ -181,7 +184,7 @@ export class ProfileController {
     actionType: AuditActionType.UPDATE,
     entityType: AuditEntityType.USER,
     description: "Updated profile avatar",
-    getEntityId: result => result?.data?.id,
+    getEntityId: getDataId,
   })
   @Post("profile/avatar")
   @Roles([Role.Admin, Role.SuperAdmin, Role.User])

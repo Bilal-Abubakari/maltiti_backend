@@ -52,6 +52,9 @@ import { Role } from "../enum/role.enum";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { UpdateDeliveryCostDto } from "../dto/checkout.dto";
+import { AuditService } from "../audit/audit.service";
+import { CurrentUser } from "../authentication/decorators/current-user.decorator";
+import { User } from "../entities/User.entity";
 import {
   InitializeTransactionDataDto,
   InitializeTransactionResponseDto,
@@ -69,13 +72,22 @@ import {
 @ApiTags("Sales")
 @Controller("sales")
 export class SalesController {
-  constructor(private readonly salesService: SalesService) {}
+  constructor(
+    private readonly salesService: SalesService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
   @UseGuards(TokenAuthGuard, RolesGuard)
   @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Create a new sale" })
   @ApiResponse({ status: 201, type: SaleResponseDto })
+  @AuditLog({
+    actionType: AuditActionType.SALE_CREATED,
+    entityType: AuditEntityType.SALE,
+    description: "Created a new sale",
+    getEntityId: result => result?.id as string,
+  })
   public async createSale(
     @Body() createSaleDto: CreateSaleDto,
   ): Promise<SaleResponseDto> {
@@ -91,7 +103,7 @@ export class SalesController {
     actionType: AuditActionType.SALE_UPDATED,
     entityType: AuditEntityType.SALE,
     description: "Updated sale details",
-    getEntityId: result => result?.id,
+    getEntityId: result => result?.id as string,
   })
   public async updateSale(
     @Param("id") saleId: string,
@@ -101,8 +113,16 @@ export class SalesController {
   }
 
   @Put(":id/status")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Update sale status" })
   @ApiResponse({ status: 200, type: SaleResponseDto })
+  @AuditLog({
+    actionType: AuditActionType.ORDER_STATUS_UPDATED,
+    entityType: AuditEntityType.SALE,
+    description: "Updated sale order/payment status",
+    getEntityId: result => result?.id as string,
+  })
   public async updateSaleStatus(
     @Param("id") saleId: string,
     @Body() updateDto: UpdateSaleStatusDto,
@@ -111,8 +131,16 @@ export class SalesController {
   }
 
   @Post(":id/line-items")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Add line item to sale" })
   @ApiResponse({ status: 200, type: SaleResponseDto })
+  @AuditLog({
+    actionType: AuditActionType.UPDATE,
+    entityType: AuditEntityType.SALE,
+    description: "Added line item to sale",
+    getEntityId: result => result?.id as string,
+  })
   public async addLineItem(
     @Param("id") saleId: string,
     @Body() addDto: AddLineItemDto,
@@ -121,8 +149,16 @@ export class SalesController {
   }
 
   @Put(":id/batches")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Assign batches to line item" })
   @ApiResponse({ status: 200, type: SaleResponseDto })
+  @AuditLog({
+    actionType: AuditActionType.BATCH_ASSIGNED,
+    entityType: AuditEntityType.SALE,
+    description: "Assigned batches to sale line item",
+    getEntityId: result => result?.id as string,
+  })
   public async assignBatches(
     @Param("id") saleId: string,
     @Body() assignDto: AssignBatchesDto,
@@ -277,6 +313,8 @@ export class SalesController {
   }
 
   @Post(":id/invoice")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Generate invoice PDF for a sale" })
   @ApiResponse({
     status: 200,
@@ -286,11 +324,23 @@ export class SalesController {
     @Param("id") saleId: string,
     @Body() invoiceDto: GenerateInvoiceDto,
     @Res() res: Response,
+    @CurrentUser() user: User,
   ): Promise<void> {
     const pdfBuffer = await this.salesService.generateInvoice(
       saleId,
       invoiceDto,
     );
+
+    // Manual audit log — @Res() bypasses the interceptor observable chain
+    void this.auditService.createAuditLog({
+      actionType: AuditActionType.GENERATE_INVOICE,
+      entityType: AuditEntityType.INVOICE,
+      entityId: saleId,
+      description: `Generated invoice PDF for sale ${saleId}`,
+      performedByUserId: user.id,
+      performedByUserName: user.name,
+      performedByRole: user.userType,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -301,6 +351,8 @@ export class SalesController {
   }
 
   @Post(":id/receipt")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Generate receipt PDF for a sale" })
   @ApiResponse({
     status: 200,
@@ -310,11 +362,23 @@ export class SalesController {
     @Param("id") saleId: string,
     @Body() receiptDto: GenerateReceiptDto,
     @Res() res: Response,
+    @CurrentUser() user: User,
   ): Promise<void> {
     const pdfBuffer = await this.salesService.generateReceipt(
       saleId,
       receiptDto,
     );
+
+    // Manual audit log — @Res() bypasses the interceptor observable chain
+    void this.auditService.createAuditLog({
+      actionType: AuditActionType.GENERATE_RECEIPT,
+      entityType: AuditEntityType.RECEIPT,
+      entityId: saleId,
+      description: `Generated receipt PDF for sale ${saleId}`,
+      performedByUserId: user.id,
+      performedByUserName: user.name,
+      performedByRole: user.userType,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -325,6 +389,8 @@ export class SalesController {
   }
 
   @Post(":id/waybill")
+  @UseGuards(TokenAuthGuard, RolesGuard)
+  @Roles([Role.Admin, Role.SuperAdmin])
   @ApiOperation({ summary: "Generate waybill PDF for a sale" })
   @ApiResponse({
     status: 200,
@@ -334,11 +400,23 @@ export class SalesController {
     @Param("id") saleId: string,
     @Body() waybillDto: GenerateWaybillDto,
     @Res() res: Response,
+    @CurrentUser() user: User,
   ): Promise<void> {
     const pdfBuffer = await this.salesService.generateWaybill(
       saleId,
       waybillDto,
     );
+
+    // Manual audit log — @Res() bypasses the interceptor observable chain
+    void this.auditService.createAuditLog({
+      actionType: AuditActionType.GENERATE_WAYBILL,
+      entityType: AuditEntityType.WAYBILL,
+      entityId: saleId,
+      description: `Generated waybill PDF for sale ${saleId}`,
+      performedByUserId: user.id,
+      performedByUserName: user.name,
+      performedByRole: user.userType,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -386,7 +464,7 @@ export class SalesController {
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
     description: "Customer cancelled sale",
-    getEntityId: result => result?.sale?.id,
+    getEntityId: result => (result?.sale as Record<string, unknown>)?.id as string,
   })
   public async cancelSaleByCustomer(
     @Param("id") saleId: string,
@@ -428,7 +506,7 @@ export class SalesController {
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
     description: "Admin cancelled sale",
-    getEntityId: result => result?.sale?.id,
+    getEntityId: result => (result?.sale as Record<string, unknown>)?.id as string,
   })
   public async cancelSaleByAdmin(
     @Param("id") saleId: string,
@@ -460,7 +538,7 @@ export class SalesController {
     actionType: AuditActionType.SALE_CANCELLED,
     entityType: AuditEntityType.SALE,
     description: "Soft deleted sale",
-    getEntityId: result => result?.id,
+    getEntityId: result => result?.id as string,
   })
   public async deleteSale(
     @Param("id") saleId: string,
@@ -484,6 +562,13 @@ export class SalesController {
     description:
       "Delivery cost updated successfully. Service fee recalculated. Customer will be notified.",
     type: SaleResponseDto,
+  })
+  @AuditLog({
+    actionType: AuditActionType.UPDATE,
+    entityType: AuditEntityType.SALE,
+    description: "Updated delivery cost for sale",
+    getEntityId: result =>
+      (result?.data as Record<string, unknown>)?.id as string,
   })
   public async updateDeliveryCost(
     @Param("id") id: string,

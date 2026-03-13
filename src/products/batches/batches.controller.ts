@@ -27,6 +27,12 @@ import { BatchQueryDto } from "../../dto/batchQuery.dto";
 import { BatchResponseDto } from "../../dto/batchResponse.dto";
 import { Batch } from "../../entities/Batch.entity";
 import { GetBatchesByProductsDto } from "../../dto/getBatchesByProducts.dto";
+import { AuditLog } from "../../interceptors/audit.interceptor";
+import { AuditActionType } from "../../enum/audit-action-type.enum";
+import { AuditEntityType } from "../../enum/audit-entity-type.enum";
+
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
 
 @ApiTags("Batches")
 @Controller("products/batches")
@@ -50,6 +56,12 @@ export class BatchesController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 409, description: "Batch number already exists" })
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({
+    actionType: AuditActionType.CREATE,
+    entityType: AuditEntityType.BATCH,
+    description: "Created a new product batch",
+    getEntityId: getDataId,
+  })
   public async createBatch(
     @Body() batchInfo: CreateBatchDto,
   ): Promise<IResponse<Batch>> {

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import {
   Injectable,
   NestInterceptor,
@@ -19,8 +17,8 @@ export interface AuditMetadata {
   actionType: AuditActionType;
   entityType: AuditEntityType;
   description: string;
-  getEntityId?: (result: any) => string;
-  includeBeforeAfter?: boolean;
+  getEntityId?: (result: Record<string, unknown>) => string | undefined;
+  includeResult?: boolean;
 }
 
 export const AUDIT_METADATA_KEY = "audit_metadata";
@@ -28,13 +26,12 @@ export const AUDIT_METADATA_KEY = "audit_metadata";
 /**
  * Decorator to mark endpoints for automatic audit logging
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types,@typescript-eslint/explicit-function-return-type
-export const AuditLog = (metadata: AuditMetadata) =>
+export const AuditLog = (metadata: AuditMetadata): MethodDecorator =>
   Reflect.metadata(AUDIT_METADATA_KEY, metadata);
 
 /**
- * Interceptor that automatically logs auditable actions
- * Applied globally or per-controller
+ * Interceptor that automatically logs auditable actions.
+ * Applied globally — only fires when a handler is decorated with @AuditLog().
  */
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
@@ -46,7 +43,7 @@ export class AuditInterceptor implements NestInterceptor {
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<any> {
+  ): Observable<unknown> {
     const auditMetadata = this.reflector.get<AuditMetadata>(
       AUDIT_METADATA_KEY,
       context.getHandler(),
@@ -58,7 +55,7 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const user = (request as any).user as User;
+    const user = (request as Request & { user?: User }).user;
 
     // If no user (unauthenticated), skip audit logging
     if (!user) {
@@ -70,20 +67,20 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap({
-        next: result => {
+        next: (result: unknown) => {
+          const typedResult = result as Record<string, unknown>;
+
           // Extract entity ID from result if function provided
           const entityId = auditMetadata.getEntityId
-            ? auditMetadata.getEntityId(result)
+            ? auditMetadata.getEntityId(typedResult)
             : undefined;
 
-          // Prepare metadata
-          const metadata: Record<string, any> = {};
+          // Optionally attach the result to metadata for richer audit trail
+          const metadata: Record<string, unknown> =
+            auditMetadata.includeResult && result
+              ? { result: typedResult }
+              : {};
 
-          if (auditMetadata.includeBeforeAfter && result) {
-            metadata.result = result;
-          }
-
-          // Create audit log asynchronously (fire and forget)
           void this.auditService.createAuditLog({
             actionType: auditMetadata.actionType,
             entityType: auditMetadata.entityType,
@@ -98,8 +95,7 @@ export class AuditInterceptor implements NestInterceptor {
           });
         },
         error: () => {
-          // Even on error, we might want to log the attempt
-          // For failed login attempts, this is handled separately
+          // Errors are not audited here — failed login attempts are logged separately
         },
       }),
     );
@@ -113,7 +109,8 @@ export class AuditInterceptor implements NestInterceptor {
       (request.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       (request.headers["x-real-ip"] as string) ||
       request.ip ||
-      request.connection?.remoteAddress ||
+      (request as unknown as { connection?: { remoteAddress?: string } })
+        .connection?.remoteAddress ||
       "unknown"
     );
   }

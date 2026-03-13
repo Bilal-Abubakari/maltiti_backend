@@ -49,6 +49,9 @@ import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
 import { User } from "../entities/User.entity";
 
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
+
 @ApiTags("Products")
 @Controller("products")
 export class ProductsController {
@@ -169,6 +172,12 @@ export class ProductsController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 409, description: "Product with SKU already exists" })
   @HttpCode(HttpStatus.CREATED)
+  @AuditLog({
+    actionType: AuditActionType.CREATE,
+    entityType: AuditEntityType.PRODUCT,
+    description: "Created a new product",
+    getEntityId: getDataId,
+  })
   public async addProduct(
     @Body() productInfo: CreateProductDto,
   ): Promise<IResponse<Product>> {
@@ -205,8 +214,8 @@ export class ProductsController {
   @AuditLog({
     actionType: AuditActionType.UPDATE,
     entityType: AuditEntityType.PRODUCT,
-    description: "Updated product",
-    getEntityId: result => result?.data?.id,
+    description: "Updated product details",
+    getEntityId: getDataId,
   })
   public async editProduct(
     @Param("id") id: string,
@@ -243,7 +252,7 @@ export class ProductsController {
     actionType: AuditActionType.DELETE,
     entityType: AuditEntityType.PRODUCT,
     description: "Deleted product",
-    getEntityId: result => result?.data?.id,
+    getEntityId: getDataId,
   })
   public async deleteProduct(
     @Param("id") id: string,
@@ -277,6 +286,12 @@ export class ProductsController {
   })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Product not found" })
+  @AuditLog({
+    actionType: AuditActionType.STATUS_CHANGED,
+    entityType: AuditEntityType.PRODUCT,
+    description: "Changed product status",
+    getEntityId: getDataId,
+  })
   public async changeProductStatus(
     @Param("id") id: string,
   ): Promise<IResponse<Product>> {

@@ -28,12 +28,16 @@ import { AuditLog } from "../interceptors/audit.interceptor";
 import { AuditActionType } from "../enum/audit-action-type.enum";
 import { AuditEntityType } from "../enum/audit-entity-type.enum";
 
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
+
 /**
  * Controller for managing user-related operations, accessible only to SuperAdmin users.
  * Provides endpoints for CRUD operations and status/role changes on users.
  */
 @ApiTags("users")
 @Controller("users")
+@UseGuards(TokenAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -47,7 +51,6 @@ export class UsersController {
     type: UserResponseDto,
     isArray: true,
   })
-  @UseGuards(TokenAuthGuard)
   @Roles([Role.SuperAdmin])
   @Get()
   public async findAll(): Promise<IResponse<User[]>> {
@@ -94,6 +97,12 @@ export class UsersController {
   })
   @Patch(":id")
   @Roles([Role.SuperAdmin])
+  @AuditLog({
+    actionType: AuditActionType.USER_UPDATED,
+    entityType: AuditEntityType.USER,
+    description: "Updated user information",
+    getEntityId: getDataId,
+  })
   public async update(
     @Param("id") id: string,
     @Body() updateUserDto: UpdateUserDto,
@@ -112,11 +121,14 @@ export class UsersController {
    */
   @ApiOperation({ summary: "Delete a user" })
   @ApiParam({ name: "id", description: "User ID", type: "string" })
-  @ApiOkResponse({
-    description: "User deleted successfully",
-  })
+  @ApiOkResponse({ description: "User deleted successfully" })
   @Delete(":id")
   @Roles([Role.SuperAdmin])
+  @AuditLog({
+    actionType: AuditActionType.USER_DELETED,
+    entityType: AuditEntityType.USER,
+    description: "Deleted user account",
+  })
   public async remove(
     @Param("id") id: string,
   ): Promise<IResponse<{ message: string }>> {
@@ -142,6 +154,12 @@ export class UsersController {
   })
   @Patch(":id/status")
   @Roles([Role.SuperAdmin])
+  @AuditLog({
+    actionType: AuditActionType.STATUS_CHANGED,
+    entityType: AuditEntityType.USER,
+    description: "Changed user account status",
+    getEntityId: getDataId,
+  })
   public async changeStatus(
     @Param("id") id: string,
     @Body() changeStatusDto: ChangeStatusDto,
@@ -175,7 +193,7 @@ export class UsersController {
     actionType: AuditActionType.ROLE_CHANGED,
     entityType: AuditEntityType.USER,
     description: "Changed user role",
-    getEntityId: result => result?.data?.id,
+    getEntityId: getDataId,
   })
   public async changeRole(
     @Param("id") id: string,
