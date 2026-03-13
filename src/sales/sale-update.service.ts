@@ -23,6 +23,7 @@ import { StockManagementService } from "./stock-management.service";
 import { LineItemManagementService } from "./line-item-management.service";
 import { NotificationService } from "../notification/notification.service";
 import { NotificationIntegrationService } from "../notification/notification-integration.service";
+import { SaleDocumentEmailService } from "./sale-document-email.service";
 import { transformSaleToResponseDto } from "../utils/sale-mapper.util";
 import { formatStatus } from "../utils/status-formatter.util";
 import { NotificationTopic } from "../enum/notification-topic.enum";
@@ -42,6 +43,7 @@ export class SaleUpdateService {
     private readonly lineItemManagementService: LineItemManagementService,
     private readonly notificationService: NotificationService,
     private readonly notificationIntegrationService: NotificationIntegrationService,
+    private readonly saleDocumentEmailService: SaleDocumentEmailService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -118,6 +120,9 @@ export class SaleUpdateService {
     }
 
     const savedSale = await this.saleRepository.save(sale);
+
+    // Send invoice or receipt email based on the new payment status
+    await this.sendDocumentEmailOnStatusChange(savedSale, paymentStatus);
 
     // Send status update email to customer
     try {
@@ -361,12 +366,51 @@ export class SaleUpdateService {
     return transformSaleToResponseDto(sale);
   }
 
+  private async sendDocumentEmailOnStatusChange(
+    sale: Sale,
+    newPaymentStatus: PaymentStatus | undefined,
+  ): Promise<void> {
+    if (
+      newPaymentStatus !== PaymentStatus.INVOICE_REQUESTED &&
+      newPaymentStatus !== PaymentStatus.PAID
+    ) {
+      return;
+    }
+
+    try {
+      // Reload sale with customer relation in case it was not loaded
+      const saleWithCustomer = await this.saleRepository.findOne({
+        where: { id: sale.id },
+        relations: ["customer"],
+      });
+      if (!saleWithCustomer?.customer) {
+        return;
+      }
+      await this.saleDocumentEmailService.sendDocumentEmailForSale(
+        saleWithCustomer,
+        saleWithCustomer.customer,
+      );
+    } catch (error) {
+      // Non-fatal — log and continue
+      console.error(
+        `Failed to send document email on status change for sale ${sale.id}:`,
+        error,
+      );
+    }
+  }
+
   private async sendStatusUpdateNotifications(
     savedSale: Sale,
     updateDto: UpdateSaleDto,
     oldOrderStatus: OrderStatus,
   ): Promise<void> {
     if (updateDto.orderStatus || updateDto.paymentStatus) {
+      // Send invoice or receipt email if payment status changed
+      await this.sendDocumentEmailOnStatusChange(
+        savedSale,
+        updateDto.paymentStatus,
+      );
+
       try {
         await this.notificationService.sendOrderStatusUpdateEmail(
           savedSale.customer.email,
