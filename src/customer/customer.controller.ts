@@ -23,7 +23,6 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
-  ApiQuery,
   ApiBody,
 } from "@nestjs/swagger";
 import { CustomerResponseDto } from "../dto/customerResponse.dto";
@@ -32,6 +31,13 @@ import { User } from "../entities/User.entity";
 import { CustomerMeResponseDto } from "../dto/customerMeResponse.dto";
 import { Roles } from "../authentication/guards/roles/roles.decorator";
 import { Role } from "../enum/role.enum";
+import { CustomerQueryDto } from "../dto/customerQuery.dto";
+import { AuditLog } from "../interceptors/audit.interceptor";
+import { AuditActionType } from "../enum/audit-action-type.enum";
+import { AuditEntityType } from "../enum/audit-entity-type.enum";
+
+const getDataId = (result: Record<string, unknown>): string =>
+  ((result?.data as Record<string, unknown>)?.id as string) ?? "";
 
 @UseGuards(TokenAuthGuard)
 @ApiTags("customers")
@@ -40,25 +46,12 @@ export class CustomerController {
   constructor(private readonly customerService: CustomerService) {}
 
   @Get()
-  @ApiOperation({ summary: "Get all customers with pagination" })
-  @ApiQuery({
-    name: "page",
-    required: false,
-    type: Number,
-    description: "Page number",
-  })
-  @ApiQuery({
-    name: "limit",
-    required: false,
-    type: Number,
-    description: "Items per page",
-  })
+  @ApiOperation({ summary: "Get all customers with advanced filtering" })
   @ApiResponse({ status: 200, description: "Customers retrieved successfully" })
   public async getAllCustomers(
-    @Query("page") page: number = 1,
-    @Query("limit") limit: number = 20,
+    @Query() queryDto: CustomerQueryDto,
   ): Promise<IPaginatedResponse<Customer>> {
-    const customers = await this.customerService.getAllCustomers(page, limit);
+    const customers = await this.customerService.getAllCustomers(queryDto);
 
     return {
       message: "Customers loaded successfully",
@@ -122,6 +115,12 @@ export class CustomerController {
     status: 409,
     description: "Customer with email already exists",
   })
+  @AuditLog({
+    actionType: AuditActionType.CREATE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Created a new customer",
+    getEntityId: getDataId,
+  })
   public async createCustomer(
     @Body() customerInfo: CreateCustomerDto,
   ): Promise<IResponse<Customer>> {
@@ -142,6 +141,12 @@ export class CustomerController {
     status: 409,
     description: "Customer with email already exists",
   })
+  @AuditLog({
+    actionType: AuditActionType.UPDATE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Updated customer information",
+    getEntityId: getDataId,
+  })
   public async updateCustomer(
     @Body() customerInfo: UpdateCustomerDto,
   ): Promise<IResponse<Customer>> {
@@ -158,6 +163,11 @@ export class CustomerController {
   @ApiParam({ name: "id", type: String, description: "Customer ID" })
   @ApiResponse({ status: 200, description: "Customer deleted successfully" })
   @ApiResponse({ status: 404, description: "Customer not found" })
+  @AuditLog({
+    actionType: AuditActionType.DELETE,
+    entityType: AuditEntityType.CUSTOMER,
+    description: "Deleted customer",
+  })
   public async deleteCustomer(
     @Param("id") id: string,
   ): Promise<IResponse<DeleteResult>> {

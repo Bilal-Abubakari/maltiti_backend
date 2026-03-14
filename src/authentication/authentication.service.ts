@@ -89,6 +89,17 @@ export class AuthenticationService {
     await this.refreshTokenIdsStorage.insert(user.id, refreshToken);
     delete user.password;
 
+    // Log successful login
+    void this.auditService.createAuditLog({
+      actionType: AuditActionType.LOGIN,
+      entityType: AuditEntityType.AUTHENTICATION,
+      entityId: user.id,
+      description: `User "${user.name}" (${user.email}) logged in successfully`,
+      performedByUserId: user.id,
+      performedByUserName: user.name,
+      performedByRole: user.userType,
+    });
+
     return {
       user,
       accessToken,

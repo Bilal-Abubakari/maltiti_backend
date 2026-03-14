@@ -668,4 +668,59 @@ export class NotificationService {
       throw error;
     }
   }
+
+  /**
+   * Send order confirmation email to customer when a sale is created by admin/super admin.
+   */
+  public async sendSaleCreationEmail(data: {
+    customerEmail: string;
+    customerName: string;
+    customerPhone?: string;
+    customerCity?: string;
+    customerRegion?: string;
+    orderId: string;
+    orderReference: string;
+    orderDate: string;
+    orderStatus: string;
+    orderStatusClass: string;
+    paymentStatus: string;
+    paymentStatusClass: string;
+    deliveryAddress?: string;
+    orderItems: Array<{
+      productName: string;
+      quantity: number;
+      unitPrice: string;
+      lineTotal: string;
+    }>;
+    subtotal?: string;
+    deliveryFee?: string;
+    serviceFee?: string;
+    grandTotal?: string;
+  }): Promise<void> {
+    try {
+      const frontendUrl = this.configService.get<string>("FRONTEND_URL") ?? "";
+      const trackOrderUrl = `${frontendUrl}/track-order/${data.orderId}`;
+
+      await this.mailerService.sendMail({
+        to: data.customerEmail,
+        from: ADMIN_FROM_EMAIL,
+        subject: `Order Confirmation - #${data.orderReference} | Maltiti A. Enterprise Ltd`,
+        template: "./sale-order-confirmation",
+        context: {
+          ...data,
+          trackOrderUrl,
+          currentYear: new Date().getFullYear(),
+        },
+      });
+
+      this.logger.log(
+        `Sale creation confirmation email sent to ${data.customerEmail} for order ${data.orderId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send sale creation email for order ${data.orderId}: ${error.message}`,
+        error.stack,
+      );
+    }
+  }
 }

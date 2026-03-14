@@ -1,7 +1,9 @@
 import { Sale } from "../entities/Sale.entity";
 import { SaleResponseDto } from "../dto/sales/saleResponse.dto";
+import { SalePaymentResponseDto } from "../dto/sales/salePaymentResponse.dto";
 import { Customer } from "../entities/Customer.entity";
 import { calculateGrandTotal } from "./payment-fee.util";
+import { PaymentRecordStatus } from "../enum/payment-record-status.enum";
 
 export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
   const transformedLineItems = sale.lineItems.map(item => {
@@ -52,6 +54,44 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
       deletedAt: sale.checkout.deletedAt,
     };
   }
+
+  const grandTotal =
+    (sale.amount ?? 0) + (sale.deliveryFee ?? 0) > 0
+      ? calculateGrandTotal(
+          Number(sale.amount ?? 0),
+          Number(sale.deliveryFee ?? 0),
+          Number(sale.serviceFee ?? 0),
+        )
+      : undefined;
+
+  // Map payment records if loaded
+  let payments: SalePaymentResponseDto[] | undefined;
+  let totalPaid: number | undefined;
+  let balanceRemaining: number | undefined;
+
+  if (sale.payments) {
+    payments = sale.payments.map(p => ({
+      id: p.id,
+      saleId: sale.id,
+      amount: Number(p.amount),
+      paymentMethod: p.paymentMethod,
+      status: p.status,
+      reference: p.reference,
+      note: p.note,
+      isCustomerInitiated: p.isCustomerInitiated,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+
+    totalPaid = payments
+      .filter(p => p.status === PaymentRecordStatus.CONFIRMED)
+      .reduce((sum, p) => sum + Number(p.amount), 0);
+
+    if (grandTotal !== undefined) {
+      balanceRemaining = Math.max(0, grandTotal - totalPaid);
+    }
+  }
+
   return {
     id: sale.id,
     customer,
@@ -62,15 +102,11 @@ export function transformSaleToResponseDto(sale: Sale): SaleResponseDto {
     deliveryFee: sale.deliveryFee,
     serviceFee: sale.serviceFee,
     confirmedDeliveryDate: sale.confirmedDeliveryDate,
-    total:
-      (sale.amount ?? 0) + (sale.deliveryFee ?? 0) > 0
-        ? calculateGrandTotal(
-            Number(sale.amount ?? 0),
-            Number(sale.deliveryFee ?? 0),
-            Number(sale.serviceFee ?? 0),
-          )
-        : undefined,
+    total: grandTotal,
     lineItems: transformedLineItems,
+    payments,
+    totalPaid,
+    balanceRemaining,
     createdAt: sale.createdAt,
     updatedAt: sale.updatedAt,
     deletedAt: sale.deletedAt,

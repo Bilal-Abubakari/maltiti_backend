@@ -21,10 +21,11 @@ import { AuditModule } from "./audit/audit.module";
 import { ProfileModule } from "./profile/profile.module";
 import { ContactModule } from "./contact/contact.module";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { NotificationModule } from "./notification/notification.module";
 import { ReviewModule } from "./review/review.module";
 import { ScheduleModule } from "@nestjs/schedule";
+import { AuditInterceptor } from "./interceptors/audit.interceptor";
 
 @Module({
   imports: [
@@ -99,6 +100,10 @@ import { ScheduleModule } from "@nestjs/schedule";
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
   ],
 })

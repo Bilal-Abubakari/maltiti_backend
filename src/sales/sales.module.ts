@@ -5,14 +5,14 @@ import { InvoiceService } from "./invoice.service";
 import { ReceiptService } from "./receipt.service";
 import { WaybillService } from "./waybill.service";
 import { SalesController } from "./sales.controller";
+import { SalePaymentController } from "./sale-payment.controller";
 import { Sale } from "../entities/Sale.entity";
+import { SalePayment } from "../entities/SalePayment.entity";
 import { Customer } from "../entities/Customer.entity";
 import { Batch } from "../entities/Batch.entity";
 import { Product } from "../entities/Product.entity";
 import { Checkout } from "../entities/Checkout.entity";
 import { BatchesService } from "../products/batches/batches.service";
-import { APP_INTERCEPTOR } from "@nestjs/core";
-import { AuditInterceptor } from "../interceptors/audit.interceptor";
 import { DocumentGenerationService } from "./document-generation.service";
 import { OrderTrackingService } from "./order-tracking.service";
 import { SaleQueryService } from "./sale-query.service";
@@ -23,10 +23,20 @@ import { SaleCreationService } from "./sale-creation.service";
 import { SaleUpdateService } from "./sale-update.service";
 import { SaleCancellationService } from "./sale-cancellation.service";
 import { PdfGeneratorService } from "./pdf-generator.service";
+import { SaleDocumentEmailService } from "./sale-document-email.service";
+import { ProductDisplayService } from "./product-display.service";
+import { SalePaymentService } from "./sale-payment.service";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Sale, Customer, Batch, Product, Checkout]),
+    TypeOrmModule.forFeature([
+      Sale,
+      SalePayment,
+      Customer,
+      Batch,
+      Product,
+      Checkout,
+    ]),
     CheckoutModule,
   ],
   providers: [
@@ -44,12 +54,17 @@ import { PdfGeneratorService } from "./pdf-generator.service";
     SaleUpdateService,
     SaleCancellationService,
     PdfGeneratorService,
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: AuditInterceptor,
-    },
+    SaleDocumentEmailService,
+    ProductDisplayService,
+    SalePaymentService,
   ],
-  controllers: [SalesController],
-  exports: [SalesService, InvoiceService, ReceiptService, WaybillService],
+  controllers: [SalesController, SalePaymentController],
+  exports: [
+    SalesService,
+    InvoiceService,
+    ReceiptService,
+    WaybillService,
+    SaleDocumentEmailService,
+  ],
 })
 export class SalesModule {}

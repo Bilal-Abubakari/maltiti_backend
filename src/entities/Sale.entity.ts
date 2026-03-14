@@ -1,10 +1,18 @@
-import { Column, Entity, ManyToOne, JoinColumn, OneToOne } from "typeorm";
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
+  OneToMany,
+} from "typeorm";
 import { Customer } from "./Customer.entity";
 import { SaleLineItem } from "../interfaces/sale-line-item.interface";
 import { Checkout } from "./Checkout.entity";
 import { OrderStatus } from "../enum/order-status.enum";
 import { PaymentStatus } from "../enum/payment-status.enum";
 import { Audit } from "./Audit.entity";
+import { SalePayment } from "./SalePayment.entity";
 
 @Entity({ name: "Sales" })
 export class Sale extends Audit {
@@ -52,4 +60,11 @@ export class Sale extends Audit {
 
   @Column({ type: "json" })
   public lineItems: SaleLineItem[];
+
+  /**
+   * All payment records associated with this sale.
+   * A sale can have multiple partial payments.
+   */
+  @OneToMany(() => SalePayment, payment => payment.sale, { cascade: true })
+  public payments: SalePayment[];
 }
